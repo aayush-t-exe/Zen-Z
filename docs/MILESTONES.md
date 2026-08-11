@@ -14,7 +14,7 @@ steps, no TODOs left in anything marked done.
 | 6 | Storage | ✅ Done — photo access helpers & signed URLs |
 | 7 | Mobile Navigation | ✅ Done — bottom tab nav with 4 sections |
 | 8 | Onboarding | ✅ Done — splash + swipeable intro cards |
-| 9 | Profile Creation | ⬜ |
+| 9 | Profile Creation | ✅ Done — name/year/gender/WhatsApp + founder-only photo upload |
 | 10 | Personality System | ✅ Done — data-driven quiz + scoring |
 | 11 | Booking Flow | ⬜ |
 | 12 | Payments | ⬜ |
