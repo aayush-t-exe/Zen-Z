@@ -7,7 +7,13 @@ import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
-const YEARS = ['1st year', '2nd year', '3rd year', '4th year', 'Other'];
+const YEARS: { label: string; value: number }[] = [
+  { label: '1st year', value: 1 },
+  { label: '2nd year', value: 2 },
+  { label: '3rd year', value: 3 },
+  { label: '4th year', value: 4 },
+  { label: 'Other', value: 5 },
+];
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 export default function ProfileCreationScreen() {
@@ -15,7 +21,7 @@ export default function ProfileCreationScreen() {
   const user = useAuthStore((state) => state.user);
 
   const [fullName, setFullName] = useState('');
-  const [yearOfStudy, setYearOfStudy] = useState('');
+  const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -44,7 +50,7 @@ export default function ProfileCreationScreen() {
   };
 
   const handleCreateProfile = async () => {
-    if (!fullName.trim() || !yearOfStudy || !gender || !phone.trim()) {
+    if (!fullName.trim() || yearOfStudy === null || !gender || !phone.trim()) {
       setError('Please fill in all fields');
       return;
     }
@@ -65,7 +71,7 @@ export default function ProfileCreationScreen() {
         .from('profiles')
         .update({
           full_name: fullName.trim(),
-          year_of_study: parseInt(yearOfStudy.split('')[0]),
+          year_of_study: yearOfStudy,
           gender: gender.toLowerCase(),
           phone: phone.trim(),
         })
@@ -94,14 +100,12 @@ export default function ProfileCreationScreen() {
           return;
         }
 
-        // Update photo_url in profile
-        const photoUrl = supabase.storage
-          .from('profile-photos')
-          .getPublicUrl(fileName).data.publicUrl;
-
+        // Store the storage path, not a public URL — the bucket is private,
+        // and the admin dashboard resolves this path to a signed URL via
+        // get_student_photo_url() (see supabase/migrations/0004_storage_helpers.sql).
         await supabase
           .from('profiles')
-          .update({ photo_url: photoUrl })
+          .update({ photo_url: fileName })
           .eq('id', currentUser.id);
       }
 
@@ -145,18 +149,18 @@ export default function ProfileCreationScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
             {YEARS.map((year) => (
               <Pressable
-                key={year}
-                onPress={() => setYearOfStudy(year)}
+                key={year.value}
+                onPress={() => setYearOfStudy(year.value)}
                 className={`rounded-lg px-4 py-2 ${
-                  yearOfStudy === year
+                  yearOfStudy === year.value
                     ? 'bg-white'
                     : 'border border-gray-300 dark:border-gray-600'
                 }`}
               >
                 <ThemedText
-                  className={yearOfStudy === year ? 'font-semibold text-black' : ''}
+                  className={yearOfStudy === year.value ? 'font-semibold text-black' : ''}
                 >
-                  {year}
+                  {year.label}
                 </ThemedText>
               </Pressable>
             ))}
@@ -232,7 +236,7 @@ export default function ProfileCreationScreen() {
 
         <Pressable
           onPress={handleCreateProfile}
-          disabled={isLoading || !fullName.trim() || !yearOfStudy || !gender || !phone.trim()}
+          disabled={isLoading || !fullName.trim() || yearOfStudy === null || !gender || !phone.trim()}
           className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
         >
           {isLoading ? (
