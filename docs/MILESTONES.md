@@ -12,7 +12,7 @@ steps, no TODOs left in anything marked done.
 | 4 | Authentication (Email signup without confirmation) | ✅ Done — onboarding, profile creation, photo upload |
 | 5 | Database | ✅ Done — personality dimensions & questions seeded |
 | 6 | Storage | ✅ Done — photo access helpers & signed URLs |
-| 7 | Mobile Navigation | ⬜ |
+| 7 | Mobile Navigation | ✅ Done — bottom tab nav with 4 sections |
 | 8 | Onboarding | ⬜ |
 | 9 | Profile Creation | ⬜ |
 | 10 | Personality System | ⬜ |
