@@ -1,22 +1,29 @@
 import { useState, useRef } from 'react';
-import { View, Pressable, FlatList, Dimensions } from 'react-native';
+import { View, Pressable, FlatList, Dimensions, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 const ONBOARDING_SCREENS = [
   {
+    id: '0',
+    type: 'splash',
+  },
+  {
     id: '1',
+    type: 'intro',
     title: 'Every table has a story',
     subtitle: 'before anyone sits down.',
   },
   {
     id: '2',
+    type: 'intro',
     title: 'We craft your group.',
     subtitle: 'You just show up.',
   },
   {
     id: '3',
+    type: 'intro',
     title: 'No swiping.',
     subtitle: 'Just an invitation.',
   },
@@ -39,6 +46,10 @@ export default function OnboardingScreen() {
     }
   };
 
+  const handleContinue = () => {
+    router.push('/(auth)/email-input');
+  };
+
   const handleScroll = (event: any) => {
     const offsetX = event.nativeEvent.contentOffset.x;
     const newIndex = Math.round(offsetX / screenWidth);
@@ -47,20 +58,38 @@ export default function OnboardingScreen() {
     }
   };
 
-  const renderScreen = ({ item }: { item: typeof ONBOARDING_SCREENS[0] }) => (
-    <View style={{ width: screenWidth }} className="flex-1 items-center justify-center px-6">
-      <View className="gap-3">
-        <ThemedText type="title" className="text-center text-3xl font-bold">
-          {item.title}
-        </ThemedText>
-        {item.subtitle && (
-          <ThemedText type="default" className="text-center text-lg">
-            {item.subtitle}
+  const renderScreen = ({ item }: { item: typeof ONBOARDING_SCREENS[0] }) => {
+    if (item.type === 'splash') {
+      return (
+        <View style={{ width: screenWidth }} className="flex-1 items-center justify-center px-6">
+          <View className="gap-6 items-center">
+            <Image
+              source={require('@/assets/images/splash-icon.png')}
+              className="w-20 h-20"
+            />
+            <ThemedText type="default" className="text-center text-xl leading-7">
+              Somewhere nearby, four strangers are about to become your next story.
+            </ThemedText>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={{ width: screenWidth }} className="flex-1 items-center justify-center px-6">
+        <View className="gap-3">
+          <ThemedText type="title" className="text-center text-3xl font-bold">
+            {item.title}
           </ThemedText>
-        )}
+          {item.subtitle && (
+            <ThemedText type="default" className="text-center text-lg">
+              {item.subtitle}
+            </ThemedText>
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <ThemedView className="flex-1">
@@ -77,27 +106,45 @@ export default function OnboardingScreen() {
         scrollEventThrottle={16}
       />
 
-      <View className="flex-row items-center justify-between gap-4 px-6 pb-8">
-        <View className="flex-row gap-2">
-          {ONBOARDING_SCREENS.map((_, idx) => (
-            <View
-              key={idx}
-              className={`h-2 rounded-full ${
-                idx === currentIndex ? 'w-8 bg-white' : 'w-2 bg-gray-500'
-              }`}
-            />
-          ))}
+      {currentIndex === 0 ? (
+        <View className="gap-4 px-6 pb-8">
+          <Pressable
+            onPress={handleNext}
+            className="rounded-lg bg-white py-3 px-4"
+          >
+            <ThemedText className="text-center font-semibold text-black">
+              Begin →
+            </ThemedText>
+          </Pressable>
+          <Pressable onPress={handleContinue}>
+            <ThemedText className="text-center font-semibold text-gray-400">
+              Already in? Continue
+            </ThemedText>
+          </Pressable>
         </View>
+      ) : (
+        <View className="flex-row items-center justify-between gap-4 px-6 pb-8">
+          <View className="flex-row gap-2">
+            {ONBOARDING_SCREENS.slice(1).map((_, idx) => (
+              <View
+                key={idx}
+                className={`h-2 rounded-full ${
+                  idx === currentIndex - 1 ? 'w-8 bg-white' : 'w-2 bg-gray-500'
+                }`}
+              />
+            ))}
+          </View>
 
-        <Pressable
-          onPress={handleNext}
-          className="flex-1 rounded-lg bg-white py-3 px-4"
-        >
-          <ThemedText className="text-center font-semibold text-black">
-            {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin →' : 'Next →'}
-          </ThemedText>
-        </Pressable>
-      </View>
+          <Pressable
+            onPress={handleNext}
+            className="flex-1 rounded-lg bg-white py-3 px-4"
+          >
+            <ThemedText className="text-center font-semibold text-black">
+              {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin →' : 'Next →'}
+            </ThemedText>
+          </Pressable>
+        </View>
+      )}
     </ThemedView>
   );
 }
