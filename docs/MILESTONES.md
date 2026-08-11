@@ -9,7 +9,7 @@ steps, no TODOs left in anything marked done.
 | 1 | Final Architecture | ✅ Done — see docs/ARCHITECTURE.md |
 | 2 | Project Setup | ✅ Done — monorepo + Expo mobile scaffold |
 | 3 | Supabase Setup | ✅ Done — dev/prod projects linked, schema deployed with RLS |
-| 4 | Authentication (Phone OTP + Email OTP) | ⬜ |
+| 4 | Authentication (Email signup without confirmation) | ✅ Done — onboarding, profile creation, photo upload |
 | 5 | Database | ⬜ |
 | 6 | Storage | ⬜ |
 | 7 | Mobile Navigation | ⬜ |
