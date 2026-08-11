@@ -1,17 +1,18 @@
-import { View } from 'react-native';
+import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { useAuthStore } from '@/store/auth';
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+export default function Index() {
+  const router = useRouter();
+  const session = useAuthStore((state) => state.session);
 
-export default function ScaffoldCheck() {
-  return (
-    <ThemedView className="flex-1 items-center justify-center">
-      <View className="items-center gap-2">
-        <ThemedText type="title">campus-social</ThemedText>
-        <ThemedText type="default" themeColor="textSecondary">
-          Mobile scaffold ready — real screens start at Milestone 7.
-        </ThemedText>
-      </View>
-    </ThemedView>
-  );
+  useEffect(() => {
+    if (session) {
+      router.replace('/(home)');
+    } else {
+      router.replace('/(auth)/onboarding');
+    }
+  }, [session]);
+
+  return null;
 }
