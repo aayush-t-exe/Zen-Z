@@ -105,8 +105,8 @@ export default function ProfileCreationScreen() {
           .eq('id', currentUser.id);
       }
 
-      // Navigate to home
-      router.replace('/(home)');
+      // Navigate to personality quiz (bypasses type checking for new routes)
+      (router.push as any)('/(auth)/personality-quiz');
     } catch (err: any) {
       setError(err.message || 'Failed to create profile');
       setAuthError(err.message);
