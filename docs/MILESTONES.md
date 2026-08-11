@@ -15,7 +15,7 @@ steps, no TODOs left in anything marked done.
 | 7 | Mobile Navigation | ✅ Done — bottom tab nav with 4 sections |
 | 8 | Onboarding | ⬜ |
 | 9 | Profile Creation | ⬜ |
-| 10 | Personality System | ⬜ |
+| 10 | Personality System | ✅ Done — data-driven quiz + scoring |
 | 11 | Booking Flow | ⬜ |
 | 12 | Payments | ⬜ |
 | 13 | Founder Dashboard | ⬜ |
