@@ -11,7 +11,7 @@ steps, no TODOs left in anything marked done.
 | 3 | Supabase Setup | ✅ Done — dev/prod projects linked, schema deployed with RLS |
 | 4 | Authentication (Email signup without confirmation) | ✅ Done — onboarding, profile creation, photo upload |
 | 5 | Database | ✅ Done — personality dimensions & questions seeded |
-| 6 | Storage | ⬜ |
+| 6 | Storage | ✅ Done — photo access helpers & signed URLs |
 | 7 | Mobile Navigation | ⬜ |
 | 8 | Onboarding | ⬜ |
 | 9 | Profile Creation | ⬜ |
