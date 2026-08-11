@@ -7,8 +7,8 @@ steps, no TODOs left in anything marked done.
 | # | Milestone | Status |
 |---|---|---|
 | 1 | Final Architecture | ✅ Done — see docs/ARCHITECTURE.md |
-| 2 | Project Setup | ⬜ Next |
-| 3 | Supabase Setup | ⬜ |
+| 2 | Project Setup | ✅ Done — monorepo + Expo mobile scaffold |
+| 3 | Supabase Setup | ⬜ Next |
 | 4 | Authentication (Phone OTP + Email OTP) | ⬜ |
 | 5 | Database | ⬜ |
 | 6 | Storage | ⬜ |
