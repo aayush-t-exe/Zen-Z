@@ -8,5 +8,8 @@
   ],
   "scripts": {
     "mobile": "npm run start --workspace=apps/mobile"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.1.1"
   }
 }
