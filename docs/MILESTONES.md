@@ -17,7 +17,7 @@ steps, no TODOs left in anything marked done.
 | 9 | Profile Creation | ✅ Done — name/year/gender/WhatsApp + founder-only photo upload |
 | 10 | Personality System | ✅ Done — data-driven quiz + scoring |
 | 11 | Booking Flow | ✅ Done — 5-step flow, no location field |
-| 12 | Payments | ⬜ |
+| 12 | Payments | ✅ Done — Razorpay order creation, Edge Function, mobile UI |
 | 13 | Founder Dashboard | ⬜ |
 | 14 | Matching Engine | ⬜ |
 | 15 | Group Chat | ⬜ |
