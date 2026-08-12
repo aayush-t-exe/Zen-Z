@@ -18,7 +18,7 @@ steps, no TODOs left in anything marked done.
 | 10 | Personality System | ✅ Done — data-driven quiz + scoring |
 | 11 | Booking Flow | ✅ Done — 5-step flow, no location field |
 | 12 | Payments | ✅ Done — Razorpay order creation, Edge Function, mobile UI |
-| 13 | Founder Dashboard | ⬜ |
+| 13 | Founder Dashboard | 🔨 In Progress — Next.js scaffold + auth + metrics + matching queue |
 | 14 | Matching Engine | ⬜ |
 | 15 | Group Chat | ⬜ |
 | 16 | Notifications | ⬜ |
