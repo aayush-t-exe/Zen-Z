@@ -16,7 +16,7 @@ steps, no TODOs left in anything marked done.
 | 8 | Onboarding | ✅ Done — splash + swipeable intro cards |
 | 9 | Profile Creation | ✅ Done — name/year/gender/WhatsApp + founder-only photo upload |
 | 10 | Personality System | ✅ Done — data-driven quiz + scoring |
-| 11 | Booking Flow | ⬜ |
+| 11 | Booking Flow | ✅ Done — 5-step flow, no location field |
 | 12 | Payments | ⬜ |
 | 13 | Founder Dashboard | ⬜ |
 | 14 | Matching Engine | ⬜ |
