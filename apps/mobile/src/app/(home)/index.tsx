@@ -1,22 +1,23 @@
 import { View, Pressable, ScrollView } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 
 const ACTIVITIES = [
   {
-    id: 'cafes',
+    id: 1,
     emoji: '☕',
     name: 'Cafés',
     tagline: 'Unlock a table',
   },
   {
-    id: 'dinners',
+    id: 2,
     emoji: '🍽',
     name: 'Dinners',
     tagline: 'Unlock a table',
   },
   {
-    id: 'movies',
+    id: 3,
     emoji: '🎬',
     name: 'Movies',
     tagline: 'Unlock a seat',
@@ -24,9 +25,13 @@ const ACTIVITIES = [
 ];
 
 export default function HomeScreen() {
-  const handleActivityPress = (activityId: string) => {
-    // TODO: Navigate to booking flow in Milestone 11
-    console.log(`Booking flow for ${activityId} - coming in Milestone 11`);
+  const router = useRouter();
+
+  const handleActivityPress = (activityId: number) => {
+    router.push({
+      pathname: '/booking-flow' as any,
+      params: { activityId: activityId.toString() },
+    });
   };
 
   return (
