@@ -141,6 +141,10 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">Campus Social</h1>
           <div className="text-right">
             <p className="text-sm text-gray-600">Founder: {founder}</p>
+            <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
+              Manage venues
+            </Link>
+            {' · '}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
