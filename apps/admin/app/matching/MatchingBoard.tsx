@@ -116,7 +116,14 @@ export default function MatchingBoard({
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
           )
           .eq('slot_id', slotId)
-          .eq('status', 'pending_match'),
+          .eq('status', 'pending_match')
+          // confirm_group() (0017_require_payment_for_confirm_group.sql)
+          // rejects the whole booking unless it's also paid — matching
+          // that here means the pool only ever contains groupable
+          // bookings, instead of letting a founder drag an unpaid
+          // student in only to have the confirm call fail with no
+          // warning beforehand.
+          .eq('payment_status', 'paid'),
         supabase.from('personality_dimensions').select('id'),
         supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
       ]);
