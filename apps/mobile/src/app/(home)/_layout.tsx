@@ -45,6 +45,9 @@ export default function HomeLayout() {
           tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
         }}
       />
+      {/* Flow screens reached via router.push, not persistent tab destinations */}
+      <Tabs.Screen name="booking-flow" options={{ href: null }} />
+      <Tabs.Screen name="payment" options={{ href: null }} />
     </Tabs>
   );
 }

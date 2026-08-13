@@ -5,6 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { useTheme } from '@/hooks/use-theme';
 
 interface Question {
   id: number;
@@ -29,6 +30,7 @@ interface Answer {
 
 export default function PersonalityQuizScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const user = useAuthStore((state) => state.user);
 
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -111,11 +113,21 @@ export default function PersonalityQuizScreen() {
   });
 
   const handleSelectOption = (optionId: number) => {
-    const existing = answers.get(currentQuestion.id) || {};
     const newAnswer: Answer = {
       questionId: currentQuestion.id,
       selectedOptionIds: [optionId],
-      ...existing,
+    };
+    setAnswers(new Map(answers.set(currentQuestion.id, newAnswer)));
+  };
+
+  const handleToggleMultiOption = (optionId: number) => {
+    const existing = answers.get(currentQuestion.id)?.selectedOptionIds || [];
+    const newSelectedIds = existing.includes(optionId)
+      ? existing.filter((id) => id !== optionId)
+      : [...existing, optionId];
+    const newAnswer: Answer = {
+      questionId: currentQuestion.id,
+      selectedOptionIds: newSelectedIds,
     };
     setAnswers(new Map(answers.set(currentQuestion.id, newAnswer)));
   };
@@ -238,6 +250,30 @@ export default function PersonalityQuizScreen() {
             </>
           )}
 
+          {currentQuestion.question_type === 'multi_select' && (
+            <>
+              {currentQuestion.options?.map((option) => {
+                const isSelected =
+                  answers.get(currentQuestion.id)?.selectedOptionIds?.includes(option.id) ?? false;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => handleToggleMultiOption(option.id)}
+                    className={`rounded-lg border px-4 py-3 ${
+                      isSelected
+                        ? 'border-black bg-white dark:border-white dark:bg-gray-900'
+                        : 'border-gray-300 dark:border-gray-600'
+                    }`}
+                  >
+                    <ThemedText className={isSelected ? 'font-semibold' : ''}>
+                      {isSelected ? '☑' : '☐'} {option.label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
+
           {currentQuestion.question_type === 'scale' && (
             <View className="gap-4">
               {/* Scale labels */}
@@ -266,9 +302,8 @@ export default function PersonalityQuizScreen() {
                         }`}
                       >
                         <ThemedText
-                          className={`text-center text-sm font-semibold ${
-                            isSelected ? 'text-white dark:text-black' : ''
-                          }`}
+                          themeColor={isSelected ? 'invertedText' : undefined}
+                          className="text-center text-sm font-semibold"
                         >
                           {num}
                         </ThemedText>
@@ -290,9 +325,8 @@ export default function PersonalityQuizScreen() {
                         }`}
                       >
                         <ThemedText
-                          className={`text-center text-sm font-semibold ${
-                            isSelected ? 'text-white dark:text-black' : ''
-                          }`}
+                          themeColor={isSelected ? 'invertedText' : undefined}
+                          className="text-center text-sm font-semibold"
                         >
                           {num}
                         </ThemedText>
@@ -306,7 +340,7 @@ export default function PersonalityQuizScreen() {
         </View>
 
         {error && (
-          <ThemedText type="default" themeColor="textSecondary" className="mb-4 text-red-500">
+          <ThemedText type="default" themeColor="error" className="mb-4">
             {error}
           </ThemedText>
         )}
@@ -328,9 +362,9 @@ export default function PersonalityQuizScreen() {
               className="flex-1 rounded-lg bg-black py-3 px-4 disabled:opacity-50 dark:bg-white"
             >
               {isSaving ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={theme.invertedText} />
               ) : (
-                <ThemedText className="text-center font-semibold text-white dark:text-black">
+                <ThemedText themeColor="invertedText" className="text-center font-semibold">
                   Next →
                 </ThemedText>
               )}
@@ -344,9 +378,9 @@ export default function PersonalityQuizScreen() {
               className="flex-1 rounded-lg bg-black py-3 px-4 disabled:opacity-50 dark:bg-white"
             >
               {isSaving ? (
-                <ActivityIndicator color="#fff" />
+                <ActivityIndicator color={theme.invertedText} />
               ) : (
-                <ThemedText className="text-center font-semibold text-white dark:text-black">
+                <ThemedText themeColor="invertedText" className="text-center font-semibold">
                   Complete →
                 </ThemedText>
               )}

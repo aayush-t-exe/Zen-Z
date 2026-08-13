@@ -14,6 +14,17 @@ export const Colors = {
     backgroundElement: '#F0F0F3',
     backgroundSelected: '#E0E1E6',
     textSecondary: '#60646C',
+    // Fixed black — for text on a surface that's deliberately always
+    // white/light regardless of app theme (e.g. a hardcoded bg-white button).
+    onLight: '#000000',
+    // Opposite of `text` — for text on an inverted-theme surface
+    // (bg-black dark:bg-white), which needs the reverse of the normal
+    // text color to stay readable.
+    invertedText: '#ffffff',
+    // Fixed error red — semantic, not theme-following.
+    error: '#ef4444',
+    // Warning text, tuned for a yellow-tinted banner background per theme.
+    warning: '#92400e',
   },
   dark: {
     text: '#ffffff',
@@ -21,6 +32,10 @@ export const Colors = {
     backgroundElement: '#212225',
     backgroundSelected: '#2E3135',
     textSecondary: '#B0B4BA',
+    onLight: '#000000',
+    invertedText: '#000000',
+    error: '#ef4444',
+    warning: '#fef08a',
   },
 } as const;
 

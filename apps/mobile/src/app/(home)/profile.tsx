@@ -41,7 +41,7 @@ export default function ProfileScreen() {
         </View>
 
         <View className="mb-8 gap-2">
-          <ThemedText type="default" className="text-xs font-semibold uppercase text-gray-500">
+          <ThemedText type="default" themeColor="textSecondary" className="text-xs font-semibold uppercase">
             Account
           </ThemedText>
 
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
             onPress={handleSignOut}
             className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-700 dark:bg-red-900"
           >
-            <ThemedText className="text-center font-semibold text-red-600 dark:text-red-400">
+            <ThemedText themeColor="error" className="text-center font-semibold">
               Sign Out
             </ThemedText>
           </Pressable>

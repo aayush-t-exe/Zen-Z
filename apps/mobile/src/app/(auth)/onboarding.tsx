@@ -112,12 +112,12 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             className="rounded-lg bg-white py-3 px-4"
           >
-            <ThemedText className="text-center font-semibold text-black">
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
               Begin →
             </ThemedText>
           </Pressable>
           <Pressable onPress={handleContinue}>
-            <ThemedText className="text-center font-semibold text-gray-400">
+            <ThemedText themeColor="textSecondary" className="text-center font-semibold">
               Already in? Continue
             </ThemedText>
           </Pressable>
@@ -139,7 +139,7 @@ export default function OnboardingScreen() {
             onPress={handleNext}
             className="flex-1 rounded-lg bg-white py-3 px-4"
           >
-            <ThemedText className="text-center font-semibold text-black">
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
               {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin →' : 'Next →'}
             </ThemedText>
           </Pressable>

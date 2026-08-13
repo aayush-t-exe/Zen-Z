@@ -38,7 +38,7 @@ export default function ProfileCreationScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -158,7 +158,8 @@ export default function ProfileCreationScreen() {
                 }`}
               >
                 <ThemedText
-                  className={yearOfStudy === year.value ? 'font-semibold text-black' : ''}
+                  themeColor={yearOfStudy === year.value ? 'onLight' : undefined}
+                  className={yearOfStudy === year.value ? 'font-semibold' : ''}
                 >
                   {year.label}
                 </ThemedText>
@@ -181,7 +182,10 @@ export default function ProfileCreationScreen() {
                   gender === g ? 'bg-white' : 'border border-gray-300 dark:border-gray-600'
                 }`}
               >
-                <ThemedText className={gender === g ? 'font-semibold text-black' : ''}>
+                <ThemedText
+                  themeColor={gender === g ? 'onLight' : undefined}
+                  className={gender === g ? 'font-semibold' : ''}
+                >
                   ○ {g}
                 </ThemedText>
               </Pressable>
@@ -229,7 +233,7 @@ export default function ProfileCreationScreen() {
         </View>
 
         {error && (
-          <ThemedText type="default" themeColor="textSecondary" className="mb-4 text-red-500">
+          <ThemedText type="default" themeColor="error" className="mb-4">
             {error}
           </ThemedText>
         )}
@@ -242,7 +246,7 @@ export default function ProfileCreationScreen() {
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <ThemedText className="text-center font-semibold text-black">
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
               Continue →
             </ThemedText>
           )}
