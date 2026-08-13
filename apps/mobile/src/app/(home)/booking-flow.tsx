@@ -26,14 +26,15 @@ interface Activity {
 }
 
 const BUDGET_BANDS = [
-  { value: 'under_300', label: 'Under ₹300' },
-  { value: '300_600', label: '₹300–600' },
-  { value: '600_plus', label: '₹600+' },
+  { value: 'under_200', label: 'Under ₹200' },
+  { value: '200_400', label: '₹200–400' },
+  { value: '400_plus', label: '₹400+' },
 ];
 
 const GROUP_PREFERENCES = [
   { value: 'mixed', label: 'Surprise me (mixed)' },
   { value: 'women_only', label: 'Women only' },
+  { value: 'men_only', label: 'Men only' },
 ];
 
 export default function BookingFlowScreen() {
@@ -88,12 +89,27 @@ export default function BookingFlowScreen() {
     }
   };
 
+  const getOrdinalSuffix = (day: number) => {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
+    }
+  };
+
   const formatSlotDateTime = (dateString: string) => {
     const date = new Date(dateString);
     const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const dayName = daysOfWeek[date.getDay()];
+    const dayNum = date.getDate();
     const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${dayName} · ${time}`;
+    return `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)} · ${time}`;
   };
 
   const handleCreateBooking = async () => {
@@ -132,17 +148,25 @@ export default function BookingFlowScreen() {
   };
 
   const canProceedToNextStep = () => {
-    if (step === 2) return selectedSlot;
-    if (step === 3) return selectedBudget;
-    if (step === 4) return selectedPreference;
+    if (step === 1) return selectedSlot;
+    if (step === 2) return selectedBudget;
+    if (step === 3) return selectedPreference;
     return true;
   };
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step < 4) {
       setStep(step + 1);
     } else {
       handleCreateBooking();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+    } else {
+      router.back();
     }
   };
 
@@ -157,41 +181,20 @@ export default function BookingFlowScreen() {
   return (
     <ThemedView className="flex-1">
       <ScrollView className="flex-1 px-6 py-8">
-        {/* Step counter */}
-        <View className="mb-6">
+        {/* Step counter + activity context */}
+        <View className="mb-6 gap-1">
           <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-            Step {step} of 5
+            Step {step} of 4
           </ThemedText>
+          {activity && (
+            <ThemedText type="default" className="text-sm">
+              {activity.emoji} {activity.name}
+            </ThemedText>
+          )}
         </View>
 
-        {/* Step 1: Activity Summary */}
-        {step === 1 && activity && (
-          <View className="gap-6">
-            <View className="gap-3">
-              <ThemedText type="title" className="text-2xl">
-                Ready to book?
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary">
-                Let's find you the perfect {activity.name.toLowerCase()} group.
-              </ThemedText>
-            </View>
-
-            <View className="rounded-2xl bg-white px-6 py-8 dark:bg-gray-900">
-              <View className="gap-4 items-center">
-                <ThemedText className="text-6xl">{activity.emoji}</ThemedText>
-                <ThemedText className="text-2xl font-bold text-center">
-                  {activity.name}
-                </ThemedText>
-                <ThemedText type="default" themeColor="textSecondary" className="text-center">
-                  Group of 4–5 · {activity.name === 'Movie' ? 'Unlock a seat' : 'Unlock a table'}
-                </ThemedText>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Step 2: Day & Time Selection */}
-        {step === 2 && (
+        {/* Step 1: Day & Time Selection */}
+        {step === 1 && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -215,6 +218,7 @@ export default function BookingFlowScreen() {
                     }`}
                   >
                     <ThemedText
+                      themeColor={selectedSlot === slot.id ? 'onLight' : undefined}
                       className={selectedSlot === slot.id ? 'font-semibold' : ''}
                     >
                       ○ {formatSlotDateTime(slot.slot_datetime)}
@@ -230,8 +234,8 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 3: Budget Selection */}
-        {step === 3 && (
+        {/* Step 2: Budget Selection */}
+        {step === 2 && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -254,6 +258,7 @@ export default function BookingFlowScreen() {
                   }`}
                 >
                   <ThemedText
+                    themeColor={selectedBudget === band.value ? 'onLight' : undefined}
                     className={selectedBudget === band.value ? 'font-semibold' : ''}
                   >
                     ○ {band.label}
@@ -264,8 +269,8 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 4: Group Preference Selection */}
-        {step === 4 && (
+        {/* Step 3: Group Preference Selection */}
+        {step === 3 && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -288,6 +293,7 @@ export default function BookingFlowScreen() {
                   }`}
                 >
                   <ThemedText
+                    themeColor={selectedPreference === pref.value ? 'onLight' : undefined}
                     className={selectedPreference === pref.value ? 'font-semibold' : ''}
                   >
                     ○ {pref.label}
@@ -298,8 +304,8 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 5: Confirmation */}
-        {step === 5 && activity && selectedSlot && selectedBudget && selectedPreference && (
+        {/* Step 4: Confirmation */}
+        {step === 4 && activity && selectedSlot && selectedBudget && selectedPreference && (
           <View className="gap-4">
             <ThemedText type="title" className="text-xl">
               Your adventure awaits
@@ -335,7 +341,7 @@ export default function BookingFlowScreen() {
                   </ThemedText>
                   <ThemedText className="text-lg font-semibold">
                     Group of 4–5 ·{' '}
-                    {selectedPreference === 'women_only' ? 'Women only' : 'Surprise me (mixed)'}
+                    {GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}
                   </ThemedText>
                 </View>
 
@@ -348,21 +354,13 @@ export default function BookingFlowScreen() {
                     {BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label}
                   </ThemedText>
                 </View>
-
-                {/* Price to unlock */}
-                <View className="border-t border-gray-300 pt-4 dark:border-gray-700">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                    To unlock this evening
-                  </ThemedText>
-                  <ThemedText className="text-xl font-bold">₹25</ThemedText>
-                </View>
               </View>
             </View>
           </View>
         )}
 
         {error && (
-          <ThemedText type="default" className="mt-4 text-red-500">
+          <ThemedText type="default" themeColor="error" className="mt-4">
             {error}
           </ThemedText>
         )}
@@ -370,14 +368,12 @@ export default function BookingFlowScreen() {
 
       {/* Navigation buttons */}
       <View className="gap-3 px-6 pb-8">
-        {step > 1 && (
-          <Pressable
-            onPress={() => setStep(step - 1)}
-            className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
-          >
-            <ThemedText className="text-center font-semibold">← Back</ThemedText>
-          </Pressable>
-        )}
+        <Pressable
+          onPress={handleBack}
+          className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
+        >
+          <ThemedText className="text-center font-semibold">← Back</ThemedText>
+        </Pressable>
 
         <Pressable
           onPress={handleNext}
@@ -387,8 +383,8 @@ export default function BookingFlowScreen() {
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <ThemedText className="text-center font-semibold text-black">
-              {step === 5 ? 'Unlock Your Next Adventure' : 'Next →'}
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
+              {step === 4 ? 'Unlock Your Next Adventure' : 'Next →'}
             </ThemedText>
           )}
         </Pressable>
