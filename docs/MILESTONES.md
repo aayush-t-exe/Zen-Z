@@ -19,8 +19,8 @@ steps, no TODOs left in anything marked done.
 | 11 | Booking Flow | ✅ Done — 5-step flow, no location field |
 | 12 | Payments | ✅ Done — Razorpay order creation, Edge Function, mobile UI |
 | 13 | Founder Dashboard | ✅ Done — dashboard, matching queue, drag-and-drop matching board, venue management |
-| 14 | Matching Engine | ⬜ |
-| 15 | Group Chat | ⬜ |
+| 14 | Matching Engine | ✅ Done — group_preference hard filter enforced in the matching board, payment-gated matching pool, admin Groups view |
+| 15 | Group Chat | ✅ Done — 48h reveal gate on venue + chat (my_group_details view, time-gated RLS), realtime group chat, mobile booking status flow (sealed → matched → revealed) |
 | 16 | Notifications | ⬜ |
 | 17 | Reports & Moderation | ⬜ |
 | 18 | Analytics | ⬜ |
