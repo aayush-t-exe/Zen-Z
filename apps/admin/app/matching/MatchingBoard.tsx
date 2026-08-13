@@ -19,6 +19,7 @@ import {
   type ScoreVector,
 } from '@/lib/compatibility';
 import { getSignedPhotoUrls } from '@/lib/photos';
+import { formatBudget } from '@/lib/format';
 
 interface Booking {
   id: string;
@@ -539,16 +540,3 @@ function StudentCard({
   );
 }
 
-function formatBudget(band: string): string {
-  const budgets: Record<string, string> = {
-    // Current bands (apps/mobile/src/app/(home)/booking-flow.tsx).
-    under_200: 'Under ₹200',
-    '200_400': '₹200–400',
-    '400_plus': '₹400+',
-    // Bands used by any booking created before that budget range changed.
-    under_300: 'Under ₹300',
-    '300_600': '₹300–600',
-    '600_plus': '₹600+',
-  };
-  return budgets[band] || band;
-}

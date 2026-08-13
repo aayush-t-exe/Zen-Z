@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
+import { formatSlotDateTime } from '@/lib/format';
 import Link from 'next/link';
 import MatchingBoard from './MatchingBoard';
 
@@ -81,29 +82,6 @@ export default function MatchingPage() {
     fetchSlotsAndBookings();
   }, [status, selectedActivityId, selectedSlotId]);
 
-  const getOrdinalSuffix = (day: number) => {
-    if (day >= 11 && day <= 13) return 'th';
-    switch (day % 10) {
-      case 1:
-        return 'st';
-      case 2:
-        return 'nd';
-      case 3:
-        return 'rd';
-      default:
-        return 'th';
-    }
-  };
-
-  const formatSlotDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayName = daysOfWeek[date.getDay()];
-    const dayNum = date.getDate();
-    const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)} · ${time}`;
-  };
-
   const selectedActivity = activities.find(a => a.id === selectedActivityId);
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
 
@@ -125,9 +103,14 @@ export default function MatchingPage() {
             </Link>
             <h1 className="text-2xl font-bold">Matching Queue</h1>
           </div>
-          <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
-            Manage venues →
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
+              View groups →
+            </Link>
+            <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
+              Manage venues →
+            </Link>
+          </div>
         </div>
       </header>
 

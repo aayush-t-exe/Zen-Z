@@ -48,6 +48,7 @@ export default function HomeLayout() {
       {/* Flow screens reached via router.push, not persistent tab destinations */}
       <Tabs.Screen name="booking-flow" options={{ href: null }} />
       <Tabs.Screen name="payment" options={{ href: null }} />
+      <Tabs.Screen name="group/[groupId]" options={{ href: null }} />
     </Tabs>
   );
 }

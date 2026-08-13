@@ -12,6 +12,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { formatSlotDateTime } from '@/lib/format';
 
 interface Slot {
   id: string;
@@ -87,29 +88,6 @@ export default function BookingFlowScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const getOrdinalSuffix = (day: number) => {
-    if (day >= 11 && day <= 13) return 'th';
-    switch (day % 10) {
-      case 1:
-        return 'st';
-      case 2:
-        return 'nd';
-      case 3:
-        return 'rd';
-      default:
-        return 'th';
-    }
-  };
-
-  const formatSlotDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayName = daysOfWeek[date.getDay()];
-    const dayNum = date.getDate();
-    const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    return `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)} · ${time}`;
   };
 
   const handleCreateBooking = async () => {
