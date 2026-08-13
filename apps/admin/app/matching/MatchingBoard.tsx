@@ -18,6 +18,7 @@ import {
   averageSimilarityToGroup,
   type ScoreVector,
 } from '@/lib/compatibility';
+import { getSignedPhotoUrls } from '@/lib/photos';
 
 interface Booking {
   id: string;
@@ -85,6 +86,7 @@ export default function MatchingBoard({
 }) {
   const [unmatched, setUnmatched] = useState<Booking[]>([]);
   const [scoresByUser, setScoresByUser] = useState<Record<string, ScoreVector>>({});
+  const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [dimensionIds, setDimensionIds] = useState<number[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [groups, setGroups] = useState<GroupDraft[]>([]);
@@ -124,6 +126,8 @@ export default function MatchingBoard({
       setDimensionIds((dims ?? []).map((d: any) => d.id));
       setVenues(venuesData ?? []);
 
+      getSignedPhotoUrls(bookingsList.map((b) => b.profile.photo_url)).then(setPhotoUrls);
+
       const userIds = bookingsList.map((b) => b.user_id);
       if (userIds.length > 0) {
         const { data: scores } = await supabase
@@ -151,6 +155,9 @@ export default function MatchingBoard({
     unmatched.filter((b) => placements[b.id] === groupLocalId);
 
   const poolBookings = unmatched.filter((b) => !placements[b.id]);
+
+  const photoFor = (booking: Booking): string | undefined =>
+    booking.profile.photo_url ? photoUrls[booking.profile.photo_url] : undefined;
 
   const addGroup = () => {
     groupCounter.current += 1;
@@ -294,7 +301,11 @@ export default function MatchingBoard({
                 const fit = bestFitForPoolCard(booking);
                 return (
                   <DraggableCard key={booking.id} id={booking.id}>
-                    <StudentCard booking={booking} compatibilityBadge={fit} />
+                    <StudentCard
+                      booking={booking}
+                      photoUrl={photoFor(booking)}
+                      compatibilityBadge={fit}
+                    />
                   </DraggableCard>
                 );
               })
@@ -361,7 +372,11 @@ export default function MatchingBoard({
                       ) : (
                         members.map((booking) => (
                           <DraggableCard key={booking.id} id={booking.id}>
-                            <StudentCard booking={booking} compact />
+                            <StudentCard
+                              booking={booking}
+                              photoUrl={photoFor(booking)}
+                              compact
+                            />
                           </DraggableCard>
                         ))
                       )}
@@ -402,7 +417,14 @@ export default function MatchingBoard({
       </div>
 
       <DragOverlay>
-        {activeBooking ? <StudentCard booking={activeBooking} compact dragging /> : null}
+        {activeBooking ? (
+          <StudentCard
+            booking={activeBooking}
+            photoUrl={photoFor(activeBooking)}
+            compact
+            dragging
+          />
+        ) : null}
       </DragOverlay>
     </DndContext>
   );
@@ -446,11 +468,13 @@ function DraggableCard({ id, children }: { id: string; children: React.ReactNode
 
 function StudentCard({
   booking,
+  photoUrl,
   compact = false,
   dragging = false,
   compatibilityBadge = null,
 }: {
   booking: Booking;
+  photoUrl?: string;
   compact?: boolean;
   dragging?: boolean;
   compatibilityBadge?: { groupNumber: number; score: number } | null;
@@ -464,9 +488,9 @@ function StudentCard({
       }`}
     >
       <div className="flex gap-3 items-center">
-        {profile.photo_url ? (
+        {photoUrl ? (
           <img
-            src={profile.photo_url}
+            src={photoUrl}
             alt={profile.full_name}
             className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg object-cover bg-gray-200`}
           />

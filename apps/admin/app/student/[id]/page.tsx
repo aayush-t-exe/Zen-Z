@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
+import { getSignedPhotoUrl } from '@/lib/photos';
 import Link from 'next/link';
 
 interface Profile {
@@ -43,6 +44,7 @@ export default function StudentProfilePage() {
   const studentId = params.id as string;
 
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [dimensions, setDimensions] = useState<PersonalityDimension[]>([]);
   const [scores, setScores] = useState<PersonalityScore[]>([]);
   const [answers, setAnswers] = useState<PersonalityAnswer[]>([]);
@@ -69,6 +71,7 @@ export default function StudentProfilePage() {
         }
 
         setProfile(profileData);
+        getSignedPhotoUrl(profileData.photo_url).then(setPhotoUrl);
 
         // Fetch dimensions
         const { data: dimensionsData } = await supabase
@@ -159,9 +162,9 @@ export default function StudentProfilePage() {
         {/* Profile Header */}
         <div className="bg-white rounded-lg border p-8 mb-8">
           <div className="flex gap-6 items-start mb-6">
-            {profile.photo_url ? (
+            {photoUrl ? (
               <img
-                src={profile.photo_url}
+                src={photoUrl}
                 alt={profile.full_name}
                 className="w-24 h-24 rounded-lg object-cover bg-gray-200"
               />
