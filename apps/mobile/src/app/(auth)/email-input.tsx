@@ -11,8 +11,6 @@ export default function EmailInputScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const setSession = useAuthStore((state) => state.setSession);
-  const setUser = useAuthStore((state) => state.setUser);
   const setAuthError = useAuthStore((state) => state.setError);
 
   const handleContinue = async () => {
@@ -25,30 +23,23 @@ export default function EmailInputScreen() {
     setError('');
 
     try {
-      const tempPassword = Math.random().toString(36).slice(2, 15);
-
-      // Sign up user (creates account without email verification for dev)
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email: email.trim(),
-        password: tempPassword,
+        options: {
+          shouldCreateUser: true,
+        },
       });
 
-      if (signUpError) {
-        setError(signUpError.message);
-        setAuthError(signUpError.message);
+      if (otpError) {
+        setError(otpError.message);
+        setAuthError(otpError.message);
         return;
       }
 
-      // Use session from signup directly (no separate sign-in needed)
-      if (data.session && data.user) {
-        // Set session on Supabase client AND store
-        await supabase.auth.setSession(data.session);
-        setSession(data.session);
-        setUser(data.user);
-      }
-
-      // Proceed to profile creation
-      router.replace('/(auth)/profile-creation');
+      router.push({
+        pathname: '/(auth)/otp-verification',
+        params: { email: email.trim() },
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to proceed');
       setAuthError(err.message);
@@ -81,7 +72,7 @@ export default function EmailInputScreen() {
         />
 
         {error && (
-          <ThemedText type="default" themeColor="textSecondary" className="text-red-500">
+          <ThemedText type="default" themeColor="error">
             {error}
           </ThemedText>
         )}
@@ -94,7 +85,7 @@ export default function EmailInputScreen() {
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <ThemedText className="text-center font-semibold text-black">
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
               Continue →
             </ThemedText>
           )}

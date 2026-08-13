@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { getPostAuthRoute } from '@/lib/authRouting';
 
 export default function OTPVerificationScreen() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function OTPVerificationScreen() {
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
@@ -50,10 +52,11 @@ export default function OTPVerificationScreen() {
         return;
       }
 
-      if (data.session) {
+      if (data.session && data.user) {
         setSession(data.session);
         setUser(data.user);
-        router.replace('/(auth)/profile-creation');
+        const nextRoute = await getPostAuthRoute(data.user.id);
+        router.replace(nextRoute);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to verify OTP');
@@ -96,9 +99,30 @@ export default function OTPVerificationScreen() {
           </ThemedText>
         </View>
 
+        <Pressable
+          onPress={() => inputRef.current?.focus()}
+          className="flex-row gap-2"
+        >
+          {Array.from({ length: 6 }).map((_, i) => {
+            const digit = otp[i];
+            const isActive = i === otp.length && otp.length < 6 && !isLoading;
+            return (
+              <View
+                key={i}
+                className={`h-14 flex-1 items-center justify-center rounded-lg border ${
+                  isActive
+                    ? 'border-2 border-blue-500'
+                    : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <ThemedText className="text-2xl font-bold">{digit ?? ''}</ThemedText>
+              </View>
+            );
+          })}
+        </Pressable>
+
         <TextInput
-          placeholder="[_][_][_][_][_][_]"
-          placeholderTextColor="#999"
+          ref={inputRef}
           value={otp}
           onChangeText={(text) => {
             setOtp(text.replace(/[^0-9]/g, '').slice(0, 6));
@@ -107,11 +131,12 @@ export default function OTPVerificationScreen() {
           editable={!isLoading}
           keyboardType="number-pad"
           maxLength={6}
-          style={{ color: '#000', backgroundColor: '#fff', borderColor: '#d1d5db', borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 20, fontWeight: 'bold', textAlign: 'center', letterSpacing: 4 }}
+          autoFocus
+          style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
         />
 
         {error && (
-          <ThemedText type="default" themeColor="textSecondary" className="text-red-500">
+          <ThemedText type="default" themeColor="error">
             {error}
           </ThemedText>
         )}
@@ -124,7 +149,7 @@ export default function OTPVerificationScreen() {
           {isLoading ? (
             <ActivityIndicator color="#000" />
           ) : (
-            <ThemedText className="text-center font-semibold text-black">
+            <ThemedText themeColor="onLight" className="text-center font-semibold">
               Verify →
             </ThemedText>
           )}
