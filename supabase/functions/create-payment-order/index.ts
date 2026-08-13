@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { bookingId } = await req.json();
+    const { bookingId, redirectUrl } = await req.json();
 
     if (!bookingId) {
       return new Response(
@@ -31,6 +31,27 @@ serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Identify the caller from their own JWT — this is the only thing
+    // that gates who can create a payment link for a given booking.
+    const authHeader = req.headers.get('Authorization') || '';
+    const jwt = authHeader.replace(/^Bearer\s+/i, '');
+
+    if (!jwt) {
+      return new Response(
+        JSON.stringify({ error: 'Missing Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: callerData, error: callerError } = await supabase.auth.getUser(jwt);
+
+    if (callerError || !callerData.user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Fetch booking with slot and activity details
     const { data: booking, error: bookingError } = await supabase
@@ -58,72 +79,80 @@ serve(async (req) => {
       );
     }
 
+    if (booking.user_id !== callerData.user.id) {
+      return new Response(
+        JSON.stringify({ error: 'You do not have access to this booking' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const slot = booking.slots as any;
     const activity = slot?.activity_types as any;
-    const amount = (activity?.convenience_fee || 9) * 100; // Convert to paise
+    const amount = (activity?.convenience_fee || 21) * 100; // Convert to paise
 
-    // Get Razorpay credentials from environment
-    const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID') || 'PLACEHOLDER_KEY_ID';
-    const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET') || 'PLACEHOLDER_KEY_SECRET';
+    const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
+    const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
 
-    // Create Razorpay order
-    const orderResponse = await fetch('https://api.razorpay.com/v1/orders', {
+    if (!razorpayKeyId || !razorpayKeySecret) {
+      return new Response(
+        JSON.stringify({ error: 'Payments are not configured yet (missing Razorpay credentials)' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const isTestMode = razorpayKeyId.startsWith('rzp_test_');
+
+    // Payment Links gives us a plain hosted-checkout URL we can open in
+    // an in-app browser — no native Razorpay SDK / custom dev client
+    // needed, unlike the Orders API + Checkout.js this replaced.
+    const linkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Basic ${btoa(`${razorpayKeyId}:${razorpayKeySecret}`)}`,
       },
       body: JSON.stringify({
-        amount: amount,
+        amount,
         currency: 'INR',
-        receipt: `booking_${bookingId}`,
+        reference_id: bookingId,
+        description: `${activity?.name || 'Activity'} — unlock your invitation`,
         notes: {
           booking_id: bookingId,
-          activity: activity?.name || 'Activity',
         },
+        // Razorpay rejects callback_url unless it's a real https:// URL
+        // — it will not accept the app's own `mobile://`/`exp://` deep
+        // link directly. Route through payment-redirect, an https
+        // bridge that then hands off to the real deep link, which is
+        // what lets WebBrowser.openAuthSessionAsync on the client
+        // detect completion and hand control back automatically.
+        ...(redirectUrl
+          ? {
+              callback_url: `${supabaseUrl}/functions/v1/payment-redirect?to=${encodeURIComponent(redirectUrl)}`,
+              callback_method: 'get',
+            }
+          : {}),
       }),
     });
 
-    if (!orderResponse.ok) {
-      const errorData = await orderResponse.json();
+    if (!linkResponse.ok) {
+      const errorData = await linkResponse.json().catch(() => ({}));
       console.error('Razorpay error:', errorData);
-
-      // If using placeholder credentials, return a mock order
-      if (razorpayKeyId === 'PLACEHOLDER_KEY_ID') {
-        const mockOrderId = `order_${Date.now()}`;
-
-        // Update booking with mock payment_id
-        await supabase
-          .from('bookings')
-          .update({ payment_id: mockOrderId })
-          .eq('id', bookingId);
-
-        return new Response(
-          JSON.stringify({
-            success: true,
-            order_id: mockOrderId,
-            amount: amount / 100,
-            amount_paise: amount,
-            booking_id: bookingId,
-            is_test_mode: true,
-            message: 'Test mode: Using mock order ID. Replace RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET with real credentials.',
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
       return new Response(
-        JSON.stringify({ error: 'Failed to create Razorpay order' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({
+          error: errorData?.error?.description || 'Failed to create payment link',
+        }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const order = await orderResponse.json();
+    const paymentLink = await linkResponse.json();
 
-    // Update booking with payment_id
+    // payment_status is intentionally never set here — only the
+    // razorpay-webhook function, once Razorpay actually confirms the
+    // payment, is allowed to mark a booking paid.
     const { error: updateError } = await supabase
       .from('bookings')
-      .update({ payment_id: order.id })
+      .update({ payment_id: paymentLink.id })
       .eq('id', bookingId);
 
     if (updateError) {
@@ -137,11 +166,11 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        order_id: order.id,
-        amount: order.amount / 100,
-        amount_paise: order.amount,
+        payment_link_url: paymentLink.short_url,
+        amount: amount / 100,
+        amount_paise: amount,
         booking_id: bookingId,
-        is_test_mode: false,
+        is_test_mode: isTestMode,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
