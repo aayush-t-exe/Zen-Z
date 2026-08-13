@@ -18,8 +18,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      // admin_users is an allow-list with no public signup path — without
+      // shouldCreateUser: false, any email typed here creates a real
+      // auth.users + profiles row (via the signup trigger) before the OTP
+      // is ever checked, even for someone who was never going to pass the
+      // admin_users check.
       const { error } = await supabase.auth.signInWithOtp({
         email,
+        options: { shouldCreateUser: false },
       });
 
       if (error) {

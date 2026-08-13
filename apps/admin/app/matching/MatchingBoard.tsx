@@ -27,10 +27,39 @@ interface Booking {
   profile: {
     id: string;
     full_name: string;
-    gender: string;
+    gender: string | null;
     year_of_study: number;
     photo_url: string | null;
   };
+}
+
+// A women_only/men_only booking is a hard constraint, not a scoring input —
+// per docs/PRODUCT_SPEC.md §3.6: "hard filters (group_preference, existing
+// reports/blocklist) are still applied before this score is ever computed."
+// Once any member of a group requires a specific gender, that requirement
+// applies to every other member regardless of that member's own preference.
+function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | null {
+  if (members.some((m) => m.group_preference === 'women_only')) return 'female';
+  if (members.some((m) => m.group_preference === 'men_only')) return 'male';
+  return null;
+}
+
+function placementViolation(candidate: Booking, members: Booking[]): string | null {
+  const candidateGender = candidate.profile.gender;
+
+  if (candidate.group_preference === 'women_only' && members.some((m) => m.profile.gender !== 'female')) {
+    return `${candidate.profile.full_name} wants a women-only group.`;
+  }
+  if (candidate.group_preference === 'men_only' && members.some((m) => m.profile.gender !== 'male')) {
+    return `${candidate.profile.full_name} wants a men-only group.`;
+  }
+
+  const required = requiredGenderForGroup(members);
+  if (required && candidateGender !== required) {
+    return `This group is ${required === 'female' ? 'women' : 'men'}-only.`;
+  }
+
+  return null;
 }
 
 interface Venue {
@@ -166,10 +195,19 @@ export default function MatchingBoard({
     if (overId.startsWith('group-')) {
       const groupLocalId = overId.slice('group-'.length);
       const currentMembers = membersOf(groupLocalId).filter((b) => b.id !== bookingId);
+      const candidate = unmatched.find((b) => b.id === bookingId);
+
       if (currentMembers.length >= maxGroupSize) {
         setBoardError(`That group is already at the max size of ${maxGroupSize}.`);
         return;
       }
+
+      const violation = candidate ? placementViolation(candidate, currentMembers) : null;
+      if (violation) {
+        setBoardError(violation);
+        return;
+      }
+
       setBoardError('');
       setPlacements((prev) => ({ ...prev, [bookingId]: groupLocalId }));
     }
@@ -185,6 +223,7 @@ export default function MatchingBoard({
     groups.forEach((group, idx) => {
       const members = membersOf(group.localId);
       if (members.length === 0) return;
+      if (placementViolation(booking, members)) return;
       const candidate = scoresByUser[booking.user_id] ?? {};
       const memberVectors = members.map((m) => scoresByUser[m.user_id] ?? {});
       const sim = averageSimilarityToGroup(candidate, memberVectors, dimensionIds);
@@ -285,6 +324,7 @@ export default function MatchingBoard({
                 const sizeOk = members.length >= minGroupSize && members.length <= maxGroupSize;
                 const canBook = sizeOk && !!group.venueId && confirmingGroupId === null;
                 const score = groupScore(group.localId);
+                const genderConstraint = requiredGenderForGroup(members);
 
                 return (
                   <DropZone
@@ -293,8 +333,13 @@ export default function MatchingBoard({
                     className="bg-white rounded-lg border p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold">
+                      <h4 className="font-semibold flex items-center gap-2">
                         Group {idx + 1} ({members.length}/{maxGroupSize})
+                        {genderConstraint && (
+                          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                            {genderConstraint === 'female' ? 'Women only' : 'Men only'}
+                          </span>
+                        )}
                       </h4>
                       <button
                         onClick={() => removeGroup(group.localId)}
@@ -435,9 +480,14 @@ function StudentCard({
         <div className="flex-1 min-w-0">
           <p className="font-medium text-gray-900 text-sm truncate">{profile.full_name}</p>
           <p className="text-xs text-gray-500">
-            {profile.gender.charAt(0).toUpperCase()} · {profile.year_of_study}yr ·{' '}
+            {profile.gender ? profile.gender.charAt(0).toUpperCase() : '—'} · {profile.year_of_study}yr ·{' '}
             {formatBudget(booking.budget_band)}
           </p>
+          {booking.group_preference !== 'mixed' && (
+            <p className="text-xs font-medium text-gray-700 mt-0.5">
+              {booking.group_preference === 'women_only' ? 'Women only' : 'Men only'}
+            </p>
+          )}
         </div>
         <a
           href={`/student/${profile.id}`}
@@ -460,6 +510,11 @@ function StudentCard({
 
 function formatBudget(band: string): string {
   const budgets: Record<string, string> = {
+    // Current bands (apps/mobile/src/app/(home)/booking-flow.tsx).
+    under_200: 'Under ₹200',
+    '200_400': '₹200–400',
+    '400_plus': '₹400+',
+    // Bands used by any booking created before that budget range changed.
     under_300: 'Under ₹300',
     '300_600': '₹300–600',
     '600_plus': '₹600+',

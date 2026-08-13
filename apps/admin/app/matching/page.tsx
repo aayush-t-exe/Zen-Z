@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import Link from 'next/link';
 import MatchingBoard from './MatchingBoard';
 
@@ -21,7 +21,7 @@ interface ActivitySlot {
 }
 
 export default function MatchingPage() {
-  const router = useRouter();
+  const { status } = useAdminGuard();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [slots, setSlots] = useState<ActivitySlot[]>([]);
@@ -30,14 +30,8 @@ export default function MatchingPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/login');
-    };
-    checkAuth();
-  }, [router]);
+    if (status !== 'authorized') return;
 
-  useEffect(() => {
     const fetchActivities = async () => {
       const { data } = await supabase
         .from('activity_types')
@@ -51,10 +45,10 @@ export default function MatchingPage() {
       }
     };
     fetchActivities();
-  }, []);
+  }, [status]);
 
   useEffect(() => {
-    if (!selectedActivityId) return;
+    if (status !== 'authorized' || !selectedActivityId) return;
 
     const fetchSlotsAndBookings = async () => {
       setLoading(true);
@@ -85,7 +79,7 @@ export default function MatchingPage() {
     };
 
     fetchSlotsAndBookings();
-  }, [selectedActivityId, selectedSlotId]);
+  }, [status, selectedActivityId, selectedSlotId]);
 
   const formatSlotDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -97,6 +91,14 @@ export default function MatchingPage() {
 
   const selectedActivity = activities.find(a => a.id === selectedActivityId);
   const selectedSlot = slots.find(s => s.id === selectedSlotId);
+
+  if (status === 'checking') {
+    return <AdminAuthLoading />;
+  }
+
+  if (status === 'denied') {
+    return <AdminAccessDenied />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import Link from 'next/link';
 
 interface Profile {
   id: string;
   full_name: string;
   email: string;
-  gender: string;
+  gender: string | null;
   year_of_study: number;
   phone: string | null;
   photo_url: string | null;
@@ -37,7 +38,7 @@ interface PersonalityAnswer {
 }
 
 export default function StudentProfilePage() {
-  const router = useRouter();
+  const { status } = useAdminGuard();
   const params = useParams();
   const studentId = params.id as string;
 
@@ -49,14 +50,8 @@ export default function StudentProfilePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/login');
-    };
-    checkAuth();
-  }, [router]);
+    if (status !== 'authorized') return;
 
-  useEffect(() => {
     const fetchStudentProfile = async () => {
       try {
         setLoading(true);
@@ -121,14 +116,14 @@ export default function StudentProfilePage() {
     };
 
     fetchStudentProfile();
-  }, [studentId]);
+  }, [status, studentId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
+  if (status === 'checking' || (status === 'authorized' && loading)) {
+    return <AdminAuthLoading />;
+  }
+
+  if (status === 'denied') {
+    return <AdminAccessDenied />;
   }
 
   if (error || !profile) {
@@ -178,7 +173,7 @@ export default function StudentProfilePage() {
             <div className="flex-1">
               <h1 className="text-3xl font-bold mb-2">{profile.full_name}</h1>
               <p className="text-gray-600 mb-4">
-                {profile.gender.charAt(0).toUpperCase()} · {profile.year_of_study}{getYearSuffix(profile.year_of_study)} year
+                {profile.gender ? profile.gender.charAt(0).toUpperCase() : '—'} · {profile.year_of_study}{getYearSuffix(profile.year_of_study)} year
               </p>
               <div className="text-sm text-gray-600 space-y-1">
                 <p>Email: {profile.email}</p>

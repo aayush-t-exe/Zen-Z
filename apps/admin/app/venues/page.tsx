@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import Link from 'next/link';
 
 interface ActivityType {
@@ -44,7 +44,7 @@ const EMPTY_FORM: VenueFormState = {
 };
 
 export default function VenuesPage() {
-  const router = useRouter();
+  const { status } = useAdminGuard();
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,14 +57,6 @@ export default function VenuesPage() {
   const [editForm, setEditForm] = useState<VenueFormState>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/login');
-    };
-    checkAuth();
-  }, [router]);
 
   const loadData = async () => {
     setLoading(true);
@@ -89,8 +81,9 @@ export default function VenuesPage() {
   };
 
   useEffect(() => {
+    if (status !== 'authorized') return;
     loadData();
-  }, []);
+  }, [status]);
 
   const toInsertPayload = (form: VenueFormState) => ({
     name: form.name.trim(),
@@ -187,6 +180,14 @@ export default function VenuesPage() {
       setDeletingId(null);
     }
   };
+
+  if (status === 'checking') {
+    return <AdminAuthLoading />;
+  }
+
+  if (status === 'denied') {
+    return <AdminAccessDenied />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

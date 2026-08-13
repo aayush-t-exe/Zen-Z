@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import Link from 'next/link';
 
 interface DashboardMetrics {
@@ -17,38 +18,21 @@ interface DashboardMetrics {
 
 export default function Dashboard() {
   const router = useRouter();
+  const { status, userId } = useAdminGuard();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [founder, setFounder] = useState<string>('');
 
   useEffect(() => {
-    const checkAuthAndFetchMetrics = async () => {
+    if (status !== 'authorized' || !userId) return;
+
+    const fetchMetrics = async () => {
       try {
-        // Check if user is authenticated
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-
-        if (userError || !user) {
-          router.push('/login');
-          return;
-        }
-
-        // Check if user is admin
-        const { data: adminCheck } = await supabase
-          .from('admin_users')
-          .select('id')
-          .eq('id', user.id)
-          .single();
-
-        if (!adminCheck) {
-          router.push('/login');
-          return;
-        }
-
         // Get founder name
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name')
-          .eq('id', user.id)
+          .eq('id', userId)
           .single();
 
         if (profile) {
@@ -112,26 +96,15 @@ export default function Dashboard() {
       }
     };
 
-    checkAuthAndFetchMetrics();
-  }, [router]);
+    fetchMetrics();
+  }, [status, userId]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
-      </div>
-    );
+  if (status === 'checking' || (status === 'authorized' && loading)) {
+    return <AdminAuthLoading />;
   }
 
-  if (!metrics) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p className="text-gray-600">You don't have permission to access this page.</p>
-        </div>
-      </div>
-    );
+  if (status === 'denied' || !metrics) {
+    return <AdminAccessDenied />;
   }
 
   return (
