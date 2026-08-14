@@ -21,7 +21,7 @@ steps, no TODOs left in anything marked done.
 | 13 | Founder Dashboard | ✅ Done — dashboard, matching queue, drag-and-drop matching board, venue management |
 | 14 | Matching Engine | ✅ Done — group_preference hard filter enforced in the matching board, payment-gated matching pool, admin Groups view |
 | 15 | Group Chat | ✅ Done — 48h reveal gate on venue + chat (my_group_details view, time-gated RLS), realtime group chat, mobile booking status flow (sealed → matched → revealed) |
-| 16 | Notifications | ⬜ |
+| 16 | Notifications | ✅ Done — Expo Push via a notifications_outbox queue, instant triggers (booking confirmed, group matched, no-show) plus a pg_cron-driven periodic scan (venue reveal, 2h-before reminder, post-event prompt), send-notifications Edge Function, mobile registration + tap routing |
 | 17 | Reports & Moderation | ⬜ |
 | 18 | Analytics | ⬜ |
 | 19 | Testing | ⬜ |
