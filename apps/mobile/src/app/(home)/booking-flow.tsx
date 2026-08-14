@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Pressable,
@@ -7,7 +7,7 @@ import {
   Alert,
   useWindowDimensions,
 } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
@@ -56,13 +56,16 @@ export default function BookingFlowScreen() {
   const { width } = useWindowDimensions();
   const activityNumId = parseInt(activityId || '0');
 
-  useEffect(() => {
-    loadActivityAndSlots();
-  }, [activityNumId]);
+  useFocusEffect(
+    useCallback(() => {
+      loadActivityAndSlots();
+    }, [activityNumId])
+  );
 
   const loadActivityAndSlots = async () => {
     try {
       setIsLoading(true);
+      setBlockedUntil(null);
 
       if (user) {
         const { data: profile } = await supabase
