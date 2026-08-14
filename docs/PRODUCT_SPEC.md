@@ -146,6 +146,7 @@ Step 5 — Confirm:
 └─────────────────────────────┘
 ```
 - **[NEW DETAIL]** No area/venue/location field anywhere in the flow, per constraint — venue is decided entirely by the founder post-booking (Module 2) and revealed only at Match Reveal.
+- **[NEW DETAIL]** A student with an active no-show block (see §1.10 No-Show Policy) cannot start this flow at all — they see a paused-invitations message in place of Step 1 instead.
 
 ### 1.7 Waiting Experience (Tone-Redesigned)
 ```
@@ -211,6 +212,8 @@ Step 5 — Confirm:
 | 2h before event | "See you in 2 hours!" | "Two hours until your next adventure." |
 | Post-event | "How was it? Rate your group" | "How did your story end tonight?" |
 | No-show | "We noticed you missed..." | "Your seat sat empty tonight. Here's what that means next time." |
+
+**No-Show Policy (founder decision, 2026-08-14):** payment is never refunded on a no-show regardless of strike count (bookings are payment-gated, so this was already true before strikes existed). On top of that, 3 no-shows blocks a student from creating new bookings for 7 days; the strike count resets to 0 once the block is applied (a student can't accrue further no-shows while blocked, since they have no bookings to miss). There is no founder override to lift a block early — it only ever expires on its own. Tapping the no-show notification opens a dedicated screen showing the student's live strike count, or the exact date their invitations resume if they're currently blocked. **[ASSUMPTION]** The exact microcopy on that screen ("Strike N of 3...", "Three empty seats in a row...") is a first draft in the established voice, not founder-reviewed word-for-word — treat it as provisional pending sign-off.
 
 ### 1.11 Event Flow
 ```

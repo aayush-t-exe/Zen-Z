@@ -51,6 +51,7 @@ export default function BookingFlowScreen() {
   const [selectedPreference, setSelectedPreference] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
 
   const { width } = useWindowDimensions();
   const activityNumId = parseInt(activityId || '0');
@@ -62,6 +63,20 @@ export default function BookingFlowScreen() {
   const loadActivityAndSlots = async () => {
     try {
       setIsLoading(true);
+
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('booking_blocked_until')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.booking_blocked_until && new Date(profile.booking_blocked_until) > new Date()) {
+          setBlockedUntil(profile.booking_blocked_until);
+          setIsLoading(false);
+          return;
+        }
+      }
 
       // Fetch activity
       const { data: actData } = await supabase
@@ -109,7 +124,15 @@ export default function BookingFlowScreen() {
       });
 
       if (bookingError) {
-        setError(bookingError.message);
+        // A blocked student can slip past the pre-check above if the block
+        // was applied in the moment between screen load and submit — the
+        // RLS policy (0020_no_show_strikes.sql) still catches it, just with
+        // an opaque Postgres message that isn't fit to show directly.
+        setError(
+          bookingError.message.includes('row-level security policy')
+            ? "Your invitations are paused right now — check back later."
+            : bookingError.message
+        );
         return;
       }
 
@@ -148,10 +171,24 @@ export default function BookingFlowScreen() {
     }
   };
 
-  if (isLoading && !activity) {
+  if (isLoading && !activity && !blockedUntil) {
     return (
       <ThemedView className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" />
+      </ThemedView>
+    );
+  }
+
+  if (blockedUntil) {
+    return (
+      <ThemedView className="flex-1 items-center justify-center px-6">
+        <ThemedText className="mb-2 text-3xl">🕯️</ThemedText>
+        <ThemedText type="title" className="text-center text-lg">
+          Your invitations are paused.
+        </ThemedText>
+        <ThemedText type="default" themeColor="textSecondary" className="mt-2 text-center text-sm">
+          Three empty seats in a row does that. Check back {formatSlotDateTime(blockedUntil)}.
+        </ThemedText>
       </ThemedView>
     );
   }

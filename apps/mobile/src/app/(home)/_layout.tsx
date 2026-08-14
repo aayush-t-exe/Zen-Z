@@ -1,7 +1,20 @@
+import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { TabBarIcon } from '@/components/tab-bar-icon';
+import { useAuthStore } from '@/store/auth';
+import { registerForPushNotificationsAsync, addNotificationResponseListener } from '@/lib/notifications';
 
 export default function HomeLayout() {
+  const userId = useAuthStore((state) => state.session?.user?.id);
+
+  useEffect(() => {
+    if (!userId) return;
+    registerForPushNotificationsAsync(userId);
+
+    const subscription = addNotificationResponseListener();
+    return () => subscription.remove();
+  }, [userId]);
+
   return (
     <Tabs
       screenOptions={{
@@ -49,6 +62,7 @@ export default function HomeLayout() {
       <Tabs.Screen name="booking-flow" options={{ href: null }} />
       <Tabs.Screen name="payment" options={{ href: null }} />
       <Tabs.Screen name="group/[groupId]" options={{ href: null }} />
+      <Tabs.Screen name="no-show" options={{ href: null }} />
     </Tabs>
   );
 }

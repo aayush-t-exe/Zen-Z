@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "356122058076",
+    "project_id": "campus-social-65e8f",
+    "storage_bucket": "campus-social-65e8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:356122058076:android:f0fdedb2c116358e613599",
+        "android_client_info": {
+          "package_name": "com.campussocial.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVZFBF8GeIdoXGbDeCUfJ00uRNE7VaABk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
