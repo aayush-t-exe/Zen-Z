@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -29,13 +29,7 @@ export default function PaymentScreen() {
   const [isTestMode, setIsTestMode] = useState(false);
   const [hasAttemptedPayment, setHasAttemptedPayment] = useState(false);
 
-  useEffect(() => {
-    if (slotId) {
-      fetchBooking();
-    }
-  }, [slotId]);
-
-  const fetchBooking = async () => {
+  const fetchBooking = useCallback(async () => {
     try {
       // Get the latest booking for this slot
       const { data, error: fetchError } = await supabase
@@ -72,7 +66,19 @@ export default function PaymentScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [slotId]);
+
+  useEffect(() => {
+    if (slotId) {
+      // fetchBooking is async — its setState calls happen in a later
+      // microtask after this effect body has already returned, not
+      // synchronously within it, so this isn't the cascading-render
+      // pattern the rule is guarding against. This is the standard
+      // fetch-on-mount shape.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      fetchBooking();
+    }
+  }, [slotId, fetchBooking]);
 
   const handlePay = async () => {
     if (!booking) {
@@ -196,7 +202,7 @@ export default function PaymentScreen() {
             Your invitation is sealed
           </ThemedText>
           <ThemedText type="default" themeColor="textSecondary" className="text-center">
-            We'll let you know once your table is set.
+            We&apos;ll let you know once your table is set.
           </ThemedText>
           <Pressable
             onPress={() => router.push('/(home)')}
@@ -269,7 +275,7 @@ export default function PaymentScreen() {
           {hasAttemptedPayment && booking.payment_status !== 'paid' && (
             <View className="rounded-lg border border-gray-300 px-4 py-3 dark:border-gray-600">
               <ThemedText type="default" className="text-sm font-semibold">
-                We haven't received your payment yet
+                We haven&apos;t received your payment yet
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary" className="mt-1 text-sm">
                 If you completed payment, give it a moment and check again.

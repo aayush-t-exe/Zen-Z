@@ -14,7 +14,7 @@ export default function OTPVerificationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const canResend = resendTimer <= 0;
   const inputRef = useRef<TextInput>(null);
 
   const setSession = useAuthStore((state) => state.setSession);
@@ -22,12 +22,9 @@ export default function OTPVerificationScreen() {
   const setAuthError = useAuthStore((state) => state.setError);
 
   useEffect(() => {
-    if (resendTimer > 0) {
-      const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
-      return () => clearTimeout(timer);
-    } else {
-      setCanResend(true);
-    }
+    if (resendTimer <= 0) return;
+    const timer = setTimeout(() => setResendTimer((t) => t - 1), 1000);
+    return () => clearTimeout(timer);
   }, [resendTimer]);
 
   const handleVerifyOTP = async () => {
@@ -68,7 +65,6 @@ export default function OTPVerificationScreen() {
 
   const handleResendOTP = async () => {
     setResendTimer(60);
-    setCanResend(false);
     setError('');
 
     try {

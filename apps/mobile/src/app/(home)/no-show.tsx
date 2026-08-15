@@ -20,6 +20,7 @@ export default function NoShowScreen() {
   const [missed, setMissed] = useState<MissedBooking | null>(null);
   const [strikes, setStrikes] = useState(0);
   const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useFocusEffect(
@@ -50,8 +51,10 @@ export default function NoShowScreen() {
         }
 
         if (profileResult.data) {
+          const nextBlockedUntil = profileResult.data.booking_blocked_until ?? null;
           setStrikes(profileResult.data.no_show_strikes ?? 0);
-          setBlockedUntil(profileResult.data.booking_blocked_until ?? null);
+          setBlockedUntil(nextBlockedUntil);
+          setIsBlocked(nextBlockedUntil ? new Date(nextBlockedUntil).getTime() > Date.now() : false);
         }
 
         setIsLoading(false);
@@ -64,8 +67,6 @@ export default function NoShowScreen() {
       };
     }, [userId, bookingId])
   );
-
-  const isBlocked = blockedUntil ? new Date(blockedUntil).getTime() > Date.now() : false;
 
   if (isLoading) {
     return (

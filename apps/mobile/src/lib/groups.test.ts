@@ -1,10 +1,13 @@
+import { fetchMyBookings } from './groups';
+
 // @/lib/supabase throws at import time without real env vars (it inits a
 // live Supabase client) — mocked here so fetchMyBookings can be tested
-// against canned query results instead of a live database.
+// against canned query results instead of a live database. jest.mock calls
+// (and the mock-prefixed consts they reference) are hoisted above all
+// imports by babel-plugin-jest-hoist regardless of source order, so this
+// runs before the import above despite appearing after it in source.
 const mockFrom = jest.fn();
 jest.mock('@/lib/supabase', () => ({ supabase: { from: (...args: unknown[]) => mockFrom(...args) } }));
-
-import { fetchMyBookings } from './groups';
 
 function queryReturning(rows: unknown[]) {
   const builder: any = {

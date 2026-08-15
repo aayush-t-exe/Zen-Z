@@ -1,12 +1,15 @@
+import { handleNotificationResponse } from './notifications';
+
 // @/lib/supabase throws at import time without real env vars (it inits a
 // live Supabase client) — mocked here since this file only exercises the
 // pure routing logic in handleNotificationResponse, never Supabase itself.
+// jest.mock calls (and the mock-prefixed consts they reference) are hoisted
+// above all imports by babel-plugin-jest-hoist regardless of source order,
+// so this runs before the import above despite appearing after it in source.
 jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...args: unknown[]) => mockPush(...args) } }));
-
-import { handleNotificationResponse } from './notifications';
 
 function responseWithData(data: Record<string, unknown>) {
   return {

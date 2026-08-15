@@ -41,7 +41,7 @@ export default function BookingsScreen() {
       return () => {
         cancelled = true;
       };
-    }, [user?.id])
+    }, [user])
   );
 
   if (isLoading) {

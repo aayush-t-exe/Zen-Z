@@ -31,7 +31,7 @@ function RootLayoutContent() {
           setLoading(false);
           setIsReady(true);
         }
-      } catch (err) {
+      } catch {
         if (mounted) {
           setLoading(false);
           setIsReady(true);
@@ -58,7 +58,7 @@ function RootLayoutContent() {
       mounted = false;
       subscription?.unsubscribe();
     };
-  }, []);
+  }, [setSession, setUser, setLoading]);
 
   if (!isReady) {
     return <Stack screenOptions={{ headerShown: false }} />;

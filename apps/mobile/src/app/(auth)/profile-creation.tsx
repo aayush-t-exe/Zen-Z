@@ -208,7 +208,7 @@ export default function ProfileCreationScreen() {
             style={{ color: '#000', backgroundColor: '#fff', borderColor: '#d1d5db', borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, fontSize: 16 }}
           />
           <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-            We'll use this to contact you about event details and changes
+            We&apos;ll use this to contact you about event details and changes
           </ThemedText>
         </View>
 

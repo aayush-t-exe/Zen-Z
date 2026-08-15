@@ -27,7 +27,7 @@ export default function Index() {
     return () => {
       cancelled = true;
     };
-  }, [session]);
+  }, [session, router]);
 
   return null;
 }

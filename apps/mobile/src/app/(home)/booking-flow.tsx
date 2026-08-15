@@ -1,12 +1,5 @@
 import { useState, useCallback } from 'react';
-import {
-  View,
-  Pressable,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -53,16 +46,9 @@ export default function BookingFlowScreen() {
   const [error, setError] = useState('');
   const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
 
-  const { width } = useWindowDimensions();
   const activityNumId = parseInt(activityId || '0');
 
-  useFocusEffect(
-    useCallback(() => {
-      loadActivityAndSlots();
-    }, [activityNumId])
-  );
-
-  const loadActivityAndSlots = async () => {
+  const loadActivityAndSlots = useCallback(async () => {
     try {
       setIsLoading(true);
       setBlockedUntil(null);
@@ -106,7 +92,13 @@ export default function BookingFlowScreen() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, activityNumId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadActivityAndSlots();
+    }, [loadActivityAndSlots])
+  );
 
   const handleCreateBooking = async () => {
     if (!selectedSlot || !selectedBudget || !selectedPreference || !user) {
@@ -257,7 +249,7 @@ export default function BookingFlowScreen() {
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
-                What's your range?
+                What&apos;s your range?
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary" className="text-sm">
                 This helps us match similar budgets
@@ -292,7 +284,7 @@ export default function BookingFlowScreen() {
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
-                Who's in the room?
+                Who&apos;s in the room?
               </ThemedText>
               <ThemedText type="default" themeColor="textSecondary" className="text-sm">
                 Choose your group dynamic

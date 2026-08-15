@@ -48,7 +48,7 @@ export default function ChatsScreen() {
 
         {groups.length === 0 ? (
           <ThemedText type="default" themeColor="textSecondary">
-            Once your group is matched, you'll chat here.
+            Once your group is matched, you&apos;ll chat here.
           </ThemedText>
         ) : (
           <View className="gap-4">
