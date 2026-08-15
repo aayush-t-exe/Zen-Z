@@ -29,6 +29,8 @@ export default function MatchingPage() {
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [pendingCountsBySlot, setPendingCountsBySlot] = useState<Record<string, number>>({});
+  const [pendingCountsByActivity, setPendingCountsByActivity] = useState<Record<number, number>>({});
 
   useEffect(() => {
     if (status !== 'authorized') return;
@@ -46,6 +48,54 @@ export default function MatchingPage() {
       }
     };
     fetchActivities();
+  }, [status]);
+
+  // So the founder can see at a glance which activity/slot has reservations
+  // waiting to be matched, instead of clicking into every slot to check.
+  // Mirrors MatchingBoard's own pool query (pending_match + paid) so a count
+  // shown here always matches what actually shows up once a slot is opened.
+  useEffect(() => {
+    if (status !== 'authorized') return;
+
+    const fetchPendingCounts = async () => {
+      const { data: openSlots } = await supabase
+        .from('slots')
+        .select('id, activity_type_id')
+        .eq('status', 'open')
+        .gt('slot_datetime', new Date().toISOString());
+
+      if (!openSlots || openSlots.length === 0) {
+        setPendingCountsBySlot({});
+        setPendingCountsByActivity({});
+        return;
+      }
+
+      const { data: pendingBookings } = await supabase
+        .from('bookings')
+        .select('slot_id')
+        .eq('status', 'pending_match')
+        .eq('payment_status', 'paid')
+        .in('slot_id', openSlots.map((s) => s.id));
+
+      const activityBySlot = new Map(openSlots.map((s) => [s.id, s.activity_type_id]));
+      const bySlot: Record<string, number> = {};
+      const byActivity: Record<number, number> = {};
+
+      for (const booking of pendingBookings ?? []) {
+        bySlot[booking.slot_id] = (bySlot[booking.slot_id] ?? 0) + 1;
+        const activityId = activityBySlot.get(booking.slot_id);
+        if (activityId != null) {
+          byActivity[activityId] = (byActivity[activityId] ?? 0) + 1;
+        }
+      }
+
+      setPendingCountsBySlot(bySlot);
+      setPendingCountsByActivity(byActivity);
+    };
+
+    fetchPendingCounts();
+    const interval = setInterval(fetchPendingCounts, 30000);
+    return () => clearInterval(interval);
   }, [status]);
 
   useEffect(() => {
@@ -142,7 +192,7 @@ export default function MatchingPage() {
                       setSelectedActivityId(activity.id);
                       setSelectedSlotId(null);
                     }}
-                    className={`p-3 rounded-lg border text-left transition ${
+                    className={`relative p-3 rounded-lg border text-left transition ${
                       selectedActivityId === activity.id
                         ? 'bg-gray-900 text-white border-gray-900'
                         : 'hover:border-gray-400'
@@ -150,6 +200,11 @@ export default function MatchingPage() {
                   >
                     <span className="text-xl mr-2">{activity.emoji}</span>
                     <span className="font-medium">{activity.name}</span>
+                    {pendingCountsByActivity[activity.id] > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                        {pendingCountsByActivity[activity.id]}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -167,13 +222,18 @@ export default function MatchingPage() {
                     <button
                       key={slot.id}
                       onClick={() => setSelectedSlotId(slot.id)}
-                      className={`p-3 rounded-lg border text-left transition ${
+                      className={`relative flex items-center justify-between p-3 rounded-lg border text-left transition ${
                         selectedSlotId === slot.id
                           ? 'bg-gray-900 text-white border-gray-900'
                           : 'hover:border-gray-400'
                       }`}
                     >
                       {formatSlotDateTime(slot.slot_datetime)}
+                      {pendingCountsBySlot[slot.id] > 0 && (
+                        <span className="flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                          {pendingCountsBySlot[slot.id]}
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>

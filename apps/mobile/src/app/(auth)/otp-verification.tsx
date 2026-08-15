@@ -96,7 +96,16 @@ export default function OTPVerificationScreen() {
         </View>
 
         <Pressable
-          onPress={() => inputRef.current?.focus()}
+          onPress={() => {
+            // Android's hardware back button dismisses the keyboard without
+            // blurring the TextInput, so it still thinks it's focused and a
+            // plain .focus() is a no-op — force blur first so focus() isn't
+            // ignored. requestAnimationFrame isn't a long enough gap for
+            // Android's InputMethodManager to actually release focus before
+            // the re-focus call lands, so use a short real delay instead.
+            inputRef.current?.blur();
+            setTimeout(() => inputRef.current?.focus(), 100);
+          }}
           className="flex-row gap-2"
         >
           {Array.from({ length: 6 }).map((_, i) => {
