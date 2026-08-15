@@ -24,7 +24,7 @@ steps, no TODOs left in anything marked done.
 | 16 | Notifications | ✅ Done — Expo Push via a notifications_outbox queue, instant triggers (booking confirmed, group matched, no-show) plus a pg_cron-driven periodic scan (venue reveal, 2h-before reminder, post-event prompt), send-notifications Edge Function, mobile registration + tap routing |
 | 17 | Reports & Moderation | ✅ Done — mobile in-chat reporting, admin reports queue (resolve/dismiss), permanent reporter/reported blocklist hard-gated in confirm_group(), matching board warning badge on open reports (no auto-pause, founder decision 2026-08-14) |
 | 18 | Analytics | ✅ Done — admin /analytics page (dashboard-only, built from existing Supabase data): KPI cards, payment-conversion/repeat-booking meters, booking funnel, weekly bookings-by-activity and revenue charts (recharts), no-show trend, reports snapshot |
-| 19 | Testing | ⬜ |
+| 19 | Testing | ✅ Done — pgTAP tests for RLS/DB gates (photo privacy, confirm_group payment/blocklist/gender gates, 48h reveal gate, no-show block) run against the linked dev project (no Docker needed); Vitest for Edge Function pure logic and the admin app (compatibility scoring, matching-board placement rules, analytics calculations); Jest (jest-expo) for mobile lib helpers; GitHub Actions CI (lint/typecheck/test on every PR, pgTAP serialized via a concurrency group). Surfaced and fixed 3 pre-existing DB bugs along the way: dropped groupmate-visibility policy, missing gender/group_preference gate in confirm_group(), and missing venues RLS breaking the venue reveal feature entirely |
 | 20 | Deployment | ⬜ |
 | 21 | Production Checklist | ⬜ |
 

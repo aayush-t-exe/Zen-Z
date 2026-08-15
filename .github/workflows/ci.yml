@@ -1,0 +1,122 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  lint-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint --workspace=apps/admin
+
+  # Mobile's `expo lint` currently fails to resolve `eslint/config` due to
+  # an eslint 8/9 version split across the workspace (admin needs eslint 8
+  # for next lint's classic .eslintrc format; expo-config-expo 57 needs
+  # eslint 9's flat config) — pre-existing, unrelated to this test suite.
+  # Kept non-blocking until that's untangled, rather than silently dropped.
+  lint-mobile:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint --workspace=apps/mobile
+
+  typecheck-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace=apps/admin
+
+  typecheck-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace=apps/mobile
+
+  test-admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test --workspace=apps/admin
+
+  test-mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test --workspace=apps/mobile
+
+  test-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run test:functions
+
+  # pgTAP tests run directly against the linked campus-social-dev project
+  # (`supabase db query --linked`) — there's no local Docker stack and no
+  # staging tier yet (docs/ARCHITECTURE.md). Every test file wraps its
+  # assertions in begin/rollback, so nothing is left behind, but two PRs
+  # running this at once would still race on the same shared dev DB — the
+  # concurrency group below serializes them (queues, doesn't cancel) instead.
+  test-db:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pgtap-dev-db
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: supabase link --project-ref "$SUPABASE_DEV_PROJECT_REF"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DEV_PROJECT_REF: ${{ vars.SUPABASE_DEV_PROJECT_REF }}
+      - run: npm run test:db
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
