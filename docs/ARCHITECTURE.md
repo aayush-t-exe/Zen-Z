@@ -30,7 +30,7 @@ never off email specifically.
 | Decision | Options considered | Choice | Why |
 |---|---|---|---|
 | SMS/phone OTP | Twilio vs. MSG91 | MSG91 | Better Indian carrier deliverability, and built around India's DLT compliance requirement (see below) — Twilio leaves that entirely on you. |
-| Email OTP delivery | Supabase default vs. custom SMTP | Resend | Supabase's built-in email sending is rate-limited, not production-grade. |
+| Email OTP delivery | Supabase default vs. custom SMTP | Brevo | Supabase's built-in email sending is rate-limited, not production-grade. Switched from an initial Resend pick (Milestone 20) — Brevo's free tier allows 300 emails/day vs. Resend's 100/day. |
 | Monorepo tooling | npm workspaces vs. pnpm vs. Turborepo/Nx | npm workspaces | Ships with Node, no extra tool to learn. Can graduate to Turborepo later without restructuring if build times become a problem. |
 | Mobile navigation | Expo Router vs. React Navigation directly | Expo Router | File-based routing, automatic deep linking (relevant to the OTP flow). |
 | Styling | NativeWind/Tailwind vs. StyleSheet vs. Tamagui | NativeWind (mobile) + Tailwind (admin) | One mental model across both apps; also what Claude Code generates most reliably. |
@@ -40,6 +40,7 @@ never off email specifically.
 | Environments | 2 Supabase projects vs. 3 | 2 (dev, prod) | Staging earns its keep once there's a team/release process to protect. Easy to add later. |
 | Error tracking | Sentry vs. none | Sentry, both apps | Free tier is enough at this scale. |
 | CI | GitHub Actions | GitHub Actions | Lint + typecheck + test on every PR; EAS/Vercel handle their own deploy pipelines. |
+| React version (admin + marketing) | Stay on React 18 vs. move to 19 | React 19.2.3+ | Milestone 20 surfaced a real bug: CI never ran an actual `next build` (only lint/typecheck/test), so a monorepo hoisting conflict went undetected — `apps/mobile` needs React 19 (Expo's requirement), which got hoisted to the repo root, while `apps/admin` pinned React 18 nested separately; Next's own internal pages (`/404`, `/_error`) always resolve `react` from the root, so they silently loaded a *different* React copy than the app code, crashing any production build. Fix: unify the whole repo on React 19 rather than fight npm's hoisting. Also fixed in the same pass: `@expo/vector-icons` (mobile-only, used by `apps/mobile/src/components/tab-bar-icon.tsx`) had been declared as a root-level dependency instead of a mobile one — that's what was dragging `react-native` into the root's own resolution in the first place. |
 
 ## Photo privacy (enforced at three layers, not just UI)
 1. RLS on `profiles`: a student can only `select` their own full row (including
@@ -71,7 +72,7 @@ early, well before the Auth milestone needs it working.
 
 **Other lead-time items worth starting in parallel, not when the relevant
 milestone arrives:** Razorpay business KYC, Apple Developer Program
-enrollment, Google Play Console account setup, Resend account + domain
+enrollment, Google Play Console account setup, Brevo account + domain
 verification.
 
 ## Finalized dependency stack

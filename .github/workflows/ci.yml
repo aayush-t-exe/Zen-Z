@@ -32,6 +32,17 @@ jobs:
       - run: npm ci
       - run: npm run lint --workspace=apps/mobile
 
+  lint-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint --workspace=apps/marketing
+
   typecheck-admin:
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +71,17 @@ jobs:
       # locally once you've ever run the app once.
       - run: printf '/// <reference types="expo/types" />\n' > apps/mobile/expo-env.d.ts
       - run: npm run typecheck --workspace=apps/mobile
+
+  typecheck-marketing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck --workspace=apps/marketing
 
   test-admin:
     runs-on: ubuntu-latest

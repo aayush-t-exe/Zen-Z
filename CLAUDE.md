@@ -40,7 +40,7 @@ before touching anything you're unsure about; don't guess at product rules.
   (Deno runtime)
 - Payments: Razorpay — server-side order creation + webhook verification.
   Never trust a client-reported "payment succeeded" state alone.
-- SMS OTP: MSG91 (India, DLT-compliant) · Email OTP: Resend (custom SMTP —
+- SMS OTP: MSG91 (India, DLT-compliant) · Email OTP: Brevo (custom SMTP —
   do not rely on Supabase's default email sending in production)
 - Monorepo: npm workspaces — `apps/mobile`, `apps/admin`, `packages/shared`,
   `supabase/`
