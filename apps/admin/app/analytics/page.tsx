@@ -115,7 +115,13 @@ export default function AnalyticsPage() {
             .select(
               `id, user_id, status, payment_status,
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee ) )`
-            ),
+            )
+            // A cancelled booking isn't an active reservation — counting
+            // it would inflate every downstream number (bookings by
+            // day/week, totals, funnel, repeat rate). Same exclusion
+            // apps/mobile/src/lib/groups.ts already applies when reading
+            // a student's own bookings.
+            .neq('status', 'cancelled'),
           supabase.from('no_shows').select('created_at'),
           supabase.from('reports').select('status'),
         ]);
