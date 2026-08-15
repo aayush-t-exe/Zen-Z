@@ -169,7 +169,7 @@ export default function ReportsPage() {
             <section className="mb-10">
               <h2 className="text-lg font-semibold mb-1">Open ({openReports.length})</h2>
               <p className="text-sm text-gray-500 mb-4">
-                Reported students aren't paused automatically — they're flagged with a warning badge
+                Reported students aren&apos;t paused automatically — they&apos;re flagged with a warning badge
                 in the matching queue so you can watch for a pattern before acting.
               </p>
               {openReports.length === 0 ? (

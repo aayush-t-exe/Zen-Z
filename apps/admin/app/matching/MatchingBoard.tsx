@@ -21,7 +21,7 @@ import {
 import { getSignedPhotoUrls } from '@/lib/photos';
 import { formatBudget } from '@/lib/format';
 
-interface Booking {
+export interface Booking {
   id: string;
   user_id: string;
   budget_band: string;
@@ -40,7 +40,7 @@ interface Booking {
 // reports/blocklist) are still applied before this score is ever computed."
 // Once any member of a group requires a specific gender, that requirement
 // applies to every other member regardless of that member's own preference.
-function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | null {
+export function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | null {
   if (members.some((m) => m.group_preference === 'women_only')) return 'female';
   if (members.some((m) => m.group_preference === 'men_only')) return 'male';
   return null;
@@ -48,11 +48,11 @@ function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | null {
 
 // A pairwise key for the reporter/reported blocklist — order-independent
 // since neither direction should ever be groupable together again.
-function pairKey(userIdA: string, userIdB: string): string {
+export function pairKey(userIdA: string, userIdB: string): string {
   return [userIdA, userIdB].sort().join('|');
 }
 
-function placementViolation(
+export function placementViolation(
   candidate: Booking,
   members: Booking[],
   blockedPairs: Set<string>
@@ -347,7 +347,7 @@ export default function MatchingBoard({
           <p className="text-sm text-gray-500 mb-4">{poolBookings.length} waiting</p>
           <div className="space-y-3">
             {poolBookings.length === 0 ? (
-              <p className="text-sm text-gray-500">✨ Everyone's been placed into a group.</p>
+              <p className="text-sm text-gray-500">✨ Everyone&apos;s been placed into a group.</p>
             ) : (
               poolBookings.map((booking) => {
                 const fit = bestFitForPoolCard(booking);

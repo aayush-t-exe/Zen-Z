@@ -1,0 +1,142 @@
+// Pure bucketing/rate math for the analytics dashboard, extracted out of
+// page.tsx's useMemo bodies so it's independently testable. Everything
+// here is built from raw booking/no-show/report rows fetched directly
+// from Supabase — no server-side aggregation view exists for this yet.
+
+export const ACTIVITY_ORDER = ['Cafés', 'Dinners', 'Movies'];
+
+export interface BookingRow {
+  id: string;
+  user_id: string;
+  status: string;
+  payment_status: string;
+  slot_datetime: string;
+  activity_name: string;
+  convenience_fee: number;
+}
+
+export interface WeekBucket {
+  weekLabel: string;
+  weekStart: string;
+  total: number;
+  revenue: number;
+  [activity: string]: string | number;
+}
+
+export function weekStartOf(dateString: string): Date {
+  const d = new Date(dateString);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() - d.getDay());
+  return d;
+}
+
+export function weekLabel(d: Date): string {
+  return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+// Last N week-start dates ending on the current week, oldest first — so a
+// quiet week still shows as a zero bar/point instead of vanishing.
+// `referenceDate` defaults to now; overridable so this is testable without
+// mocking global time.
+export function lastNWeeks(n: number, referenceDate: Date = new Date()): Date[] {
+  const weeks: Date[] = [];
+  const current = weekStartOf(referenceDate.toISOString());
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(current);
+    d.setDate(d.getDate() - i * 7);
+    weeks.push(d);
+  }
+  return weeks;
+}
+
+export function formatINR(amount: number): string {
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
+}
+
+export function computeWeeklyBookings(
+  bookings: BookingRow[],
+  activityOrder: string[] = ACTIVITY_ORDER,
+  weeksCount = 8,
+  referenceDate: Date = new Date()
+): WeekBucket[] {
+  const weeks = lastNWeeks(weeksCount, referenceDate);
+  const buckets: Record<string, WeekBucket> = {};
+  weeks.forEach((w) => {
+    const key = w.toISOString();
+    buckets[key] = { weekLabel: weekLabel(w), weekStart: key, total: 0, revenue: 0 };
+    activityOrder.forEach((a) => (buckets[key][a] = 0));
+  });
+
+  bookings.forEach((b) => {
+    if (!b.slot_datetime) return;
+    const key = weekStartOf(b.slot_datetime).toISOString();
+    const bucket = buckets[key];
+    if (!bucket) return; // outside the last N weeks
+    bucket.total = (bucket.total as number) + 1;
+    const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
+    bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
+    if (b.payment_status === 'paid') {
+      bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
+    }
+  });
+
+  return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+}
+
+export interface NoShowWeekBucket {
+  weekLabel: string;
+  weekStart: string;
+  count: number;
+}
+
+export function computeNoShowTrend(
+  noShowDates: string[],
+  weeksCount = 8,
+  referenceDate: Date = new Date()
+): NoShowWeekBucket[] {
+  const weeks = lastNWeeks(weeksCount, referenceDate);
+  const buckets: Record<string, NoShowWeekBucket> = {};
+  weeks.forEach((w) => {
+    const key = w.toISOString();
+    buckets[key] = { weekLabel: weekLabel(w), weekStart: key, count: 0 };
+  });
+  noShowDates.forEach((d) => {
+    const key = weekStartOf(d).toISOString();
+    if (buckets[key]) buckets[key].count += 1;
+  });
+  return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+}
+
+export interface Totals {
+  totalBookings: number;
+  paid: number;
+  matched: number;
+  revenue: number;
+  paymentConversionPct: number;
+  repeatRatePct: number;
+}
+
+export function computeTotals(bookings: BookingRow[]): Totals {
+  const totalBookings = bookings.length;
+  const paid = bookings.filter((b) => b.payment_status === 'paid').length;
+  const matched = bookings.filter((b) => b.status === 'matched').length;
+  const revenue = bookings
+    .filter((b) => b.payment_status === 'paid')
+    .reduce((sum, b) => sum + b.convenience_fee, 0);
+
+  const byUser: Record<string, number> = {};
+  bookings.forEach((b) => {
+    byUser[b.user_id] = (byUser[b.user_id] ?? 0) + 1;
+  });
+  const bookers = Object.keys(byUser).length;
+  const repeatBookers = Object.values(byUser).filter((c) => c > 1).length;
+
+  return {
+    totalBookings,
+    paid,
+    matched,
+    revenue,
+    paymentConversionPct: totalBookings > 0 ? (paid / totalBookings) * 100 : 0,
+    repeatRatePct: bookers > 0 ? (repeatBookers / bookers) * 100 : 0,
+  };
+}

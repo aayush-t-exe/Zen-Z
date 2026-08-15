@@ -16,6 +16,14 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import Link from 'next/link';
+import {
+  ACTIVITY_ORDER,
+  formatINR,
+  computeWeeklyBookings,
+  computeNoShowTrend,
+  computeTotals,
+  type BookingRow,
+} from './calculations';
 
 // Fixed categorical order (never cycled) — Café / Dinner / Movie, matching
 // CLAUDE.md's canonical activity order. Validated all-pairs at light-surface
@@ -27,7 +35,6 @@ const ACTIVITY_COLORS: Record<string, string> = {
   Dinners: '#eb6834',
   Movies: '#1baf7a',
 };
-const ACTIVITY_ORDER = ['Cafés', 'Dinners', 'Movies'];
 const FALLBACK_COLOR = '#898781';
 
 // Sequential single-hue ramp (blue), for magnitude-over-time and the
@@ -47,52 +54,6 @@ const STATUS = {
 
 const GRID_COLOR = '#e5e7eb'; // matches this app's existing border-gray-200
 const AXIS_COLOR = '#6b7280'; // matches existing text-gray-500
-
-interface BookingRow {
-  id: string;
-  user_id: string;
-  status: string;
-  payment_status: string;
-  slot_datetime: string;
-  activity_name: string;
-  convenience_fee: number;
-}
-
-interface WeekBucket {
-  weekLabel: string;
-  weekStart: string;
-  total: number;
-  revenue: number;
-  [activity: string]: string | number;
-}
-
-function weekStartOf(dateString: string): Date {
-  const d = new Date(dateString);
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() - d.getDay());
-  return d;
-}
-
-function weekLabel(d: Date): string {
-  return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
-}
-
-// Last N week-start dates ending on the current week, oldest first — so a
-// quiet week still shows as a zero bar/point instead of vanishing.
-function lastNWeeks(n: number): Date[] {
-  const weeks: Date[] = [];
-  const current = weekStartOf(new Date().toISOString());
-  for (let i = n - 1; i >= 0; i--) {
-    const d = new Date(current);
-    d.setDate(d.getDate() - i * 7);
-    weeks.push(d);
-  }
-  return weeks;
-}
-
-function formatINR(amount: number): string {
-  return `₹${Math.round(amount).toLocaleString('en-IN')}`;
-}
 
 function CustomTooltip({ active, payload, label, formatter }: any) {
   if (!active || !payload?.length) return null;
@@ -193,69 +154,11 @@ export default function AnalyticsPage() {
     load();
   }, [status]);
 
-  const weeklyBookings: WeekBucket[] = useMemo(() => {
-    const weeks = lastNWeeks(8);
-    const buckets: Record<string, WeekBucket> = {};
-    weeks.forEach((w) => {
-      const key = w.toISOString();
-      buckets[key] = { weekLabel: weekLabel(w), weekStart: key, total: 0, revenue: 0 };
-      ACTIVITY_ORDER.forEach((a) => (buckets[key][a] = 0));
-    });
+  const weeklyBookings = useMemo(() => computeWeeklyBookings(bookings), [bookings]);
 
-    bookings.forEach((b) => {
-      if (!b.slot_datetime) return;
-      const key = weekStartOf(b.slot_datetime).toISOString();
-      const bucket = buckets[key];
-      if (!bucket) return; // outside the last 8 weeks
-      bucket.total = (bucket.total as number) + 1;
-      const activity = ACTIVITY_ORDER.includes(b.activity_name) ? b.activity_name : 'Other';
-      bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
-      if (b.payment_status === 'paid') {
-        bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
-      }
-    });
+  const noShowTrend = useMemo(() => computeNoShowTrend(noShowDates), [noShowDates]);
 
-    return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
-  }, [bookings]);
-
-  const noShowTrend = useMemo(() => {
-    const weeks = lastNWeeks(8);
-    const buckets: Record<string, { weekLabel: string; weekStart: string; count: number }> = {};
-    weeks.forEach((w) => {
-      const key = w.toISOString();
-      buckets[key] = { weekLabel: weekLabel(w), weekStart: key, count: 0 };
-    });
-    noShowDates.forEach((d) => {
-      const key = weekStartOf(d).toISOString();
-      if (buckets[key]) buckets[key].count += 1;
-    });
-    return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
-  }, [noShowDates]);
-
-  const totals = useMemo(() => {
-    const totalBookings = bookings.length;
-    const paid = bookings.filter((b) => b.payment_status === 'paid').length;
-    const matched = bookings.filter((b) => b.status === 'matched').length;
-    const revenue = bookings
-      .filter((b) => b.payment_status === 'paid')
-      .reduce((sum, b) => sum + b.convenience_fee, 0);
-
-    const byUser: Record<string, number> = {};
-    bookings.forEach((b) => {
-      byUser[b.user_id] = (byUser[b.user_id] ?? 0) + 1;
-    });
-    const bookers = Object.keys(byUser).length;
-    const repeatBookers = Object.values(byUser).filter((c) => c > 1).length;
-
-    return {
-      totalBookings,
-      paid,
-      matched,
-      revenue,
-      paymentConversionPct: totalBookings > 0 ? (paid / totalBookings) * 100 : 0,
-      repeatRatePct: bookers > 0 ? (repeatBookers / bookers) * 100 : 0,
-    };
-  }, [bookings]);
+  const totals = useMemo(() => computeTotals(bookings), [bookings]);
 
   if (status === 'checking' || (status === 'authorized' && loading)) {
     return <AdminAuthLoading />;
@@ -377,7 +280,7 @@ export default function AnalyticsPage() {
           {/* No-show trend */}
           <div className="bg-white rounded-lg border p-6">
             <h2 className="font-bold mb-1">⚠️ No-shows by week</h2>
-            <p className="text-sm text-gray-500 mb-4">Marked manually by the founder — reflects what's been recorded.</p>
+            <p className="text-sm text-gray-500 mb-4">Marked manually by the founder — reflects what&apos;s been recorded.</p>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={noShowTrend} margin={{ left: -10, right: 12, top: 8 }}>
                 <CartesianGrid vertical={false} stroke={GRID_COLOR} />
