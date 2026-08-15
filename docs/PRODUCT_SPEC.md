@@ -327,7 +327,7 @@ Step 5 — Confirm:
 - Unchanged from v1 structurally, but now operationally more central: since the mobile app collects **no location preference at all**, the founder has full discretion and must actively select a venue for every confirmed group (not just confirm a student-suggested area). Add a required field to the group-confirmation step: `venue_id` must be set before "Book Venue" can be clicked — this is now a hard gate, not optional, because there is no fallback location signal from the user side.
 
 ### 2.6 Payments, Reports, Moderation, Analytics
-- Structurally unchanged from v1 (Sections 2.5–2.8 there), with one addition to Moderation: since there is no student verification at all in v2, the **first-report-on-any-user threshold for pausing matching should be lower than it was in v1** (recommend: pause on first report, not after a pattern) — **[ASSUMPTION]**, a direct consequence of removing the identity-verification trust floor, flagged for founder judgment.
+- Structurally unchanged from v1 (Sections 2.5–2.8 there). **Moderation policy (founder decision, 2026-08-14):** a report does **not** automatically pause the reported student's matching — the founder reviews open reports in the admin Reports queue (flagged there and with a warning badge in the matching board) and decides manually after watching the student, rather than a system-wide auto-pause on first report. The one part of a report that *is* a hard, permanent gate: a reporter and the student they reported can never be placed in the same confirmed group again, regardless of how the report is resolved (see §3.6, "existing reports/blocklist").
 
 ---
 

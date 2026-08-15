@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
@@ -15,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchMyGroups, fetchGroupMembers, MyGroupDetails, GroupMember } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+import { REPORT_REASONS, fetchMyReportedUserIds, submitReport } from '@/lib/reports';
 
 interface ChatMessage {
   id: string;
@@ -35,18 +37,30 @@ export default function GroupScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [reportStep, setReportStep] = useState<'members' | 'reason' | 'done' | null>(null);
+  const [reportTarget, setReportTarget] = useState<GroupMember | null>(null);
+  const [selectedReason, setSelectedReason] = useState<string | null>(null);
+  const [submittingReport, setSubmittingReport] = useState(false);
+  const [reportError, setReportError] = useState('');
+
   useFocusEffect(
     useCallback(() => {
       if (!groupId) return;
       let cancelled = false;
 
       const load = async () => {
-        const [groups, memberList] = await Promise.all([fetchMyGroups(), fetchGroupMembers(groupId)]);
+        const [groups, memberList, reportedUserIds] = await Promise.all([
+          fetchMyGroups(),
+          fetchGroupMembers(groupId),
+          fetchMyReportedUserIds(groupId),
+        ]);
         if (cancelled) return;
 
         const thisGroup = groups.find((g) => g.group_id === groupId) ?? null;
         setGroup(thisGroup);
         setMembers(memberList);
+        setReportedIds(new Set(reportedUserIds));
 
         if (thisGroup?.is_revealed) {
           const { data } = await supabase
@@ -105,6 +119,42 @@ export default function GroupScreen() {
     }
   };
 
+  const openReportSheet = () => {
+    setReportError('');
+    setReportStep('members');
+  };
+
+  const closeReportSheet = () => {
+    setReportStep(null);
+    setReportTarget(null);
+    setSelectedReason(null);
+    setReportError('');
+  };
+
+  const chooseReportTarget = (member: GroupMember) => {
+    setReportTarget(member);
+    setSelectedReason(null);
+    setReportError('');
+    setReportStep('reason');
+  };
+
+  const handleSubmitReport = async () => {
+    if (!reportTarget || !selectedReason || !groupId) return;
+
+    setSubmittingReport(true);
+    setReportError('');
+    try {
+      await submitReport({ reportedUserId: reportTarget.id, groupId, reason: selectedReason });
+      setReportedIds((prev) => new Set(prev).add(reportTarget.id));
+      setReportStep('done');
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      setReportError('Could not send that report. Please try again.');
+    } finally {
+      setSubmittingReport(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <ThemedView className="flex-1 items-center justify-center">
@@ -130,9 +180,16 @@ export default function GroupScreen() {
     >
       <ThemedView className="flex-1">
         <View className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
-          <ThemedText className="font-semibold">
-            {group.activity_emoji} {group.activity_name}
-          </ThemedText>
+          <View className="flex-row items-center justify-between">
+            <ThemedText className="font-semibold">
+              {group.activity_emoji} {group.activity_name}
+            </ThemedText>
+            <Pressable onPress={openReportSheet} hitSlop={8}>
+              <ThemedText type="default" themeColor="textSecondary">
+                ⓘ
+              </ThemedText>
+            </Pressable>
+          </View>
           <ThemedText type="default" themeColor="textSecondary" className="mt-1 text-sm">
             {group.is_revealed && group.venue_name
               ? `${group.venue_name}${group.venue_address ? ' · ' + group.venue_address : ''}`
@@ -233,6 +290,117 @@ export default function GroupScreen() {
           </>
         )}
       </ThemedView>
+
+      <Modal
+        visible={reportStep !== null}
+        animationType="slide"
+        transparent
+        onRequestClose={closeReportSheet}
+      >
+        <View className="flex-1 justify-end bg-black/40">
+          <ThemedView className="rounded-t-3xl px-6 pb-10 pt-6">
+            {reportStep === 'members' && (
+              <>
+                <ThemedText type="title" className="mb-1 text-lg">
+                  Report a groupmate
+                </ThemedText>
+                <ThemedText type="default" themeColor="textSecondary" className="mb-4 text-sm">
+                  This is sent privately to the founder.
+                </ThemedText>
+                <View className="gap-2">
+                  {members
+                    .filter((member) => member.id !== user?.id)
+                    .map((member) => {
+                      const alreadyReported = reportedIds.has(member.id);
+                      return (
+                        <Pressable
+                          key={member.id}
+                          onPress={() => !alreadyReported && chooseReportTarget(member)}
+                          disabled={alreadyReported}
+                          className="flex-row items-center justify-between rounded-xl bg-gray-100 px-4 py-3 disabled:opacity-50 dark:bg-gray-800"
+                        >
+                          <ThemedText>{member.full_name}</ThemedText>
+                          <ThemedText type="default" themeColor="textSecondary" className="text-xs">
+                            {alreadyReported ? 'Reported' : 'Report →'}
+                          </ThemedText>
+                        </Pressable>
+                      );
+                    })}
+                </View>
+                <Pressable onPress={closeReportSheet} className="mt-6 items-center">
+                  <ThemedText type="default" themeColor="textSecondary">
+                    Close
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+
+            {reportStep === 'reason' && reportTarget && (
+              <>
+                <ThemedText type="title" className="mb-1 text-lg">
+                  Report {reportTarget.full_name}
+                </ThemedText>
+                <ThemedText type="default" themeColor="textSecondary" className="mb-4 text-sm">
+                  What happened?
+                </ThemedText>
+                <View className="gap-2">
+                  {REPORT_REASONS.map((reason) => (
+                    <Pressable
+                      key={reason}
+                      onPress={() => setSelectedReason(reason)}
+                      className={`rounded-xl border px-4 py-3 ${
+                        selectedReason === reason
+                          ? 'border-black bg-gray-100 dark:border-white dark:bg-gray-800'
+                          : 'border-gray-200 dark:border-gray-700'
+                      }`}
+                    >
+                      <ThemedText>{reason}</ThemedText>
+                    </Pressable>
+                  ))}
+                </View>
+                {reportError ? (
+                  <ThemedText type="default" themeColor="error" className="mt-3 text-sm">
+                    {reportError}
+                  </ThemedText>
+                ) : null}
+                <Pressable
+                  onPress={handleSubmitReport}
+                  disabled={!selectedReason || submittingReport}
+                  className="mt-6 items-center rounded-full bg-black py-3 disabled:opacity-40 dark:bg-white"
+                >
+                  <ThemedText themeColor="invertedText" className="font-semibold">
+                    {submittingReport ? 'Sending…' : 'Send report'}
+                  </ThemedText>
+                </Pressable>
+                <Pressable onPress={() => setReportStep('members')} className="mt-3 items-center">
+                  <ThemedText type="default" themeColor="textSecondary">
+                    Back
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+
+            {reportStep === 'done' && (
+              <>
+                <ThemedText type="title" className="mb-1 text-lg">
+                  Report sent
+                </ThemedText>
+                <ThemedText type="default" themeColor="textSecondary" className="mb-6 text-sm">
+                  The founder will look into this. Thanks for telling us.
+                </ThemedText>
+                <Pressable
+                  onPress={closeReportSheet}
+                  className="items-center rounded-full bg-black py-3 dark:bg-white"
+                >
+                  <ThemedText themeColor="invertedText" className="font-semibold">
+                    Done
+                  </ThemedText>
+                </Pressable>
+              </>
+            )}
+          </ThemedView>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }

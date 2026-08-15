@@ -46,7 +46,17 @@ function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | null {
   return null;
 }
 
-function placementViolation(candidate: Booking, members: Booking[]): string | null {
+// A pairwise key for the reporter/reported blocklist — order-independent
+// since neither direction should ever be groupable together again.
+function pairKey(userIdA: string, userIdB: string): string {
+  return [userIdA, userIdB].sort().join('|');
+}
+
+function placementViolation(
+  candidate: Booking,
+  members: Booking[],
+  blockedPairs: Set<string>
+): string | null {
   const candidateGender = candidate.profile.gender;
 
   if (candidate.group_preference === 'women_only' && members.some((m) => m.profile.gender !== 'female')) {
@@ -59,6 +69,18 @@ function placementViolation(candidate: Booking, members: Booking[]): string | nu
   const required = requiredGenderForGroup(members);
   if (required && candidateGender !== required) {
     return `This group is ${required === 'female' ? 'women' : 'men'}-only.`;
+  }
+
+  // Mirrors the permanent reporter/reported blocklist hard-gated in
+  // confirm_group() (0021_reports_moderation.sql), so a founder sees why
+  // a placement is impossible before dragging it in rather than only on
+  // a failed "Book Venue" call. An open report on its own is NOT a hard
+  // filter — founder decision (2026-08-14): it's surfaced as a warning
+  // badge only (see hasOpenReport on StudentCard) so the founder can
+  // watch the reported student and act manually, not an automatic pause.
+  const blockedWith = members.find((m) => blockedPairs.has(pairKey(candidate.user_id, m.user_id)));
+  if (blockedWith) {
+    return `${candidate.profile.full_name} can't be placed with ${blockedWith.profile.full_name} — one has reported the other.`;
   }
 
   return null;
@@ -86,6 +108,8 @@ export default function MatchingBoard({
   maxGroupSize: number;
 }) {
   const [unmatched, setUnmatched] = useState<Booking[]>([]);
+  const [openReportedUserIds, setOpenReportedUserIds] = useState<Set<string>>(new Set());
+  const [blockedPairs, setBlockedPairs] = useState<Set<string>>(new Set());
   const [scoresByUser, setScoresByUser] = useState<Record<string, ScoreVector>>({});
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [dimensionIds, setDimensionIds] = useState<number[]>([]);
@@ -109,30 +133,48 @@ export default function MatchingBoard({
       setGroups([]);
       setPlacements({});
 
-      const [{ data: bookings }, { data: dims }, { data: venuesData }] = await Promise.all([
-        supabase
-          .from('bookings')
-          .select(
-            `id, user_id, budget_band, group_preference,
+      const [{ data: bookings }, { data: dims }, { data: venuesData }, { data: reportsData }] =
+        await Promise.all([
+          supabase
+            .from('bookings')
+            .select(
+              `id, user_id, budget_band, group_preference,
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
-          )
-          .eq('slot_id', slotId)
-          .eq('status', 'pending_match')
-          // confirm_group() (0017_require_payment_for_confirm_group.sql)
-          // rejects the whole booking unless it's also paid — matching
-          // that here means the pool only ever contains groupable
-          // bookings, instead of letting a founder drag an unpaid
-          // student in only to have the confirm call fail with no
-          // warning beforehand.
-          .eq('payment_status', 'paid'),
-        supabase.from('personality_dimensions').select('id'),
-        supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
-      ]);
+            )
+            .eq('slot_id', slotId)
+            .eq('status', 'pending_match')
+            // confirm_group() (0017_require_payment_for_confirm_group.sql)
+            // rejects the whole booking unless it's also paid — matching
+            // that here means the pool only ever contains groupable
+            // bookings, instead of letting a founder drag an unpaid
+            // student in only to have the confirm call fail with no
+            // warning beforehand.
+            .eq('payment_status', 'paid'),
+          supabase.from('personality_dimensions').select('id'),
+          supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
+          // reported_user_id/status feeds the open-report warning badge
+          // (informational only — no auto-pause, founder decision
+          // 2026-08-14); reporter_id+reported_user_id feeds the
+          // permanent blocklist, which IS hard-gated the same way in
+          // confirm_group() (0021_reports_moderation.sql).
+          supabase.from('reports').select('reporter_id, reported_user_id, status'),
+        ]);
 
       const bookingsList = (bookings as any as Booking[]) ?? [];
       setUnmatched(bookingsList);
       setDimensionIds((dims ?? []).map((d: any) => d.id));
       setVenues(venuesData ?? []);
+
+      setOpenReportedUserIds(
+        new Set(
+          (reportsData ?? [])
+            .filter((r: any) => r.status === 'open')
+            .map((r: any) => r.reported_user_id)
+        )
+      );
+      setBlockedPairs(
+        new Set((reportsData ?? []).map((r: any) => pairKey(r.reporter_id, r.reported_user_id)))
+      );
 
       getSignedPhotoUrls(bookingsList.map((b) => b.profile.photo_url)).then(setPhotoUrls);
 
@@ -217,7 +259,9 @@ export default function MatchingBoard({
         return;
       }
 
-      const violation = candidate ? placementViolation(candidate, currentMembers) : null;
+      const violation = candidate
+        ? placementViolation(candidate, currentMembers, blockedPairs)
+        : null;
       if (violation) {
         setBoardError(violation);
         return;
@@ -238,7 +282,7 @@ export default function MatchingBoard({
     groups.forEach((group, idx) => {
       const members = membersOf(group.localId);
       if (members.length === 0) return;
-      if (placementViolation(booking, members)) return;
+      if (placementViolation(booking, members, blockedPairs)) return;
       const candidate = scoresByUser[booking.user_id] ?? {};
       const memberVectors = members.map((m) => scoresByUser[m.user_id] ?? {});
       const sim = averageSimilarityToGroup(candidate, memberVectors, dimensionIds);
@@ -313,6 +357,7 @@ export default function MatchingBoard({
                       booking={booking}
                       photoUrl={photoFor(booking)}
                       compatibilityBadge={fit}
+                      hasOpenReport={openReportedUserIds.has(booking.user_id)}
                     />
                   </DraggableCard>
                 );
@@ -480,12 +525,14 @@ function StudentCard({
   compact = false,
   dragging = false,
   compatibilityBadge = null,
+  hasOpenReport = false,
 }: {
   booking: Booking;
   photoUrl?: string;
   compact?: boolean;
   dragging?: boolean;
   compatibilityBadge?: { groupNumber: number; score: number } | null;
+  hasOpenReport?: boolean;
 }) {
   const profile = booking.profile;
 
@@ -493,8 +540,11 @@ function StudentCard({
     <div
       className={`border rounded-lg bg-white ${compact ? 'p-2' : 'p-3'} ${
         dragging ? 'shadow-lg' : ''
-      }`}
+      } ${hasOpenReport ? 'border-red-300 bg-red-50' : ''}`}
     >
+      {hasOpenReport && (
+        <p className="text-xs font-medium text-red-600 mb-1">⚠️ Open report — review before matching</p>
+      )}
       <div className="flex gap-3 items-center">
         {photoUrl ? (
           <img
