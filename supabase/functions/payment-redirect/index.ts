@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { isAllowedRedirectTarget, buildDeepLinkTarget, wasPaymentPaid } from './logic.ts';
 
 // Razorpay's callback_url must be a real https:// URL — it will not
 // accept a custom app scheme (e.g. `mobile://...` or `exp://...`)
@@ -26,18 +27,12 @@ serve((req) => {
   const url = new URL(req.url);
   const to = url.searchParams.get('to');
 
-  if (!to || !ALLOWED_SCHEMES.some((scheme) => to.startsWith(scheme))) {
+  if (!isAllowedRedirectTarget(to, ALLOWED_SCHEMES)) {
     return new Response('Invalid or missing redirect target', { status: 400 });
   }
 
-  const deepLink = new URL(to);
-  for (const [key, value] of url.searchParams) {
-    if (key === 'to') continue;
-    deepLink.searchParams.set(key, value);
-  }
-  const target = deepLink.toString();
-
-  const paid = url.searchParams.get('razorpay_payment_link_status') === 'paid';
+  const target = buildDeepLinkTarget(to, url.searchParams);
+  const paid = wasPaymentPaid(url.searchParams);
   const heading = paid ? 'Your invitation is sealed' : "We didn't receive your payment";
   const subtext = paid
     ? "Tap below to head back — we'll confirm everything there."

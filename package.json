@@ -8,9 +8,14 @@
   ],
   "scripts": {
     "mobile": "npm run start --workspace=apps/mobile",
-    "admin": "npm run dev --workspace=apps/admin"
+    "admin": "npm run dev --workspace=apps/admin",
+    "test:db": "node scripts/test-db.mjs",
+    "test:functions": "vitest run --config supabase/functions/vitest.config.mts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
   }
 }

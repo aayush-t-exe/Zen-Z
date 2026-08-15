@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { computeOrderAmountPaise, isTestModeKey } from './logic.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -88,7 +89,7 @@ serve(async (req) => {
 
     const slot = booking.slots as any;
     const activity = slot?.activity_types as any;
-    const amount = (activity?.convenience_fee || 21) * 100; // Convert to paise
+    const amount = computeOrderAmountPaise(activity?.convenience_fee); // paise
 
     const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
     const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
@@ -100,7 +101,7 @@ serve(async (req) => {
       );
     }
 
-    const isTestMode = razorpayKeyId.startsWith('rzp_test_');
+    const isTestMode = isTestModeKey(razorpayKeyId);
 
     // Payment Links gives us a plain hosted-checkout URL we can open in
     // an in-app browser — no native Razorpay SDK / custom dev client

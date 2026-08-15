@@ -1,9 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
-
-interface DimensionTotal {
-  sum: number;
-  count: number;
-}
+import { applyOptionWeights, applyScaleMapping, buildScoreRows, type DimensionTotals } from "./logic.ts";
 
 Deno.serve(async (req) => {
   try {
@@ -50,7 +46,7 @@ Deno.serve(async (req) => {
     }
 
     // Accumulate scores per dimension
-    const dimensionTotals: Record<number, DimensionTotal> = {};
+    const dimensionTotals: DimensionTotals = {};
 
     // Process each answer
     for (const answer of answers) {
@@ -68,13 +64,7 @@ Deno.serve(async (req) => {
         }
 
         if (weights) {
-          for (const w of weights) {
-            if (!dimensionTotals[w.dimension_id]) {
-              dimensionTotals[w.dimension_id] = { sum: 0, count: 0 };
-            }
-            dimensionTotals[w.dimension_id].sum += w.weight;
-            dimensionTotals[w.dimension_id].count += 1;
-          }
+          applyOptionWeights(dimensionTotals, weights);
         }
       }
 
@@ -92,25 +82,13 @@ Deno.serve(async (req) => {
         }
 
         if (mappings) {
-          for (const m of mappings) {
-            if (!dimensionTotals[m.dimension_id]) {
-              dimensionTotals[m.dimension_id] = { sum: 0, count: 0 };
-            }
-            dimensionTotals[m.dimension_id].sum +=
-              answer.scale_value * m.multiplier;
-            dimensionTotals[m.dimension_id].count += 1;
-          }
+          applyScaleMapping(dimensionTotals, answer.scale_value, mappings);
         }
       }
     }
 
     // Normalize scores to 0-1 range and prepare upsert rows
-    const scoreRows = Object.entries(dimensionTotals).map(([dimensionId, { sum, count }]) => ({
-      user_id: user_id,
-      dimension_id: Number(dimensionId),
-      score: Math.min(1, Math.max(0, sum / count)), // Clamp to 0-1
-      updated_at: new Date().toISOString(),
-    }));
+    const scoreRows = buildScoreRows(user_id, dimensionTotals, new Date().toISOString());
 
     // Upsert scores into database
     const { error: upsertError } = await supabase

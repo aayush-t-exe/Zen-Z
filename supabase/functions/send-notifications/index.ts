@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { partitionByPushToken, chunk, buildExpoMessages, resolveTicketOutcome } from './logic.ts';
 
 // Invoked every minute by the `notification-cycle` pg_cron job
 // (0019_notifications.sql) with the project's own service-role key as its
@@ -44,8 +45,7 @@ serve(async (req) => {
 
     const rows = (outboxRows ?? []) as any[];
 
-    const withToken = rows.filter((r) => r.profiles?.push_token);
-    const withoutToken = rows.filter((r) => !r.profiles?.push_token);
+    const { withToken, withoutToken } = partitionByPushToken(rows);
 
     if (withoutToken.length > 0) {
       await supabase
@@ -57,15 +57,8 @@ serve(async (req) => {
     let sent = 0;
     let failed = 0;
 
-    for (let i = 0; i < withToken.length; i += BATCH_SIZE) {
-      const batch = withToken.slice(i, i + BATCH_SIZE);
-
-      const messages = batch.map((r) => ({
-        to: r.profiles.push_token,
-        title: r.title,
-        body: r.body,
-        data: { ...(r.data ?? {}), type: r.type },
-      }));
+    for (const batch of chunk(withToken, BATCH_SIZE)) {
+      const messages = buildExpoMessages(batch);
 
       const response = await fetch(EXPO_PUSH_URL, {
         method: 'POST',
@@ -80,19 +73,18 @@ serve(async (req) => {
       const tickets = Array.isArray(result?.data) ? result.data : [];
 
       for (let j = 0; j < batch.length; j++) {
-        const ticket = tickets[j];
-        const ok = response.ok && ticket?.status === 'ok';
+        const outcome = resolveTicketOutcome(response, tickets[j]);
 
         await supabase
           .from('notifications_outbox')
           .update({
-            status: ok ? 'sent' : 'failed',
-            error: ok ? null : ticket?.message || `HTTP ${response.status}`,
-            sent_at: ok ? new Date().toISOString() : null,
+            status: outcome.status,
+            error: outcome.error,
+            sent_at: outcome.status === 'sent' ? new Date().toISOString() : null,
           })
           .eq('id', batch[j].id);
 
-        if (ok) sent++;
+        if (outcome.status === 'sent') sent++;
         else failed++;
       }
     }
