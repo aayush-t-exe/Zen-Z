@@ -20,6 +20,7 @@ import {
   ACTIVITY_ORDER,
   formatINR,
   computeWeeklyBookings,
+  computeDailyBookings,
   computeNoShowTrend,
   computeTotals,
   type BookingRow,
@@ -98,6 +99,7 @@ export default function AnalyticsPage() {
   const [reportCounts, setReportCounts] = useState({ open: 0, resolved: 0, dismissed: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [granularity, setGranularity] = useState<'week' | 'day'>('week');
 
   useEffect(() => {
     if (status !== 'authorized') return;
@@ -155,6 +157,8 @@ export default function AnalyticsPage() {
   }, [status]);
 
   const weeklyBookings = useMemo(() => computeWeeklyBookings(bookings), [bookings]);
+
+  const dailyBookings = useMemo(() => computeDailyBookings(bookings), [bookings]);
 
   const noShowTrend = useMemo(() => computeNoShowTrend(noShowDates), [noShowDates]);
 
@@ -235,46 +239,119 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        {/* Weekly bookings by activity */}
-        <div className="bg-white rounded-lg border p-6 mb-8">
-          <h2 className="font-bold mb-1">Bookings by week</h2>
-          <p className="text-sm text-gray-500 mb-4">Last 8 weeks, by event date and activity.</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={weeklyBookings} margin={{ left: -10 }}>
-              <CartesianGrid vertical={false} stroke={GRID_COLOR} />
-              <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
-              <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
-              <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
-              {ACTIVITY_ORDER.map((activity) => (
-                <Bar
-                  key={activity}
-                  dataKey={activity}
-                  name={activity}
-                  stackId="bookings"
-                  fill={ACTIVITY_COLORS[activity] ?? FALLBACK_COLOR}
-                  radius={[0, 0, 0, 0]}
-                  maxBarSize={28}
-                />
-              ))}
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Week / day toggle */}
+        <div className="flex items-center gap-2 mb-4">
+          {(['week', 'day'] as const).map((g) => (
+            <button
+              key={g}
+              onClick={() => setGranularity(g)}
+              className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition ${
+                granularity === g
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-700 hover:border-gray-400'
+              }`}
+            >
+              {g === 'week' ? 'Week' : 'Day'}
+            </button>
+          ))}
         </div>
 
-        {/* Weekly revenue */}
-        <div className="bg-white rounded-lg border p-6 mb-8">
-          <h2 className="font-bold mb-1">Revenue by week</h2>
-          <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings.</p>
-          <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={weeklyBookings} margin={{ left: -10 }}>
-              <CartesianGrid vertical={false} stroke={GRID_COLOR} />
-              <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
-              <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
-              <Tooltip content={<CustomTooltip formatter={formatINR} />} cursor={{ fill: '#f3f4f6' }} />
-              <Bar dataKey="revenue" name="Revenue" fill={REVENUE_COLOR} radius={[4, 4, 0, 0]} maxBarSize={28} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        {granularity === 'week' ? (
+          <>
+            {/* Weekly bookings by activity */}
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Bookings by week</h2>
+              <p className="text-sm text-gray-500 mb-4">Last 8 weeks, by event date and activity.</p>
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={weeklyBookings} margin={{ left: -10 }}>
+                  <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                  <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+                  {ACTIVITY_ORDER.map((activity) => (
+                    <Bar
+                      key={activity}
+                      dataKey={activity}
+                      name={activity}
+                      stackId="bookings"
+                      fill={ACTIVITY_COLORS[activity] ?? FALLBACK_COLOR}
+                      radius={[0, 0, 0, 0]}
+                      maxBarSize={28}
+                    />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Weekly revenue */}
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Revenue by week</h2>
+              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings.</p>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={weeklyBookings} margin={{ left: -10 }}>
+                  <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                  <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                  <Tooltip content={<CustomTooltip formatter={formatINR} />} cursor={{ fill: '#f3f4f6' }} />
+                  <Bar dataKey="revenue" name="Revenue" fill={REVENUE_COLOR} radius={[4, 4, 0, 0]} maxBarSize={28} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Daily bookings by activity */}
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Bookings by day</h2>
+              <p className="text-sm text-gray-500 mb-4">Last 14 days, by event date and activity.</p>
+              <ResponsiveContainer width="100%" height={280}>
+                <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
+                  <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="dayLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                  <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
+                  {ACTIVITY_ORDER.map((activity) => (
+                    <Line
+                      key={activity}
+                      type="monotone"
+                      dataKey={activity}
+                      name={activity}
+                      stroke={ACTIVITY_COLORS[activity] ?? FALLBACK_COLOR}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: ACTIVITY_COLORS[activity] ?? FALLBACK_COLOR }}
+                      activeDot={{ r: 5 }}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Daily revenue */}
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Revenue by day</h2>
+              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings, last 14 days.</p>
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
+                  <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                  <XAxis dataKey="dayLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                  <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
+                  <Tooltip content={<CustomTooltip formatter={formatINR} />} />
+                  <Line
+                    type="monotone"
+                    dataKey="revenue"
+                    name="Revenue"
+                    stroke={REVENUE_COLOR}
+                    strokeWidth={2}
+                    dot={{ r: 3, fill: REVENUE_COLOR }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* No-show trend */}

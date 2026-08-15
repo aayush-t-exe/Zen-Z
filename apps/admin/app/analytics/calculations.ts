@@ -83,6 +83,70 @@ export function computeWeeklyBookings(
   return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 }
 
+export interface DayBucket {
+  dayLabel: string;
+  dayStart: string;
+  total: number;
+  revenue: number;
+  [activity: string]: string | number;
+}
+
+export function dayStartOf(dateString: string): Date {
+  const d = new Date(dateString);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function dayLabel(d: Date): string {
+  return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+}
+
+// Last N day-start dates ending today, oldest first — same zero-filling
+// rationale as lastNWeeks, just at day granularity.
+export function lastNDays(n: number, referenceDate: Date = new Date()): Date[] {
+  const days: Date[] = [];
+  const current = dayStartOf(referenceDate.toISOString());
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date(current);
+    d.setDate(d.getDate() - i);
+    days.push(d);
+  }
+  return days;
+}
+
+// [ASSUMPTION] docs don't specify a daily-view window, so this mirrors the
+// weekly view's ~2-month scope at daily granularity: 14 days keeps a line
+// chart readable while still showing a real trend, not just a single spike.
+export function computeDailyBookings(
+  bookings: BookingRow[],
+  activityOrder: string[] = ACTIVITY_ORDER,
+  daysCount = 14,
+  referenceDate: Date = new Date()
+): DayBucket[] {
+  const days = lastNDays(daysCount, referenceDate);
+  const buckets: Record<string, DayBucket> = {};
+  days.forEach((d) => {
+    const key = d.toISOString();
+    buckets[key] = { dayLabel: dayLabel(d), dayStart: key, total: 0, revenue: 0 };
+    activityOrder.forEach((a) => (buckets[key][a] = 0));
+  });
+
+  bookings.forEach((b) => {
+    if (!b.slot_datetime) return;
+    const key = dayStartOf(b.slot_datetime).toISOString();
+    const bucket = buckets[key];
+    if (!bucket) return; // outside the last N days
+    bucket.total = (bucket.total as number) + 1;
+    const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
+    bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
+    if (b.payment_status === 'paid') {
+      bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
+    }
+  });
+
+  return Object.values(buckets).sort((a, b) => a.dayStart.localeCompare(b.dayStart));
+}
+
 export interface NoShowWeekBucket {
   weekLabel: string;
   weekStart: string;

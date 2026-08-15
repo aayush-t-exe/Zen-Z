@@ -3,8 +3,12 @@ import {
   weekStartOf,
   weekLabel,
   lastNWeeks,
+  dayStartOf,
+  dayLabel,
+  lastNDays,
   formatINR,
   computeWeeklyBookings,
+  computeDailyBookings,
   computeNoShowTrend,
   computeTotals,
   ACTIVITY_ORDER,
@@ -106,6 +110,64 @@ describe('computeWeeklyBookings', () => {
   it('still returns 8 zero-filled weeks with no bookings at all', () => {
     const buckets = computeWeeklyBookings([], ACTIVITY_ORDER, 8, REFERENCE);
     expect(buckets).toHaveLength(8);
+    expect(buckets.every((b) => b.total === 0 && b.revenue === 0)).toBe(true);
+  });
+});
+
+describe('dayStartOf', () => {
+  it('rolls a mid-day timestamp back to that day\'s midnight', () => {
+    const start = dayStartOf('2026-08-13T18:45:00Z');
+    expect(start.getHours()).toBe(0);
+    expect(start.getDate()).toBe(new Date('2026-08-13T18:45:00Z').getDate());
+  });
+});
+
+describe('dayLabel', () => {
+  it('formats a date with the short month and day, en-IN locale order', () => {
+    expect(dayLabel(new Date('2026-08-09T00:00:00'))).toBe('9 Aug');
+  });
+});
+
+describe('lastNDays', () => {
+  it('returns n days ending today, oldest first', () => {
+    const days = lastNDays(14, REFERENCE);
+    expect(days).toHaveLength(14);
+    for (let i = 1; i < days.length; i++) {
+      expect(days[i].getTime() - days[i - 1].getTime()).toBe(24 * 60 * 60 * 1000);
+    }
+    expect(days[days.length - 1].getTime()).toBe(dayStartOf(REFERENCE.toISOString()).getTime());
+  });
+});
+
+describe('computeDailyBookings', () => {
+  it('buckets a booking into its event day and activity column', () => {
+    const buckets = computeDailyBookings([booking({})], ACTIVITY_ORDER, 14, REFERENCE);
+    const today = buckets[buckets.length - 1];
+    expect(today.total).toBe(1);
+    expect(today['Cafés']).toBe(1);
+    expect(today.revenue).toBe(21);
+  });
+
+  it('drops an unpaid booking\'s fee out of the revenue bucket', () => {
+    const buckets = computeDailyBookings(
+      [booking({ payment_status: 'unpaid' })],
+      ACTIVITY_ORDER,
+      14,
+      REFERENCE
+    );
+    expect(buckets[buckets.length - 1].revenue).toBe(0);
+  });
+
+  it('drops a booking outside the requested day window instead of throwing', () => {
+    const old = new Date(REFERENCE);
+    old.setDate(old.getDate() - 90);
+    const buckets = computeDailyBookings([booking({ slot_datetime: old.toISOString() })], ACTIVITY_ORDER, 14, REFERENCE);
+    expect(buckets.reduce((sum, b) => sum + (b.total as number), 0)).toBe(0);
+  });
+
+  it('still returns 14 zero-filled days with no bookings at all', () => {
+    const buckets = computeDailyBookings([], ACTIVITY_ORDER, 14, REFERENCE);
+    expect(buckets).toHaveLength(14);
     expect(buckets.every((b) => b.total === 0 && b.revenue === 0)).toBe(true);
   });
 });

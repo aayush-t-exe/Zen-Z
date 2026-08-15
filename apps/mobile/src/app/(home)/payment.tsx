@@ -93,8 +93,15 @@ export default function PaymentScreen() {
       // Razorpay redirects the checkout browser here once payment is
       // attempted — openAuthSessionAsync below watches for exactly this
       // URL and hands control back to the app the moment it fires,
-      // instead of sitting open until the user manually backs out.
-      const redirectUrl = Linking.createURL('payment-callback');
+      // instead of sitting open until the user manually backs out. That
+      // interception isn't reliable on every device/browser combo though
+      // — carrying slotId lets the payment-callback route land the user
+      // back on the right booking's payment screen even when the OS
+      // opens this as a fresh deep link instead of openAuthSessionAsync
+      // catching it.
+      const redirectUrl = Linking.createURL('payment-callback', {
+        queryParams: { slotId: slotId || '' },
+      });
 
       const { data, error: functionError } = await supabase.functions.invoke(
         'create-payment-order',
