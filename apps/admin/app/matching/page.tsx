@@ -110,6 +110,12 @@ export default function MatchingPage() {
             <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
               Manage venues →
             </Link>
+            <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
+              Reports →
+            </Link>
+            <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
+              Analytics →
+            </Link>
           </div>
         </div>
       </header>

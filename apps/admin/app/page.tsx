@@ -122,6 +122,14 @@ export default function Dashboard() {
               Manage venues
             </Link>
             {' · '}
+            <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
+              Reports
+            </Link>
+            {' · '}
+            <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
+              Analytics
+            </Link>
+            {' · '}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -204,7 +212,12 @@ export default function Dashboard() {
               </div>
               <span className="text-3xl">🚩</span>
             </div>
-            <p className="text-sm text-gray-500 mt-4">Flagged users requiring review</p>
+            <Link
+              href="/reports"
+              className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
+            >
+              Review reports →
+            </Link>
           </div>
         </div>
 
