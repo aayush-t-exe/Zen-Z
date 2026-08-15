@@ -171,6 +171,54 @@ export function computeNoShowTrend(
   return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
 }
 
+export interface SignupWeekBucket {
+  weekLabel: string;
+  weekStart: string;
+  count: number;
+}
+
+export function computeWeeklySignups(
+  signupDates: string[],
+  weeksCount = 8,
+  referenceDate: Date = new Date()
+): SignupWeekBucket[] {
+  const weeks = lastNWeeks(weeksCount, referenceDate);
+  const buckets: Record<string, SignupWeekBucket> = {};
+  weeks.forEach((w) => {
+    const key = w.toISOString();
+    buckets[key] = { weekLabel: weekLabel(w), weekStart: key, count: 0 };
+  });
+  signupDates.forEach((d) => {
+    const key = weekStartOf(d).toISOString();
+    if (buckets[key]) buckets[key].count += 1;
+  });
+  return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+}
+
+export interface SignupDayBucket {
+  dayLabel: string;
+  dayStart: string;
+  count: number;
+}
+
+export function computeDailySignups(
+  signupDates: string[],
+  daysCount = 14,
+  referenceDate: Date = new Date()
+): SignupDayBucket[] {
+  const days = lastNDays(daysCount, referenceDate);
+  const buckets: Record<string, SignupDayBucket> = {};
+  days.forEach((d) => {
+    const key = d.toISOString();
+    buckets[key] = { dayLabel: dayLabel(d), dayStart: key, count: 0 };
+  });
+  signupDates.forEach((d) => {
+    const key = dayStartOf(d).toISOString();
+    if (buckets[key]) buckets[key].count += 1;
+  });
+  return Object.values(buckets).sort((a, b) => a.dayStart.localeCompare(b.dayStart));
+}
+
 export interface Totals {
   totalBookings: number;
   paid: number;

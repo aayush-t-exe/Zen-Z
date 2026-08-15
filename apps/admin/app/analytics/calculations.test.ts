@@ -10,6 +10,8 @@ import {
   computeWeeklyBookings,
   computeDailyBookings,
   computeNoShowTrend,
+  computeWeeklySignups,
+  computeDailySignups,
   computeTotals,
   ACTIVITY_ORDER,
   type BookingRow,
@@ -182,6 +184,34 @@ describe('computeNoShowTrend', () => {
     const old = new Date(REFERENCE);
     old.setDate(old.getDate() - 90);
     const trend = computeNoShowTrend([old.toISOString()], 8, REFERENCE);
+    expect(trend.reduce((sum, b) => sum + b.count, 0)).toBe(0);
+  });
+});
+
+describe('computeWeeklySignups', () => {
+  it('counts a signup date into its week bucket', () => {
+    const trend = computeWeeklySignups([REFERENCE.toISOString()], 8, REFERENCE);
+    expect(trend[trend.length - 1].count).toBe(1);
+  });
+
+  it('ignores a signup date outside the window', () => {
+    const old = new Date(REFERENCE);
+    old.setDate(old.getDate() - 90);
+    const trend = computeWeeklySignups([old.toISOString()], 8, REFERENCE);
+    expect(trend.reduce((sum, b) => sum + b.count, 0)).toBe(0);
+  });
+});
+
+describe('computeDailySignups', () => {
+  it('counts a signup date into its day bucket', () => {
+    const trend = computeDailySignups([REFERENCE.toISOString()], 14, REFERENCE);
+    expect(trend[trend.length - 1].count).toBe(1);
+  });
+
+  it('ignores a signup date outside the window', () => {
+    const old = new Date(REFERENCE);
+    old.setDate(old.getDate() - 90);
+    const trend = computeDailySignups([old.toISOString()], 14, REFERENCE);
     expect(trend.reduce((sum, b) => sum + b.count, 0)).toBe(0);
   });
 });

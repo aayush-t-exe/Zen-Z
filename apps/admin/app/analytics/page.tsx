@@ -22,6 +22,8 @@ import {
   computeWeeklyBookings,
   computeDailyBookings,
   computeNoShowTrend,
+  computeWeeklySignups,
+  computeDailySignups,
   computeTotals,
   type BookingRow,
 } from './calculations';
@@ -96,6 +98,8 @@ export default function AnalyticsPage() {
   const { status } = useAdminGuard();
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [noShowDates, setNoShowDates] = useState<string[]>([]);
+  const [signupDates, setSignupDates] = useState<string[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [reportCounts, setReportCounts] = useState({ open: 0, resolved: 0, dismissed: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -108,8 +112,12 @@ export default function AnalyticsPage() {
       setLoading(true);
       setError('');
 
-      const [{ data: bookingsData, error: bookingsError }, { data: noShows }, { data: reports }] =
-        await Promise.all([
+      const [
+        { data: bookingsData, error: bookingsError },
+        { data: noShows },
+        { data: reports },
+        { data: studentSignups },
+      ] = await Promise.all([
           supabase
             .from('bookings')
             .select(
@@ -124,6 +132,13 @@ export default function AnalyticsPage() {
             .neq('status', 'cancelled'),
           supabase.from('no_shows').select('created_at'),
           supabase.from('reports').select('status'),
+          // admin_users' RLS only lets an admin read their OWN row (see
+          // 0007_close_rls_gaps.sql — deliberately non-recursive), so a
+          // plain client-side admin_users query would silently under-
+          // exclude admins once there's more than one. This RPC
+          // (0027_student_signup_dates.sql) does the exclusion server-side
+          // instead, where it isn't limited by that same-row restriction.
+          supabase.rpc('student_signup_dates'),
         ]);
 
       if (bookingsError) {
@@ -150,6 +165,10 @@ export default function AnalyticsPage() {
         }))
       );
       setNoShowDates((noShows ?? []).map((n: any) => n.created_at));
+
+      setTotalUsers((studentSignups ?? []).length);
+      setSignupDates((studentSignups ?? []).map((s: any) => s.created_at));
+
       setReportCounts({
         open: (reports ?? []).filter((r: any) => r.status === 'open').length,
         resolved: (reports ?? []).filter((r: any) => r.status === 'resolved').length,
@@ -167,6 +186,10 @@ export default function AnalyticsPage() {
   const dailyBookings = useMemo(() => computeDailyBookings(bookings), [bookings]);
 
   const noShowTrend = useMemo(() => computeNoShowTrend(noShowDates), [noShowDates]);
+
+  const weeklySignups = useMemo(() => computeWeeklySignups(signupDates), [signupDates]);
+
+  const dailySignups = useMemo(() => computeDailySignups(signupDates), [signupDates]);
 
   const totals = useMemo(() => computeTotals(bookings), [bookings]);
 
@@ -199,7 +222,12 @@ export default function AnalyticsPage() {
         )}
 
         {/* KPI row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white rounded-lg border p-6">
+            <p className="text-gray-600 text-sm font-medium">Total users</p>
+            <p className="text-4xl font-bold mt-2">{totalUsers.toLocaleString('en-IN')}</p>
+            <p className="text-sm text-gray-500 mt-4">Students, not admin accounts</p>
+          </div>
           <div className="bg-white rounded-lg border p-6">
             <p className="text-gray-600 text-sm font-medium">Total bookings</p>
             <p className="text-4xl font-bold mt-2">{totals.totalBookings.toLocaleString('en-IN')}</p>
@@ -358,6 +386,41 @@ export default function AnalyticsPage() {
             </div>
           </>
         )}
+
+        {/* New signups */}
+        <div className="bg-white rounded-lg border p-6 mb-8">
+          <h2 className="font-bold mb-1">New signups by {granularity}</h2>
+          <p className="text-sm text-gray-500 mb-4">
+            {granularity === 'week' ? 'Last 8 weeks' : 'Last 14 days'}, students only — admin accounts excluded.
+          </p>
+          <ResponsiveContainer width="100%" height={220}>
+            {granularity === 'week' ? (
+              <BarChart data={weeklySignups} margin={{ left: -10 }}>
+                <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                <Bar dataKey="count" name="Signups" fill={STATUS.good} radius={[4, 4, 0, 0]} maxBarSize={28} />
+              </BarChart>
+            ) : (
+              <LineChart data={dailySignups} margin={{ left: -10, right: 12, top: 8 }}>
+                <CartesianGrid vertical={false} stroke={GRID_COLOR} />
+                <XAxis dataKey="dayLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
+                <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  name="Signups"
+                  stroke={STATUS.good}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: STATUS.good }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            )}
+          </ResponsiveContainer>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* No-show trend */}
