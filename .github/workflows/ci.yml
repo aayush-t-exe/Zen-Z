@@ -57,6 +57,13 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm ci
+      # expo-env.d.ts is deliberately gitignored (Expo regenerates it,
+      # normally on `expo start`/`expo prebuild`) — CI never runs those, so
+      # without this the `/// <reference types="expo/types" />` that makes
+      # `@/global.css`'s side-effect import resolvable is simply missing,
+      # and tsc fails with TS2882 on a fresh checkout even though it's fine
+      # locally once you've ever run the app once.
+      - run: printf '/// <reference types="expo/types" />\n' > apps/mobile/expo-env.d.ts
       - run: npm run typecheck --workspace=apps/mobile
 
   test-admin:
