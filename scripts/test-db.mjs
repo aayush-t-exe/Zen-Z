@@ -16,6 +16,14 @@ if (files.length === 0) {
   process.exit(1);
 }
 
+// Prefer a directly-installed `supabase` (what supabase/setup-cli@v1 puts on
+// PATH in CI) over `npx supabase` — npx's own resolution/download behavior
+// is an extra variable we don't need, and this is the CLI's own documented
+// usage pattern. Falls back to npx for local dev, where there's usually no
+// global install.
+const hasGlobalCli = spawnSync('supabase', ['--version'], { encoding: 'utf-8', shell: true }).status === 0;
+const [cliCmd, cliBaseArgs] = hasGlobalCli ? ['supabase', []] : ['npx', ['supabase']];
+
 let anyFailed = false;
 
 for (const file of files) {
@@ -23,8 +31,8 @@ for (const file of files) {
   console.log(`\n=== ${file} ===`);
 
   const result = spawnSync(
-    'npx',
-    ['supabase', 'db', 'query', '--linked', '--output-format', 'json', '-f', relPath],
+    cliCmd,
+    [...cliBaseArgs, 'db', 'query', '--linked', '--output-format', 'json', '-f', relPath],
     { encoding: 'utf-8', shell: true }
   );
 
@@ -53,6 +61,12 @@ for (const file of files) {
   const rows = Array.isArray(parsed.rows) ? parsed.rows : [];
   if (rows.length === 0) {
     console.error('  No TAP output returned — check the test file ends with `select * from pgtap_output;`.');
+    console.error('  Raw CLI response for diagnosis:');
+    console.error('  ' + JSON.stringify(parsed));
+    if (result.stderr) {
+      console.error('  stderr:');
+      console.error('  ' + result.stderr.trim());
+    }
     anyFailed = true;
     continue;
   }
