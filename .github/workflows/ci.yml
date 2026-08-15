@@ -21,14 +21,8 @@ jobs:
       - run: npm ci
       - run: npm run lint --workspace=apps/admin
 
-  # Mobile's `expo lint` currently fails to resolve `eslint/config` due to
-  # an eslint 8/9 version split across the workspace (admin needs eslint 8
-  # for next lint's classic .eslintrc format; expo-config-expo 57 needs
-  # eslint 9's flat config) — pre-existing, unrelated to this test suite.
-  # Kept non-blocking until that's untangled, rather than silently dropped.
   lint-mobile:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
