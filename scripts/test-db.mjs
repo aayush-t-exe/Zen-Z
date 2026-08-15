@@ -52,13 +52,18 @@ for (const file of files) {
     continue;
   }
 
-  if (parsed._tag === 'Error') {
+  if (parsed?._tag === 'Error') {
     console.error(`  Query error: ${parsed.error?.message ?? JSON.stringify(parsed.error)}`);
     anyFailed = true;
     continue;
   }
 
-  const rows = Array.isArray(parsed.rows) ? parsed.rows : [];
+  // `db query --output-format json` prints a bare JSON array of row
+  // objects. (An earlier version of this script expected a
+  // `{ rows: [...] }` wrapper, which turned out to be an artifact of the
+  // interactive tool sandbox this was first validated in, not real CLI
+  // output — CI showed the bare-array shape all along.)
+  const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.rows) ? parsed.rows : [];
   if (rows.length === 0) {
     console.error('  No TAP output returned — check the test file ends with `select * from pgtap_output;`.');
     console.error('  Raw CLI response for diagnosis:');
