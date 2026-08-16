@@ -154,6 +154,7 @@ export default function BookingFlowScreen() {
   };
 
   const handleNext = () => {
+    setError('');
     if (step < 4) {
       setStep(step + 1);
     } else {
@@ -162,6 +163,7 @@ export default function BookingFlowScreen() {
   };
 
   const handleBack = () => {
+    setError('');
     if (step > 1) {
       setStep(step - 1);
     } else {
@@ -295,20 +297,29 @@ export default function BookingFlowScreen() {
             </View>
 
             <View className="gap-2">
-              {GROUP_PREFERENCES.filter((pref) => {
-                // A men_only/women_only preference only makes sense for
-                // that gender — matches the hard gate MatchingBoard.tsx
-                // (requiredGenderForGroup/placementViolation) already
-                // enforces when a founder places a group, just surfaced
-                // earlier so the student doesn't pick something
-                // impossible to match.
-                if (pref.value === 'women_only' && profileGender === 'male') return false;
-                if (pref.value === 'men_only' && profileGender === 'female') return false;
-                return true;
-              }).map((pref) => (
+              {GROUP_PREFERENCES.map((pref) => (
                 <Pressable
                   key={pref.value}
-                  onPress={() => setSelectedPreference(pref.value)}
+                  onPress={() => {
+                    // A men_only/women_only preference only makes sense
+                    // for that gender — matches the hard gate
+                    // MatchingBoard.tsx (requiredGenderForGroup/
+                    // placementViolation) already enforces when a founder
+                    // places a group. Options stay visible either way —
+                    // students should see they exist, not have them
+                    // silently disappear — but picking an incompatible
+                    // one explains why it's blocked instead of selecting it.
+                    if (pref.value === 'women_only' && profileGender === 'male') {
+                      setError("Women only is for students who are women — it's not available for your profile.");
+                      return;
+                    }
+                    if (pref.value === 'men_only' && profileGender === 'female') {
+                      setError("Men only is for students who are men — it's not available for your profile.");
+                      return;
+                    }
+                    setError('');
+                    setSelectedPreference(pref.value);
+                  }}
                   className={`rounded-lg px-4 py-3 ${
                     selectedPreference === pref.value
                       ? 'bg-white'

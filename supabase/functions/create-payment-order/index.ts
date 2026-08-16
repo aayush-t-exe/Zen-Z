@@ -115,7 +115,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount,
         currency: 'INR',
-        reference_id: makePaymentLinkReferenceId(bookingId, Date.now()),
+        reference_id: makePaymentLinkReferenceId(crypto.randomUUID()),
         description: `${activity?.name || 'Activity'} — unlock your invitation`,
         notes: {
           booking_id: bookingId,

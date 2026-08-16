@@ -30,13 +30,14 @@ describe('isTestModeKey', () => {
 });
 
 describe('makePaymentLinkReferenceId', () => {
-  it('embeds the bookingId and timestamp', () => {
-    expect(makePaymentLinkReferenceId('booking-123', 1700000000000)).toBe('booking-123-1700000000000');
+  it('passes through an id within Razorpay\'s 40-char limit', () => {
+    const uuid = '11111111-2222-3333-4444-555555555555';
+    expect(uuid.length).toBeLessThanOrEqual(40);
+    expect(makePaymentLinkReferenceId(uuid)).toBe(uuid);
   });
 
-  it('produces a different id for the same booking at a different timestamp', () => {
-    const first = makePaymentLinkReferenceId('booking-123', 1700000000000);
-    const second = makePaymentLinkReferenceId('booking-123', 1700000000001);
-    expect(first).not.toBe(second);
+  it('throws instead of silently sending an over-length reference_id to Razorpay', () => {
+    const tooLong = 'a'.repeat(41);
+    expect(() => makePaymentLinkReferenceId(tooLong)).toThrow(/exceeds/);
   });
 });
