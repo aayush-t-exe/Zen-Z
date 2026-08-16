@@ -122,13 +122,16 @@ serve(async (req) => {
         },
         // Razorpay rejects callback_url unless it's a real https:// URL
         // — it will not accept the app's own `mobile://`/`exp://` deep
-        // link directly. Route through payment-redirect, an https
-        // bridge that then hands off to the real deep link, which is
-        // what lets WebBrowser.openAuthSessionAsync on the client
-        // detect completion and hand control back automatically.
+        // link directly. Route through the marketing site's
+        // /payment-redirect page, an https bridge that hands off to the
+        // real deep link. This used to be a Supabase Edge Function, but
+        // the shared *.supabase.co domain silently rewrites text/html
+        // responses to text/plain (a documented platform limitation),
+        // so the "Return to app" link never rendered as a clickable
+        // element — see apps/marketing/app/payment-redirect/page.tsx.
         ...(redirectUrl
           ? {
-              callback_url: `${supabaseUrl}/functions/v1/payment-redirect?to=${encodeURIComponent(redirectUrl)}`,
+              callback_url: `https://zen-z.site/payment-redirect?to=${encodeURIComponent(redirectUrl)}`,
               callback_method: 'get',
             }
           : {}),
