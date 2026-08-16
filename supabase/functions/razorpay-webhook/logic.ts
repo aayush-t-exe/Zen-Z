@@ -38,11 +38,17 @@ export interface PaymentLinkPaidEvent {
 // Only payment_link.paid ever marks a booking paid. Every other event type
 // (expired, cancelled, etc.) is acknowledged with 200 so Razorpay doesn't
 // retry, but otherwise ignored.
+//
+// bookingId comes from notes.booking_id, not reference_id — reference_id
+// is minted fresh per payment attempt (create-payment-order/logic.ts:
+// makePaymentLinkReferenceId) so retries don't collide with Razorpay's
+// "reference_id already exists" rule, so it's no longer a reliable way
+// to recover the booking.
 export function parsePaymentLinkPaidEvent(payload: any): PaymentLinkPaidEvent | null {
   if (payload?.event !== 'payment_link.paid') return null;
 
   return {
-    bookingId: payload.payload?.payment_link?.entity?.reference_id ?? null,
+    bookingId: payload.payload?.payment_link?.entity?.notes?.booking_id ?? null,
     paymentId: payload.payload?.payment?.entity?.id ?? null,
   };
 }

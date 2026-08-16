@@ -45,6 +45,7 @@ export default function BookingFlowScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
+  const [profileGender, setProfileGender] = useState<string | null>(null);
 
   const activityNumId = parseInt(activityId || '0');
 
@@ -56,9 +57,11 @@ export default function BookingFlowScreen() {
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('booking_blocked_until')
+          .select('booking_blocked_until, gender')
           .eq('id', user.id)
           .single();
+
+        setProfileGender(profile?.gender ?? null);
 
         if (profile?.booking_blocked_until && new Date(profile.booking_blocked_until) > new Date()) {
           setBlockedUntil(profile.booking_blocked_until);
@@ -292,7 +295,17 @@ export default function BookingFlowScreen() {
             </View>
 
             <View className="gap-2">
-              {GROUP_PREFERENCES.map((pref) => (
+              {GROUP_PREFERENCES.filter((pref) => {
+                // A men_only/women_only preference only makes sense for
+                // that gender — matches the hard gate MatchingBoard.tsx
+                // (requiredGenderForGroup/placementViolation) already
+                // enforces when a founder places a group, just surfaced
+                // earlier so the student doesn't pick something
+                // impossible to match.
+                if (pref.value === 'women_only' && profileGender === 'male') return false;
+                if (pref.value === 'men_only' && profileGender === 'female') return false;
+                return true;
+              }).map((pref) => (
                 <Pressable
                   key={pref.value}
                   onPress={() => setSelectedPreference(pref.value)}

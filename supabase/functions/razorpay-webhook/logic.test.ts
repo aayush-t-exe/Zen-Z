@@ -40,11 +40,11 @@ describe('verifySignature', () => {
 });
 
 describe('parsePaymentLinkPaidEvent', () => {
-  it('extracts bookingId and paymentId from a payment_link.paid event', () => {
+  it('extracts bookingId from notes.booking_id and paymentId from a payment_link.paid event', () => {
     const payload = {
       event: 'payment_link.paid',
       payload: {
-        payment_link: { entity: { reference_id: 'booking-123' } },
+        payment_link: { entity: { reference_id: 'booking-123-1700000000000', notes: { booking_id: 'booking-123' } } },
         payment: { entity: { id: 'pay_456' } },
       },
     };
@@ -56,7 +56,7 @@ describe('parsePaymentLinkPaidEvent', () => {
     expect(parsePaymentLinkPaidEvent(payload)).toBeNull();
   });
 
-  it('returns a null bookingId when reference_id is missing', () => {
+  it('returns a null bookingId when notes.booking_id is missing', () => {
     const payload = { event: 'payment_link.paid', payload: { payment_link: { entity: {} } } };
     expect(parsePaymentLinkPaidEvent(payload)).toEqual({ bookingId: null, paymentId: null });
   });

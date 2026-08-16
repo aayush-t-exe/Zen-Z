@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { computeOrderAmountPaise, isTestModeKey } from './logic.ts';
+import { computeOrderAmountPaise, isTestModeKey, makePaymentLinkReferenceId } from './logic.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -115,7 +115,7 @@ serve(async (req) => {
       body: JSON.stringify({
         amount,
         currency: 'INR',
-        reference_id: bookingId,
+        reference_id: makePaymentLinkReferenceId(bookingId, Date.now()),
         description: `${activity?.name || 'Activity'} — unlock your invitation`,
         notes: {
           booking_id: bookingId,
