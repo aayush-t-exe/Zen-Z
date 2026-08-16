@@ -1,4 +1,4 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
+import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -30,56 +30,44 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   );
 }
 
-/**
- * Weight comes from the loaded font file, never from `fontWeight`. Pairing
- * an explicit fontFamily with a numeric weight makes Android synthesise a
- * fake bold on top of a face that is already bold.
- */
 const styles = StyleSheet.create({
-  default: {
-    fontFamily: Fonts.body,
-    fontSize: 16,
-    lineHeight: 24,
-  },
   small: {
-    fontFamily: Fonts.body,
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: 500,
   },
   smallBold: {
-    fontFamily: Fonts.bodySemi,
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: 700,
+  },
+  default: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: 500,
   },
   title: {
-    fontFamily: Fonts.display,
-    fontSize: 40,
-    lineHeight: 40,
-    letterSpacing: -1.5,
+    fontSize: 48,
+    fontWeight: 600,
+    lineHeight: 52,
   },
   subtitle: {
-    fontFamily: Fonts.display,
-    fontSize: 26,
-    lineHeight: 29,
-    letterSpacing: -0.8,
+    fontSize: 32,
+    lineHeight: 44,
+    fontWeight: 600,
   },
   link: {
-    fontFamily: Fonts.bodySemi,
+    lineHeight: 30,
     fontSize: 14,
-    lineHeight: 22,
-    textDecorationLine: 'underline',
   },
-  // Cobalt is welded to Movie, so a link does not borrow it. Underlined
-  // ink carries the affordance without spending an accent.
   linkPrimary: {
-    fontFamily: Fonts.bodySemi,
+    lineHeight: 30,
     fontSize: 14,
-    lineHeight: 22,
-    textDecorationLine: 'underline',
+    color: '#3c87f7',
   },
   code: {
     fontFamily: Fonts.mono,
+    fontWeight: Platform.select({ android: 700 }) ?? 500,
     fontSize: 12,
-    letterSpacing: -0.3,
   },
 });

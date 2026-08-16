@@ -25,9 +25,9 @@ describe('fetchMyBookings', () => {
 
   it('sorts bookings by slot_datetime ascending, regardless of fetch order', () => {
     const rows = [
-      { id: 'b-later', status: 'pending_match', payment_status: 'paid', slot_id: 's3', slots: { slot_datetime: '2026-08-20T19:00:00Z', activity_types: { name: 'Dinner', icon_key: 'dinner' } } },
-      { id: 'b-earliest', status: 'pending_match', payment_status: 'paid', slot_id: 's1', slots: { slot_datetime: '2026-08-15T19:00:00Z', activity_types: { name: 'Café', icon_key: 'cafe' } } },
-      { id: 'b-middle', status: 'pending_match', payment_status: 'paid', slot_id: 's2', slots: { slot_datetime: '2026-08-17T19:00:00Z', activity_types: { name: 'Movie', icon_key: 'movie' } } },
+      { id: 'b-later', status: 'pending_match', payment_status: 'paid', slot_id: 's3', slots: { slot_datetime: '2026-08-20T19:00:00Z', activity_types: { name: 'Dinner', emoji: '🍽️' } } },
+      { id: 'b-earliest', status: 'pending_match', payment_status: 'paid', slot_id: 's1', slots: { slot_datetime: '2026-08-15T19:00:00Z', activity_types: { name: 'Café', emoji: '☕' } } },
+      { id: 'b-middle', status: 'pending_match', payment_status: 'paid', slot_id: 's2', slots: { slot_datetime: '2026-08-17T19:00:00Z', activity_types: { name: 'Movie', emoji: '🎬' } } },
     ];
     mockFrom.mockReturnValue(queryReturning(rows));
 
@@ -43,7 +43,7 @@ describe('fetchMyBookings', () => {
 
     const result = await fetchMyBookings('user-1');
     expect(result[0].activity_name).toBe('Activity');
-    expect(result[0].activity_icon_key).toBe('');
+    expect(result[0].activity_emoji).toBe('');
   });
 
   it('returns an empty array when the query errors', async () => {

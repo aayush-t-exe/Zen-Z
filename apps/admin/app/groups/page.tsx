@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import { getSignedPhotoUrls } from '@/lib/photos';
-import { formatBudget, formatSlotDateTime, initials } from '@/lib/format';
+import { formatBudget, formatSlotDateTime } from '@/lib/format';
 import Link from 'next/link';
 
 interface Member {
@@ -22,6 +22,7 @@ interface Group {
   created_at: string;
   slot_datetime: string;
   activity_name: string;
+  activity_emoji: string;
   venue_name: string | null;
   reveal_venue_at: string;
   members: Member[];
@@ -45,7 +46,7 @@ export default function GroupsPage() {
         .from('groups')
         .select(
           `id, created_at,
-           slots:slot_id ( slot_datetime, reveal_venue_at, activity_types:activity_type_id ( name ) ),
+           slots:slot_id ( slot_datetime, reveal_venue_at, activity_types:activity_type_id ( name, emoji ) ),
            venues:venue_id ( name ),
            group_members (
              bookings:booking_id (
@@ -70,6 +71,7 @@ export default function GroupsPage() {
         slot_datetime: g.slots?.slot_datetime,
         reveal_venue_at: g.slots?.reveal_venue_at,
         activity_name: g.slots?.activity_types?.name ?? 'Unknown',
+        activity_emoji: g.slots?.activity_types?.emoji ?? '',
         venue_name: g.venues?.name ?? null,
         members: (g.group_members ?? [])
           .map((gm: any) => gm.bookings)
@@ -110,12 +112,12 @@ export default function GroupsPage() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800">
-              Dashboard
+              ← Dashboard
             </Link>
             <h1 className="text-2xl font-bold">Groups</h1>
           </div>
           <Link href="/matching" className="text-sm text-blue-600 hover:text-blue-800">
-            Go to Matching Queue
+            Go to Matching Queue →
           </Link>
         </div>
       </header>
@@ -144,7 +146,7 @@ export default function GroupsPage() {
                   <div className="flex items-start justify-between mb-4">
                     <div>
                       <p className="font-semibold text-lg">
-                        {group.activity_name}
+                        {group.activity_emoji} {group.activity_name}
                       </p>
                       <p className="text-sm text-gray-600">
                         {formatSlotDateTime(group.slot_datetime)}
@@ -170,8 +172,8 @@ export default function GroupsPage() {
                             className="w-10 h-10 rounded-lg object-cover bg-gray-200"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600">
-                            {initials(member.full_name)}
+                          <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
+                            📷
                           </div>
                         )}
                         <div className="min-w-0">

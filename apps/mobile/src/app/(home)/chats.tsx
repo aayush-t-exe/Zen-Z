@@ -3,13 +3,10 @@ import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Icon, ActivityIcon } from '@/components/icon';
-import { useTheme } from '@/hooks/use-theme';
 import { fetchMyGroups, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
 
 export default function ChatsScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const [groups, setGroups] = useState<MyGroupDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,17 +65,16 @@ export default function ChatsScreen() {
               >
                 <View className="flex-row items-center justify-between">
                   <View className="flex-1">
-                    <View className="flex-row items-center gap-2">
-                      <ActivityIcon iconKey={group.activity_icon_key} size={17} color={theme.text} />
-                      <ThemedText className="font-semibold">{group.activity_name}</ThemedText>
-                    </View>
+                    <ThemedText className="font-semibold">
+                      {group.activity_emoji} {group.activity_name}
+                    </ThemedText>
                     <ThemedText type="default" themeColor="textSecondary" className="mt-1 text-sm">
                       {group.is_revealed
                         ? group.venue_name ?? formatSlotDateTime(group.slot_datetime)
                         : `Unlocks ${formatSlotDateTime(group.reveal_venue_at)}`}
                     </ThemedText>
                   </View>
-                  <Icon name={group.is_revealed ? 'chat' : 'lock'} size={20} color={theme.textSecondary} />
+                  <ThemedText className="text-lg">{group.is_revealed ? '💬' : '🔒'}</ThemedText>
                 </View>
               </Pressable>
             ))}

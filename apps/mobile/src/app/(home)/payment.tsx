@@ -5,8 +5,6 @@ import * as Linking from 'expo-linking';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Icon, ActivityIcon } from '@/components/icon';
-import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 
 interface BookingDetails {
@@ -21,7 +19,6 @@ const PAYMENT_POLL_ATTEMPTS = 5;
 const PAYMENT_POLL_DELAY_MS = 1500;
 
 export default function PaymentScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const { slotId } = useLocalSearchParams<{ slotId: string }>();
 
@@ -46,7 +43,7 @@ export default function PaymentScreen() {
             activity_type_id,
             activity_types:activity_type_id (
               name,
-              icon_key,
+              emoji,
               convenience_fee
             )
           )
@@ -207,7 +204,7 @@ export default function PaymentScreen() {
     return (
       <ThemedView className="flex-1 items-center justify-center px-6">
         <View className="items-center gap-4">
-          <Icon name="lock" size={46} color={theme.text} weight={2.2} />
+          <ThemedText className="text-5xl">🔒</ThemedText>
           <ThemedText type="title" className="text-center text-2xl">
             Your invitation is sealed
           </ThemedText>
@@ -219,7 +216,7 @@ export default function PaymentScreen() {
             className="mt-4 rounded-lg bg-white px-6 py-3"
           >
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue
+              Continue →
             </ThemedText>
           </Pressable>
         </View>
@@ -244,7 +241,9 @@ export default function PaymentScreen() {
           <View className="rounded-2xl bg-white px-6 py-8 dark:bg-gray-900">
             <View className="gap-6">
               <View className="gap-3 items-center">
-                <ActivityIcon iconKey={activity?.icon_key ?? 'cafe'} size={46} color={theme.text} weight={2.2} />
+                <ThemedText className="text-5xl">
+                  {activity?.emoji}
+                </ThemedText>
                 <ThemedText className="text-lg font-semibold">
                   {activity?.name}
                 </ThemedText>
@@ -267,13 +266,13 @@ export default function PaymentScreen() {
                 </ThemedText>
                 <View className="gap-2">
                   <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    Spot reserved in group of 4–5
+                    ✓ Spot reserved in group of 4–5
                   </ThemedText>
                   <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    Matched with compatible group
+                    ✓ Matched with compatible group
                   </ThemedText>
                   <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    Venue revealed before event
+                    ✓ Venue revealed before event
                   </ThemedText>
                 </View>
               </View>
@@ -328,7 +327,7 @@ export default function PaymentScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {hasAttemptedPayment ? 'Try Again' : `Pay ₹${fee} to Unlock`}
+              {hasAttemptedPayment ? 'Try Again →' : `Pay ₹${fee} to Unlock →`}
             </ThemedText>
           )}
         </Pressable>

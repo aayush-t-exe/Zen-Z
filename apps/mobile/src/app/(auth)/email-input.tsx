@@ -86,7 +86,7 @@ export default function EmailInputScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue
+              Continue →
             </ThemedText>
           )}
         </Pressable>

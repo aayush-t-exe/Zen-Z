@@ -3,13 +3,10 @@ import { View, Pressable, ScrollView, Image, ActivityIndicator } from 'react-nat
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Icon } from '@/components/icon';
-import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
 export default function ProfileScreen() {
-  const theme = useTheme();
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const setSession = useAuthStore((state) => state.setSession);
@@ -78,7 +75,7 @@ export default function ProfileScreen() {
             />
           ) : (
             <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <Icon name="camera" size={30} color={theme.textSecondary} />
+              <ThemedText className="text-3xl">📷</ThemedText>
             </View>
           )}
         </View>

@@ -37,8 +37,8 @@ update profiles set full_name = 'Student C', gender = 'female', year_of_study = 
 
 insert into admin_users (id) values ('a0000000-0000-0000-0000-000000000009');
 
-insert into activity_types (id, name, icon_key, min_group_size, max_group_size)
-  values (90001, 'pgtap Cafe', 'cafe', 2, 2);
+insert into activity_types (id, name, min_group_size, max_group_size)
+  values (90001, 'pgtap Cafe', 2, 2);
 insert into slots (id, activity_type_id, slot_datetime)
   values ('b0000000-0000-0000-0000-000000000001', 90001, now() + interval '3 days');
 insert into venues (id, name, activity_type_id)

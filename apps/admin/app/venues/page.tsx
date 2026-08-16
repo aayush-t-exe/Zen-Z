@@ -8,6 +8,7 @@ import Link from 'next/link';
 interface ActivityType {
   id: number;
   name: string;
+  emoji: string;
 }
 
 interface Venue {
@@ -19,7 +20,7 @@ interface Venue {
   commission_pct: number | null;
   contact_info: string | null;
   notes: string | null;
-  activity_types: { name: string } | null;
+  activity_types: { name: string; emoji: string } | null;
 }
 
 interface VenueFormState {
@@ -62,10 +63,10 @@ export default function VenuesPage() {
     setError('');
 
     const [{ data: activities }, { data: venuesData, error: venuesError }] = await Promise.all([
-      supabase.from('activity_types').select('id, name').eq('is_live', true),
+      supabase.from('activity_types').select('id, name, emoji').eq('is_live', true),
       supabase
         .from('venues')
-        .select('*, activity_types:activity_type_id ( name )')
+        .select('*, activity_types:activity_type_id ( name, emoji )')
         .order('name'),
     ]);
 
@@ -194,12 +195,12 @@ export default function VenuesPage() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800">
-              Dashboard
+              ← Dashboard
             </Link>
             <h1 className="text-2xl font-bold">Venues</h1>
           </div>
           <Link href="/matching" className="text-sm text-blue-600 hover:text-blue-800">
-            Go to Matching Queue
+            Go to Matching Queue →
           </Link>
         </div>
       </header>
@@ -230,7 +231,7 @@ export default function VenuesPage() {
               <option value="">Select activity…</option>
               {activityTypes.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name}
+                  {a.emoji} {a.name}
                 </option>
               ))}
             </select>
@@ -309,7 +310,7 @@ export default function VenuesPage() {
                         <option value="">Select activity…</option>
                         {activityTypes.map((a) => (
                           <option key={a.id} value={a.id}>
-                            {a.name}
+                            {a.emoji} {a.name}
                           </option>
                         ))}
                       </select>
@@ -369,7 +370,7 @@ export default function VenuesPage() {
                   <div key={venue.id} className="border rounded-lg p-4 flex items-start justify-between">
                     <div>
                       <p className="font-semibold text-gray-900">
-                        {venue.name}
+                        {venue.activity_types?.emoji} {venue.name}
                       </p>
                       <p className="text-sm text-gray-600">
                         {venue.activity_types?.name ?? 'No activity set'}

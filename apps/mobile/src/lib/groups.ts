@@ -7,7 +7,7 @@ export interface MyBooking {
   slot_id: string;
   slot_datetime: string;
   activity_name: string;
-  activity_icon_key: string;
+  activity_emoji: string;
 }
 
 export interface MyGroupDetails {
@@ -17,7 +17,7 @@ export interface MyGroupDetails {
   reveal_venue_at: string;
   is_revealed: boolean;
   activity_name: string;
-  activity_icon_key: string;
+  activity_emoji: string;
   venue_name: string | null;
   venue_address: string | null;
 }
@@ -33,7 +33,7 @@ export async function fetchMyBookings(userId: string): Promise<MyBooking[]> {
     .from('bookings')
     .select(
       `id, status, payment_status, slot_id,
-       slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, icon_key ) )`
+       slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, emoji ) )`
     )
     .eq('user_id', userId)
     .neq('status', 'cancelled');
@@ -51,7 +51,7 @@ export async function fetchMyBookings(userId: string): Promise<MyBooking[]> {
       slot_id: b.slot_id,
       slot_datetime: b.slots?.slot_datetime,
       activity_name: b.slots?.activity_types?.name ?? 'Activity',
-      activity_icon_key: b.slots?.activity_types?.icon_key ?? '',
+      activity_emoji: b.slots?.activity_types?.emoji ?? '',
     }))
     .sort((a, b) => new Date(a.slot_datetime).getTime() - new Date(b.slot_datetime).getTime());
 }

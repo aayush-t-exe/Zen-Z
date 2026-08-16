@@ -30,8 +30,8 @@ insert into auth.users (id, email) values
 update profiles set full_name = 'RG Student A' where id = 'a2000000-0000-0000-0000-000000000001';
 update profiles set full_name = 'RG Student B' where id = 'a2000000-0000-0000-0000-000000000002';
 
-insert into activity_types (id, name, icon_key, min_group_size, max_group_size)
-  values (90003, 'pgtap RG Cafe', 'cafe', 2, 2);
+insert into activity_types (id, name, min_group_size, max_group_size)
+  values (90003, 'pgtap RG Cafe', 2, 2);
 insert into venues (id, name, address, activity_type_id)
   values ('c2000000-0000-0000-0000-000000000001', 'pgtap RG Venue', '123 Test St', 90003);
 

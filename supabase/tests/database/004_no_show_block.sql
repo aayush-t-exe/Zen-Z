@@ -25,8 +25,8 @@ insert into auth.users (id, email) values
 
 update profiles set full_name = 'NS Student A' where id = 'a3000000-0000-0000-0000-000000000001';
 
-insert into activity_types (id, name, icon_key, min_group_size, max_group_size)
-  values (90004, 'pgtap NS Cafe', 'cafe', 2, 2);
+insert into activity_types (id, name, min_group_size, max_group_size)
+  values (90004, 'pgtap NS Cafe', 2, 2);
 insert into slots (id, activity_type_id, slot_datetime)
   values ('b3000000-0000-0000-0000-000000000001', 90004, now() + interval '3 days');
 

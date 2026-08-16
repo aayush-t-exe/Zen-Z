@@ -19,7 +19,7 @@ import {
   type ScoreVector,
 } from '@/lib/compatibility';
 import { getSignedPhotoUrls } from '@/lib/photos';
-import { formatBudget, initials } from '@/lib/format';
+import { formatBudget } from '@/lib/format';
 
 export interface Booking {
   id: string;
@@ -347,7 +347,7 @@ export default function MatchingBoard({
           <p className="text-sm text-gray-500 mb-4">{poolBookings.length} waiting</p>
           <div className="space-y-3">
             {poolBookings.length === 0 ? (
-              <p className="text-sm text-gray-500">Everyone&apos;s been placed into a group.</p>
+              <p className="text-sm text-gray-500">✨ Everyone&apos;s been placed into a group.</p>
             ) : (
               poolBookings.map((booking) => {
                 const fit = bestFitForPoolCard(booking);
@@ -543,7 +543,7 @@ function StudentCard({
       } ${hasOpenReport ? 'border-red-300 bg-red-50' : ''}`}
     >
       {hasOpenReport && (
-        <p className="text-xs font-medium text-red-600 mb-1">Open report — review before matching</p>
+        <p className="text-xs font-medium text-red-600 mb-1">⚠️ Open report — review before matching</p>
       )}
       <div className="flex gap-3 items-center">
         {photoUrl ? (
@@ -554,9 +554,9 @@ function StudentCard({
           />
         ) : (
           <div
-            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-gray-200 flex items-center justify-center text-xs font-semibold text-gray-600`}
+            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-gray-200 flex items-center justify-center text-sm`}
           >
-            {initials(profile.full_name)}
+            📷
           </div>
         )}
         <div className="flex-1 min-w-0">

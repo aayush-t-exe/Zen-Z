@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Radio } from '@/components/choice';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
@@ -176,7 +175,20 @@ export default function ProfileCreationScreen() {
           </ThemedText>
           <View className="gap-2">
             {GENDERS.map((g) => (
-              <Radio key={g} label={g} selected={gender === g} onPress={() => setGender(g)} />
+              <Pressable
+                key={g}
+                onPress={() => setGender(g)}
+                className={`rounded-lg px-4 py-2 ${
+                  gender === g ? 'bg-white' : 'border border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <ThemedText
+                  themeColor={gender === g ? 'onLight' : undefined}
+                  className={gender === g ? 'font-semibold' : ''}
+                >
+                  ○ {g}
+                </ThemedText>
+              </Pressable>
             ))}
           </View>
         </View>
@@ -211,7 +223,7 @@ export default function ProfileCreationScreen() {
             className="rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 dark:border-gray-600"
           >
             <ThemedText className="text-center font-semibold">
-              {photoUri ? 'Photo selected' : 'Upload'}
+              {photoUri ? 'Photo selected ✓' : 'Upload'}
             </ThemedText>
           </Pressable>
           <ThemedText type="default" themeColor="textSecondary" className="text-xs">
@@ -235,7 +247,7 @@ export default function ProfileCreationScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue
+              Continue →
             </ThemedText>
           )}
         </Pressable>
