@@ -1,70 +1,125 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Zen-Z visual system tokens.
+ *
+ * Three groups, and the distinction matters:
+ *
+ *  - `Palette` holds fixed brand values. These never follow the colour
+ *    scheme. Marigold is marigold on a dark ground too, because it is
+ *    welded to "Café", not to "light mode".
+ *  - `Colors.light` / `Colors.dark` hold the roles that *do* flip.
+ *  - `ActivityColor` maps `activity_types.icon_key` to its hue.
+ *
+ * House rule that keeps a seven-value palette from reading as rainbow:
+ * at most two accent hues may be visible on any one screen. Each accent
+ * carries exactly one meaning, so a second unrelated accent is always
+ * decoration.
  */
 
 import '@/global.css';
 
-import { Platform } from 'react-native';
+export const Palette = {
+  /** Chalky pale oat. The light ground. Deliberately not off-white. */
+  notebook: '#ECEAD9',
+  /** Warm near-black. Every outline, all body text, the dark ground. Never #000. */
+  ink: '#171612',
+  /** Café, and the primary action colour everywhere else. */
+  marigold: '#F2B12C',
+  /** Dinner, and destructive actions (cancel, report). */
+  sindoor: '#E4573D',
+  /** Movie. The only cool hue, which is what makes it easy to spot. */
+  cobalt: '#2E63C8',
+  /** The 48h reveal moment, and nothing else. Its rarity is the point. */
+  bubblegum: '#EC6FA6',
+  /** Paid / confirmed. Badges only, never a full surface. */
+  paan: '#4C9A5E',
+} as const;
+
+/**
+ * Keyed by `activity_types.icon_key`. Adding a fourth activity is a row
+ * insert plus one entry here and one glyph in components/icon.tsx.
+ */
+export const ActivityColor: Record<string, string> = {
+  cafe: Palette.marigold,
+  dinner: Palette.sindoor,
+  movie: Palette.cobalt,
+};
+
+/** Foreground that stays legible on a given activity fill. */
+export const ActivityInk: Record<string, string> = {
+  cafe: Palette.ink,
+  dinner: Palette.ink,
+  movie: Palette.notebook,
+};
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
-    // Fixed black — for text on a surface that's deliberately always
-    // white/light regardless of app theme (e.g. a hardcoded bg-white button).
-    onLight: '#000000',
-    // Opposite of `text` — for text on an inverted-theme surface
-    // (bg-black dark:bg-white), which needs the reverse of the normal
-    // text color to stay readable.
-    invertedText: '#ffffff',
-    // Fixed error red — semantic, not theme-following.
-    error: '#ef4444',
-    // Warning text, tuned for a yellow-tinted banner background per theme.
-    warning: '#92400e',
+    text: Palette.ink,
+    background: Palette.notebook,
+    /** Raised surface: cards, sheets. */
+    backgroundElement: '#F5F3E6',
+    backgroundSelected: '#E1DFCC',
+    textSecondary: '#5C594E',
+    /** Every border in the system. */
+    outline: Palette.ink,
+    /** Text on a surface that is always light regardless of scheme. */
+    onLight: Palette.ink,
+    /** Text on an inverted surface. */
+    invertedText: Palette.notebook,
+    error: Palette.sindoor,
+    warning: '#8A5A12',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
-    onLight: '#000000',
-    invertedText: '#000000',
-    error: '#ef4444',
-    warning: '#fef08a',
+    text: Palette.notebook,
+    background: Palette.ink,
+    backgroundElement: '#211F1A',
+    backgroundSelected: '#2B2823',
+    textSecondary: '#9A9585',
+    outline: Palette.notebook,
+    onLight: Palette.ink,
+    invertedText: Palette.ink,
+    error: Palette.sindoor,
+    warning: '#F2B12C',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+/**
+ * Loaded in app/_layout.tsx. The split is meaningful, not stylistic:
+ * `mono` is for facts the system knows exactly (times, countdowns,
+ * booking codes, prices) and never for anything a person wrote.
+ */
+export const Fonts = {
+  display: 'Gabarito_800ExtraBold',
+  body: 'HankenGrotesk_400Regular',
+  bodyMedium: 'HankenGrotesk_500Medium',
+  bodySemi: 'HankenGrotesk_600SemiBold',
+  mono: 'MartianMono_600SemiBold',
+} as const;
+
+/**
+ * Flat cut or full pill, with nothing in the 8-20 range that reads as a
+ * framework default. `sheet` is only ever applied to the top two corners
+ * of a bottom sheet.
+ */
+export const Radius = {
+  flat: 0,
+  card: 4,
+  sheet: 28,
+  pill: 999,
+} as const;
+
+/** Outline carries elevation in this system. Shadow is the exception, not the rule. */
+export const OUTLINE_WIDTH = 2.5;
+
+/**
+ * Hard offset shadow, zero blur. Permitted on exactly two things: the
+ * primary action on a screen, and the active tab in the nav. React Native
+ * cannot draw an unblurred offset shadow on Android (elevation always
+ * blurs), so components render it as an offset sibling View instead of a
+ * shadow style. See components/hard-shadow.tsx.
+ */
+export const HARD_SHADOW_OFFSET = 3;
 
 export const Spacing = {
   half: 2,
@@ -76,5 +131,5 @@ export const Spacing = {
   six: 64,
 } as const;
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+export const BottomTabInset = 96;
 export const MaxContentWidth = 800;

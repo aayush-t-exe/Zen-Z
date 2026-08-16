@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
+import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
@@ -30,44 +30,56 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
   );
 }
 
+/**
+ * Weight comes from the loaded font file, never from `fontWeight`. Pairing
+ * an explicit fontFamily with a numeric weight makes Android synthesise a
+ * fake bold on top of a face that is already bold.
+ */
 const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
-  },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
   default: {
+    fontFamily: Fonts.body,
     fontSize: 16,
     lineHeight: 24,
-    fontWeight: 500,
+  },
+  small: {
+    fontFamily: Fonts.body,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  smallBold: {
+    fontFamily: Fonts.bodySemi,
+    fontSize: 14,
+    lineHeight: 20,
   },
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontFamily: Fonts.display,
+    fontSize: 40,
+    lineHeight: 40,
+    letterSpacing: -1.5,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: Fonts.display,
+    fontSize: 26,
+    lineHeight: 29,
+    letterSpacing: -0.8,
   },
   link: {
-    lineHeight: 30,
+    fontFamily: Fonts.bodySemi,
     fontSize: 14,
+    lineHeight: 22,
+    textDecorationLine: 'underline',
   },
+  // Cobalt is welded to Movie, so a link does not borrow it. Underlined
+  // ink carries the affordance without spending an accent.
   linkPrimary: {
-    lineHeight: 30,
+    fontFamily: Fonts.bodySemi,
     fontSize: 14,
-    color: '#3c87f7',
+    lineHeight: 22,
+    textDecorationLine: 'underline',
   },
   code: {
     fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
     fontSize: 12,
+    letterSpacing: -0.3,
   },
 });
