@@ -34,3 +34,18 @@ export function formatSlotDateTime(dateString: string): string {
   const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)} · ${time}`;
 }
+
+/**
+ * Fallback for a student with no photo on file. Replaces the camera emoji
+ * that used to sit in that slot, and is more useful besides: initials
+ * identify the person, a generic glyph does not.
+ */
+export function initials(name?: string | null): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join('');
+}

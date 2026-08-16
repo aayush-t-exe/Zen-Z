@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import { getSignedPhotoUrls } from '@/lib/photos';
-import { formatSlotDateTime } from '@/lib/format';
+import { formatSlotDateTime, initials } from '@/lib/format';
 import Link from 'next/link';
 
 interface ReportPerson {
@@ -22,7 +22,6 @@ interface Report {
   reported: ReportPerson | null;
   group: {
     activity_name: string;
-    activity_emoji: string;
     slot_datetime: string;
   } | null;
 }
@@ -46,7 +45,7 @@ export default function ReportsPage() {
          reporter:reporter_id ( id, full_name, photo_url ),
          reported:reported_user_id ( id, full_name, photo_url ),
          groups:group_id (
-           slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, emoji ) )
+           slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name ) )
          )`
       )
       .order('created_at', { ascending: false });
@@ -68,7 +67,6 @@ export default function ReportsPage() {
       group: r.groups?.slots
         ? {
             activity_name: r.groups.slots.activity_types?.name ?? 'Activity',
-            activity_emoji: r.groups.slots.activity_types?.emoji ?? '',
             slot_datetime: r.groups.slots.slot_datetime,
           }
         : null,
@@ -126,8 +124,8 @@ export default function ReportsPage() {
           className="w-8 h-8 rounded-lg object-cover bg-gray-200"
         />
       ) : (
-        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-xs">
-          📷
+        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-[10px] font-semibold text-gray-600">
+          {initials(person?.full_name)}
         </div>
       )}
       <div>
@@ -143,12 +141,12 @@ export default function ReportsPage() {
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800">
-              ← Dashboard
+              Dashboard
             </Link>
             <h1 className="text-2xl font-bold">Reports</h1>
           </div>
           <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
-            Analytics →
+            Analytics
           </Link>
         </div>
       </header>
@@ -187,7 +185,7 @@ export default function ReportsPage() {
                       <p className="text-sm text-gray-800 mb-2">{report.reason || 'No reason given'}</p>
                       <p className="text-xs text-gray-500 mb-4">
                         {report.group &&
-                          `${report.group.activity_emoji} ${report.group.activity_name} · ${formatSlotDateTime(report.group.slot_datetime)} · `}
+                          `${report.group.activity_name} · ${formatSlotDateTime(report.group.slot_datetime)} · `}
                         Filed {new Date(report.created_at).toLocaleString('en-IN')}
                       </p>
                       <div className="flex gap-2">

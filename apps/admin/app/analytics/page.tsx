@@ -208,7 +208,7 @@ export default function AnalyticsPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800">
-              ← Dashboard
+              Dashboard
             </Link>
             <h1 className="text-2xl font-bold">Analytics</h1>
           </div>
@@ -426,7 +426,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* No-show trend */}
           <div className="bg-white rounded-lg border p-6">
-            <h2 className="font-bold mb-1">⚠️ No-shows by week</h2>
+            <h2 className="font-bold mb-1">No-shows by week</h2>
             <p className="text-sm text-gray-500 mb-4">Marked manually by the founder — reflects what&apos;s been recorded.</p>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={noShowTrend} margin={{ left: -10, right: 12, top: 8 }}>
@@ -456,9 +456,9 @@ export default function AnalyticsPage() {
           {/* Reports snapshot */}
           <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold">🚩 Reports</h2>
+              <h2 className="font-bold">Reports</h2>
               <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
-                Review reports →
+                Review reports
               </Link>
             </div>
             <div className="grid grid-cols-3 gap-4">

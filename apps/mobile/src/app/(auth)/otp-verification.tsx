@@ -155,7 +155,7 @@ export default function OTPVerificationScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Verify →
+              Verify
             </ThemedText>
           )}
         </Pressable>

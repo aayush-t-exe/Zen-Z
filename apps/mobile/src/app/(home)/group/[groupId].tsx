@@ -12,6 +12,8 @@ import {
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Icon, ActivityIcon } from '@/components/icon';
+import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchMyGroups, fetchGroupMembers, MyGroupDetails, GroupMember } from '@/lib/groups';
@@ -27,6 +29,7 @@ interface ChatMessage {
 }
 
 export default function GroupScreen() {
+  const theme = useTheme();
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const user = useAuthStore((state) => state.user);
 
@@ -181,13 +184,12 @@ export default function GroupScreen() {
       <ThemedView className="flex-1">
         <View className="border-b border-gray-200 px-6 py-4 dark:border-gray-700">
           <View className="flex-row items-center justify-between">
-            <ThemedText className="font-semibold">
-              {group.activity_emoji} {group.activity_name}
-            </ThemedText>
+            <View className="flex-row items-center gap-2">
+              <ActivityIcon iconKey={group.activity_icon_key} size={17} color={theme.text} />
+              <ThemedText className="font-semibold">{group.activity_name}</ThemedText>
+            </View>
             <Pressable onPress={openReportSheet} hitSlop={8}>
-              <ThemedText type="default" themeColor="textSecondary">
-                ⓘ
-              </ThemedText>
+              <Icon name="flag" size={19} color={theme.textSecondary} />
             </Pressable>
           </View>
           <ThemedText type="default" themeColor="textSecondary" className="mt-1 text-sm">
@@ -211,7 +213,7 @@ export default function GroupScreen() {
 
         {!group.is_revealed ? (
           <View className="flex-1 items-center justify-center px-6">
-            <ThemedText className="mb-2 text-3xl">🔒</ThemedText>
+            <View className="mb-3"><Icon name="lock" size={34} color={theme.textSecondary} weight={2.4} /></View>
             <ThemedText type="title" className="text-center text-lg">
               The venue and your group chat unlock 48 hours before the event.
             </ThemedText>
@@ -321,7 +323,7 @@ export default function GroupScreen() {
                         >
                           <ThemedText>{member.full_name}</ThemedText>
                           <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                            {alreadyReported ? 'Reported' : 'Report →'}
+                            {alreadyReported ? 'Reported' : 'Report'}
                           </ThemedText>
                         </Pressable>
                       );

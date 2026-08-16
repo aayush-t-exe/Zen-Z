@@ -111,7 +111,7 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50"
             >
-              {loading ? 'Sending...' : 'Send the code →'}
+              {loading ? 'Sending...' : 'Send the code'}
             </button>
           </form>
         ) : (
@@ -145,7 +145,7 @@ export default function LoginPage() {
               disabled={loading || code.length !== 6}
               className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50"
             >
-              {loading ? 'Verifying...' : 'Verify code →'}
+              {loading ? 'Verifying...' : 'Verify code'}
             </button>
 
             <button
@@ -157,7 +157,7 @@ export default function LoginPage() {
               }}
               className="w-full text-gray-600 hover:text-gray-900 font-medium"
             >
-              ← Back
+              Back
             </button>
           </form>
         )}

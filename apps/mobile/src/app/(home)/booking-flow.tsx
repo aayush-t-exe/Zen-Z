@@ -3,6 +3,9 @@ import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radio } from '@/components/choice';
+import { Icon, ActivityIcon } from '@/components/icon';
+import { useTheme } from '@/hooks/use-theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { formatSlotDateTime } from '@/lib/format';
@@ -16,7 +19,7 @@ interface Slot {
 interface Activity {
   id: number;
   name: string;
-  emoji: string;
+  icon_key: string;
 }
 
 const BUDGET_BANDS = [
@@ -32,6 +35,7 @@ const GROUP_PREFERENCES = [
 ];
 
 export default function BookingFlowScreen() {
+  const theme = useTheme();
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const user = useAuthStore((state) => state.user);
@@ -182,7 +186,7 @@ export default function BookingFlowScreen() {
   if (blockedUntil) {
     return (
       <ThemedView className="flex-1 items-center justify-center px-6">
-        <ThemedText className="mb-2 text-3xl">🕯️</ThemedText>
+        <View className="mb-3"><Icon name="clock" size={34} color={theme.textSecondary} weight={2.4} /></View>
         <ThemedText type="title" className="text-center text-lg">
           Your invitations are paused.
         </ThemedText>
@@ -202,9 +206,10 @@ export default function BookingFlowScreen() {
             Step {step} of 4
           </ThemedText>
           {activity && (
-            <ThemedText type="default" className="text-sm">
-              {activity.emoji} {activity.name}
-            </ThemedText>
+            <View className="flex-row items-center gap-2">
+              <ActivityIcon iconKey={activity.icon_key} size={15} color={theme.text} />
+              <ThemedText type="default" className="text-sm">{activity.name}</ThemedText>
+            </View>
           )}
         </View>
 
@@ -223,22 +228,12 @@ export default function BookingFlowScreen() {
             {slots.length > 0 ? (
               <View className="gap-2">
                 {slots.map((slot) => (
-                  <Pressable
+                  <Radio
                     key={slot.id}
+                    label={formatSlotDateTime(slot.slot_datetime)}
+                    selected={selectedSlot === slot.id}
                     onPress={() => setSelectedSlot(slot.id)}
-                    className={`rounded-lg px-4 py-3 ${
-                      selectedSlot === slot.id
-                        ? 'bg-white'
-                        : 'border border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <ThemedText
-                      themeColor={selectedSlot === slot.id ? 'onLight' : undefined}
-                      className={selectedSlot === slot.id ? 'font-semibold' : ''}
-                    >
-                      ○ {formatSlotDateTime(slot.slot_datetime)}
-                    </ThemedText>
-                  </Pressable>
+                  />
                 ))}
               </View>
             ) : (
@@ -263,22 +258,12 @@ export default function BookingFlowScreen() {
 
             <View className="gap-2">
               {BUDGET_BANDS.map((band) => (
-                <Pressable
+                <Radio
                   key={band.value}
+                  label={band.label}
+                  selected={selectedBudget === band.value}
                   onPress={() => setSelectedBudget(band.value)}
-                  className={`rounded-lg px-4 py-3 ${
-                    selectedBudget === band.value
-                      ? 'bg-white'
-                      : 'border border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  <ThemedText
-                    themeColor={selectedBudget === band.value ? 'onLight' : undefined}
-                    className={selectedBudget === band.value ? 'font-semibold' : ''}
-                  >
-                    ○ {band.label}
-                  </ThemedText>
-                </Pressable>
+                />
               ))}
             </View>
           </View>
@@ -298,8 +283,10 @@ export default function BookingFlowScreen() {
 
             <View className="gap-2">
               {GROUP_PREFERENCES.map((pref) => (
-                <Pressable
+                <Radio
                   key={pref.value}
+                  label={pref.label}
+                  selected={selectedPreference === pref.value}
                   onPress={() => {
                     // A men_only/women_only preference only makes sense
                     // for that gender — matches the hard gate
@@ -320,19 +307,7 @@ export default function BookingFlowScreen() {
                     setError('');
                     setSelectedPreference(pref.value);
                   }}
-                  className={`rounded-lg px-4 py-3 ${
-                    selectedPreference === pref.value
-                      ? 'bg-white'
-                      : 'border border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  <ThemedText
-                    themeColor={selectedPreference === pref.value ? 'onLight' : undefined}
-                    className={selectedPreference === pref.value ? 'font-semibold' : ''}
-                  >
-                    ○ {pref.label}
-                  </ThemedText>
-                </Pressable>
+                />
               ))}
             </View>
           </View>
@@ -352,9 +327,10 @@ export default function BookingFlowScreen() {
                   <ThemedText type="default" themeColor="textSecondary" className="text-xs">
                     Activity
                   </ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    {activity.emoji} {activity.name}
-                  </ThemedText>
+                  <View className="flex-row items-center gap-2">
+                    <ActivityIcon iconKey={activity.icon_key} size={19} color={theme.text} />
+                    <ThemedText className="text-lg font-semibold">{activity.name}</ThemedText>
+                  </View>
                 </View>
 
                 {/* Date & Time */}
@@ -406,7 +382,7 @@ export default function BookingFlowScreen() {
           onPress={handleBack}
           className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
         >
-          <ThemedText className="text-center font-semibold">← Back</ThemedText>
+          <ThemedText className="text-center font-semibold">Back</ThemedText>
         </Pressable>
 
         <Pressable
@@ -418,7 +394,7 @@ export default function BookingFlowScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {step === 4 ? 'Unlock Your Next Adventure' : 'Next →'}
+              {step === 4 ? 'Unlock Your Next Adventure' : 'Next'}
             </ThemedText>
           )}
         </Pressable>

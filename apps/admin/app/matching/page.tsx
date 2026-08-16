@@ -10,7 +10,6 @@ import MatchingBoard from './MatchingBoard';
 interface Activity {
   id: number;
   name: string;
-  emoji: string;
   min_group_size: number;
   max_group_size: number;
 }
@@ -149,22 +148,22 @@ export default function MatchingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="text-blue-600 hover:text-blue-800">
-              ← Dashboard
+              Dashboard
             </Link>
             <h1 className="text-2xl font-bold">Matching Queue</h1>
           </div>
           <div className="flex items-center gap-4">
             <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
-              View groups →
+              View groups
             </Link>
             <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
-              Manage venues →
+              Manage venues
             </Link>
             <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
-              Reports →
+              Reports
             </Link>
             <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
-              Analytics →
+              Analytics
             </Link>
           </div>
         </div>
@@ -198,7 +197,6 @@ export default function MatchingPage() {
                         : 'hover:border-gray-400'
                     }`}
                   >
-                    <span className="text-xl mr-2">{activity.emoji}</span>
                     <span className="font-medium">{activity.name}</span>
                     {pendingCountsByActivity[activity.id] > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
@@ -248,7 +246,7 @@ export default function MatchingPage() {
         {selectedActivity && selectedSlot && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
             <p className="text-blue-900">
-              <span className="font-semibold">{selectedActivity.emoji} {selectedActivity.name}</span>
+              <span className="font-semibold">{selectedActivity.name}</span>
               {' '} • {formatSlotDateTime(selectedSlot.slot_datetime)}
             </p>
           </div>

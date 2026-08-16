@@ -94,7 +94,7 @@ export default async function PaymentRedirectPage({
             textDecoration: 'none',
           }}
         >
-          Return to app →
+          Return to app
         </a>
         <script
           // Best-effort automatic hand-off — see the module comment above

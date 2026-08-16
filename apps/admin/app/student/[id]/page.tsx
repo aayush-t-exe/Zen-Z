@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
 import { getSignedPhotoUrl } from '@/lib/photos';
+import { initials } from '@/lib/format';
 import Link from 'next/link';
 
 interface Profile {
@@ -136,7 +137,7 @@ export default function StudentProfilePage() {
           <h1 className="text-2xl font-bold mb-4">Not Found</h1>
           <p className="text-gray-600 mb-6">{error || 'Student profile could not be loaded'}</p>
           <Link href="/matching" className="text-blue-600 hover:text-blue-800">
-            ← Back to matching
+            Back to matching
           </Link>
         </div>
       </div>
@@ -153,7 +154,7 @@ export default function StudentProfilePage() {
       <header className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <Link href="/matching" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
-            ← Back to matching
+            Back to matching
           </Link>
         </div>
       </header>
@@ -169,8 +170,8 @@ export default function StudentProfilePage() {
                 className="w-24 h-24 rounded-lg object-cover bg-gray-200"
               />
             ) : (
-              <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center text-4xl">
-                📷
+              <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center text-2xl font-semibold text-gray-600">
+                {initials(profile.full_name)}
               </div>
             )}
             <div className="flex-1">

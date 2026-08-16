@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
             className="rounded-lg bg-white py-3 px-4"
           >
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Begin →
+              Begin
             </ThemedText>
           </Pressable>
           <Pressable onPress={handleContinue}>
@@ -140,7 +140,7 @@ export default function OnboardingScreen() {
             className="flex-1 rounded-lg bg-white py-3 px-4"
           >
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin →' : 'Next →'}
+              {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin' : 'Next'}
             </ThemedText>
           </Pressable>
         </View>

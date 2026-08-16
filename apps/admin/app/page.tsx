@@ -165,12 +165,11 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm font-medium">Bookings this week</p>
                 <p className="text-4xl font-bold mt-2">{metrics.bookings_this_week}</p>
               </div>
-              <span className="text-3xl">📋</span>
             </div>
             <div className="mt-4 text-sm text-gray-600 space-y-1">
-              <p>☕ Cafés: {metrics.cafe_bookings}</p>
-              <p>🍽 Dinners: {metrics.dinner_bookings}</p>
-              <p>🎬 Movies: {metrics.movie_bookings}</p>
+              <p>Cafés: {metrics.cafe_bookings}</p>
+              <p>Dinners: {metrics.dinner_bookings}</p>
+              <p>Movies: {metrics.movie_bookings}</p>
             </div>
           </div>
 
@@ -181,7 +180,6 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm font-medium">Groups formed</p>
                 <p className="text-4xl font-bold mt-2">{metrics.groups_formed}</p>
               </div>
-              <span className="text-3xl">✅</span>
             </div>
             <p className="text-sm text-gray-500 mt-4">Confirmed groups ready to meet</p>
           </div>
@@ -193,13 +191,12 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm font-medium">Unmatched (need action)</p>
                 <p className="text-4xl font-bold mt-2 text-orange-600">{metrics.unmatched_count}</p>
               </div>
-              <span className="text-3xl">⚠️</span>
             </div>
             <Link
               href="/matching"
               className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
             >
-              Go to matching queue →
+              Go to matching queue
             </Link>
           </div>
 
@@ -210,13 +207,12 @@ export default function Dashboard() {
                 <p className="text-gray-600 text-sm font-medium">Pending reports</p>
                 <p className="text-4xl font-bold mt-2 text-red-600">{metrics.pending_reports}</p>
               </div>
-              <span className="text-3xl">🚩</span>
             </div>
             <Link
               href="/reports"
               className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
             >
-              Review reports →
+              Review reports
             </Link>
           </div>
         </div>
@@ -231,7 +227,7 @@ export default function Dashboard() {
             href="/matching"
             className="inline-block bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800"
           >
-            Go to Matching Queue →
+            Go to Matching Queue
           </Link>
         </div>
       </main>

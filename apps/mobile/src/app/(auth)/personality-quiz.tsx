@@ -3,6 +3,7 @@ import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Radio, Checkbox } from '@/components/choice';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useTheme } from '@/hooks/use-theme';
@@ -230,21 +231,12 @@ export default function PersonalityQuizScreen() {
                 const isSelected =
                   answers.get(currentQuestion.id)?.selectedOptionIds?.[0] === option.id;
                 return (
-                  <Pressable
+                  <Radio
                     key={option.id}
+                    label={option.label}
+                    selected={isSelected}
                     onPress={() => handleSelectOption(option.id)}
-                    className={`rounded-lg border px-4 py-3 ${
-                      isSelected
-                        ? 'border-black bg-white dark:border-white dark:bg-gray-900'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <ThemedText
-                      className={isSelected ? 'font-semibold' : ''}
-                    >
-                      ○ {option.label}
-                    </ThemedText>
-                  </Pressable>
+                  />
                 );
               })}
             </>
@@ -256,19 +248,12 @@ export default function PersonalityQuizScreen() {
                 const isSelected =
                   answers.get(currentQuestion.id)?.selectedOptionIds?.includes(option.id) ?? false;
                 return (
-                  <Pressable
+                  <Checkbox
                     key={option.id}
+                    label={option.label}
+                    selected={isSelected}
                     onPress={() => handleToggleMultiOption(option.id)}
-                    className={`rounded-lg border px-4 py-3 ${
-                      isSelected
-                        ? 'border-black bg-white dark:border-white dark:bg-gray-900'
-                        : 'border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <ThemedText className={isSelected ? 'font-semibold' : ''}>
-                      {isSelected ? '☑' : '☐'} {option.label}
-                    </ThemedText>
-                  </Pressable>
+                  />
                 );
               })}
             </>
@@ -352,7 +337,7 @@ export default function PersonalityQuizScreen() {
             disabled={currentIndex === 0}
             className="flex-1 rounded-lg border border-gray-300 py-3 px-4 disabled:opacity-30 dark:border-gray-600"
           >
-            <ThemedText className="text-center font-semibold">← Back</ThemedText>
+            <ThemedText className="text-center font-semibold">Back</ThemedText>
           </Pressable>
 
           {!isLastQuestion && (
@@ -365,7 +350,7 @@ export default function PersonalityQuizScreen() {
                 <ActivityIndicator color={theme.invertedText} />
               ) : (
                 <ThemedText themeColor="invertedText" className="text-center font-semibold">
-                  Next →
+                  Next
                 </ThemedText>
               )}
             </Pressable>
@@ -381,7 +366,7 @@ export default function PersonalityQuizScreen() {
                 <ActivityIndicator color={theme.invertedText} />
               ) : (
                 <ThemedText themeColor="invertedText" className="text-center font-semibold">
-                  Complete →
+                  Complete
                 </ThemedText>
               )}
             </Pressable>

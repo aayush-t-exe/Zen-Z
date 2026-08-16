@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
-import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { ActivityIcon } from '@/components/icon';
+import { Card } from '@/components/surface';
+import { Loader } from '@/components/loader';
+import { ActivityColor, ActivityInk, Palette } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 
 interface ActivityType {
   id: number;
   name: string;
-  emoji: string;
+  icon_key: string;
 }
 
 const taglineFor = (name: string) => (name === 'Movies' ? 'Unlock a seat' : 'Unlock a table');
@@ -22,7 +26,7 @@ export default function HomeScreen() {
     const loadActivities = async () => {
       const { data } = await supabase
         .from('activity_types')
-        .select('id, name, emoji')
+        .select('id, name, icon_key')
         .eq('is_live', true)
         .order('id', { ascending: true });
 
@@ -44,9 +48,7 @@ export default function HomeScreen() {
     <ThemedView className="flex-1">
       <ScrollView className="flex-1 px-6 py-8" contentContainerStyle={{ flexGrow: 1 }}>
         <View className="mb-8 gap-2">
-          <ThemedText type="title" className="text-2xl">
-            Ready for something?
-          </ThemedText>
+          <ThemedText type="title">Ready for something?</ThemedText>
           <ThemedText type="default" themeColor="textSecondary">
             Pick an activity to unlock your next adventure.
           </ThemedText>
@@ -54,27 +56,40 @@ export default function HomeScreen() {
 
         {isLoading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" />
+            <Loader label="Finding this week" />
           </View>
         ) : (
           <View className="flex-1 gap-4">
-            {activities.map((activity) => (
-              <Pressable
-                key={activity.id}
-                onPress={() => handleActivityPress(activity.id)}
-                className="flex-1 justify-center rounded-2xl bg-white px-6 dark:bg-gray-900"
-              >
-                <View className="gap-3">
-                  <ThemedText className="text-4xl">{activity.emoji}</ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    {activity.name}
-                  </ThemedText>
-                  <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    {taglineFor(activity.name)}
-                  </ThemedText>
-                </View>
-              </Pressable>
-            ))}
+            {activities.map((activity) => {
+              // Each activity owns one hue. The card is that hue, which is
+              // why the screen never shows more than two accents at once.
+              const fill = ActivityColor[activity.icon_key] ?? Palette.marigold;
+              const ink = ActivityInk[activity.icon_key] ?? Palette.ink;
+
+              return (
+                <Pressable
+                  key={activity.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${activity.name}. ${taglineFor(activity.name)}`}
+                  onPress={() => handleActivityPress(activity.id)}
+                  className="flex-1"
+                >
+                  <Card fill={fill} padding={20} style={{ flex: 1, justifyContent: 'center' }}>
+                    <View className="flex-row items-center gap-4">
+                      <ActivityIcon iconKey={activity.icon_key} size={38} color={ink} weight={2.4} />
+                      <View className="flex-1 gap-1">
+                        <ThemedText type="subtitle" style={{ color: ink }}>
+                          {activity.name}
+                        </ThemedText>
+                        <ThemedText type="small" style={{ color: ink, opacity: 0.75 }}>
+                          {taglineFor(activity.name)}
+                        </ThemedText>
+                      </View>
+                    </View>
+                  </Card>
+                </Pressable>
+              );
+            })}
           </View>
         )}
       </ScrollView>
