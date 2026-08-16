@@ -10,6 +10,7 @@ export interface BookingRow {
   user_id: string;
   status: string;
   payment_status: string;
+  created_at: string;
   slot_datetime: string;
   activity_name: string;
   convenience_fee: number;
@@ -117,6 +118,14 @@ export function lastNDays(n: number, referenceDate: Date = new Date()): Date[] {
 // [ASSUMPTION] docs don't specify a daily-view window, so this mirrors the
 // weekly view's ~2-month scope at daily granularity: 14 days keeps a line
 // chart readable while still showing a real trend, not just a single spike.
+//
+// Buckets by created_at (when the booking/payment happened), not
+// slot_datetime (the future event date) — unlike computeWeeklyBookings.
+// A slot booked today for an event three weeks out should count as
+// today's activity, not vanish until the event date rolls around; a
+// purely event-date bucketing also made this chart backward-looking-only
+// (lastNDays never includes future dates) show nothing for the vast
+// majority of real bookings, which are made ahead of their event.
 export function computeDailyBookings(
   bookings: BookingRow[],
   activityOrder: string[] = ACTIVITY_ORDER,
@@ -132,8 +141,8 @@ export function computeDailyBookings(
   });
 
   bookings.forEach((b) => {
-    if (!b.slot_datetime) return;
-    const key = dayStartOf(b.slot_datetime).toISOString();
+    if (!b.created_at) return;
+    const key = dayStartOf(b.created_at).toISOString();
     const bucket = buckets[key];
     if (!bucket) return; // outside the last N days
     bucket.total = (bucket.total as number) + 1;

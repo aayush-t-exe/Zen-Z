@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
           supabase
             .from('bookings')
             .select(
-              `id, user_id, status, payment_status,
+              `id, user_id, status, payment_status, created_at,
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee ) )`
             )
             // A cancelled booking isn't an active reservation — counting
@@ -154,6 +154,7 @@ export default function AnalyticsPage() {
           user_id: b.user_id,
           status: b.status,
           payment_status: b.payment_status,
+          created_at: b.created_at,
           slot_datetime: b.slots?.slot_datetime,
           activity_name: b.slots?.activity_types?.name ?? 'Unknown',
           // [ASSUMPTION] convenience_fee is only stored on activity_types,
@@ -338,7 +339,7 @@ export default function AnalyticsPage() {
             {/* Daily bookings by activity */}
             <div className="bg-white rounded-lg border p-6 mb-8">
               <h2 className="font-bold mb-1">Bookings by day</h2>
-              <p className="text-sm text-gray-500 mb-4">Last 14 days, by event date and activity.</p>
+              <p className="text-sm text-gray-500 mb-4">Last 14 days, by the day booked (not the event date), by activity.</p>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
@@ -365,7 +366,7 @@ export default function AnalyticsPage() {
             {/* Daily revenue */}
             <div className="bg-white rounded-lg border p-6 mb-8">
               <h2 className="font-bold mb-1">Revenue by day</h2>
-              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings, last 14 days.</p>
+              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings, by the day booked, last 14 days.</p>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />

@@ -66,6 +66,7 @@ function booking(overrides: Partial<BookingRow>): BookingRow {
     user_id: 'u1',
     status: 'matched',
     payment_status: 'paid',
+    created_at: REFERENCE.toISOString(),
     slot_datetime: REFERENCE.toISOString(),
     activity_name: 'Cafés',
     convenience_fee: 21,
@@ -142,12 +143,24 @@ describe('lastNDays', () => {
 });
 
 describe('computeDailyBookings', () => {
-  it('buckets a booking into its event day and activity column', () => {
+  it('buckets a booking into the day it was made, not its event day', () => {
     const buckets = computeDailyBookings([booking({})], ACTIVITY_ORDER, 14, REFERENCE);
     const today = buckets[buckets.length - 1];
     expect(today.total).toBe(1);
     expect(today['Cafés']).toBe(1);
     expect(today.revenue).toBe(21);
+  });
+
+  it('counts a booking made today even if its event slot is weeks out', () => {
+    const futureSlot = new Date(REFERENCE);
+    futureSlot.setDate(futureSlot.getDate() + 20);
+    const buckets = computeDailyBookings(
+      [booking({ slot_datetime: futureSlot.toISOString() })],
+      ACTIVITY_ORDER,
+      14,
+      REFERENCE
+    );
+    expect(buckets[buckets.length - 1].total).toBe(1);
   });
 
   it('drops an unpaid booking\'s fee out of the revenue bucket', () => {
@@ -160,10 +173,10 @@ describe('computeDailyBookings', () => {
     expect(buckets[buckets.length - 1].revenue).toBe(0);
   });
 
-  it('drops a booking outside the requested day window instead of throwing', () => {
+  it('drops a booking made outside the requested day window instead of throwing', () => {
     const old = new Date(REFERENCE);
     old.setDate(old.getDate() - 90);
-    const buckets = computeDailyBookings([booking({ slot_datetime: old.toISOString() })], ACTIVITY_ORDER, 14, REFERENCE);
+    const buckets = computeDailyBookings([booking({ created_at: old.toISOString() })], ACTIVITY_ORDER, 14, REFERENCE);
     expect(buckets.reduce((sum, b) => sum + (b.total as number), 0)).toBe(0);
   });
 
