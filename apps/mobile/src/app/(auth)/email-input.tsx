@@ -1,17 +1,35 @@
 import { useState } from 'react';
-import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  TextInput,
+  Text,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
+const HEADER_RATIO = 389 / 814;
+const FIELD_RATIO = 658 / 1386;
+
 export default function EmailInputScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const setAuthError = useAuthStore((state) => state.setError);
+
+  const headerWidth = Math.min(360, screenWidth - 40);
+  const fieldWidth = Math.min(358, screenWidth - 30);
+  const fieldHeight = fieldWidth * FIELD_RATIO;
 
   const handleContinue = async () => {
     if (!email.trim()) {
@@ -49,48 +67,116 @@ export default function EmailInputScreen() {
   };
 
   return (
-    <ThemedView className="flex-1 items-center justify-center px-6">
-      <View className="w-full gap-6">
-        <View className="gap-2">
-          <ThemedText type="title" className="text-xl">
-            Where should we send your invitation?
-          </ThemedText>
-        </View>
-
-        <TextInput
-          placeholder="you@email.com"
-          placeholderTextColor="#999"
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            setError('');
-          }}
-          editable={!isLoading}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          style={{ color: '#000', backgroundColor: '#fff', borderColor: '#d1d5db', borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16 }}
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <Image
+          source={require('@/assets/images/auth-header.png')}
+          style={{ width: headerWidth, height: headerWidth * HEADER_RATIO }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
         />
 
-        {error && (
-          <ThemedText type="default" themeColor="error">
-            {error}
-          </ThemedText>
-        )}
+        {/* The break is deliberate — it is the line split in the design. */}
+        <Text style={styles.title}>{'Where should\nwe send your\ninvitation?'}</Text>
 
-        <Pressable
+        <View style={{ width: fieldWidth, height: fieldHeight }}>
+          <Image
+            source={require('@/assets/images/auth-field.png')}
+            style={{ position: 'absolute', width: fieldWidth, height: fieldHeight }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+          <TextInput
+            placeholder="you@email.com"
+            placeholderTextColor={Palette.placeholder}
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              setError('');
+            }}
+            editable={!isLoading}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="email"
+            keyboardType="email-address"
+            returnKeyType="go"
+            onSubmitEditing={handleContinue}
+            accessibilityLabel="Email address"
+            // Sits inside the drawn bubble, clear of its wobbly edges and tail.
+            style={[
+              styles.input,
+              {
+                left: fieldWidth * 0.09,
+                right: fieldWidth * 0.09,
+                top: fieldHeight * 0.22,
+                height: fieldHeight * 0.36,
+              },
+            ]}
+          />
+        </View>
+
+        {error ? (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
+
+        <AuthButton
+          label="Continue  →"
           onPress={handleContinue}
-          disabled={isLoading || !email.trim()}
-          className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue →
-            </ThemedText>
-          )}
-        </Pressable>
-      </View>
-    </ThemedView>
+          loading={isLoading}
+          style={{ width: fieldWidth, marginTop: 52 }}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  scroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    // Top-aligned so the mark sits at the same height as it does on every
+    // onboarding slide, rather than floating in the middle of the screen.
+    paddingTop: 56,
+    paddingBottom: 40,
+    paddingHorizontal: 16,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 36,
+    lineHeight: 45,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.9,
+    marginTop: 32,
+    marginBottom: 28,
+  },
+  input: {
+    position: 'absolute',
+    color: Palette.fieldInk,
+    fontSize: 19,
+    fontWeight: '500',
+    textAlign: 'center',
+    textAlignVertical: 'center',
+    padding: 0,
+  },
+  error: {
+    color: Palette.error,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+});

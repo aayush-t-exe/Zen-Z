@@ -1,46 +1,97 @@
-import { useState, useRef } from 'react';
-import { View, Pressable, FlatList, Dimensions, Image } from 'react-native';
+import { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Pressable,
+  FlatList,
+  Text,
+  StyleSheet,
+  Image,
+  useWindowDimensions,
+  type ImageSourcePropType,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { AuthButton } from '@/components/auth-button';
 
-const ONBOARDING_SCREENS = [
+const MARK_RATIO = 211 / 301;
+
+/** How long each slide holds before the carousel moves itself along. */
+const AUTO_ADVANCE_MS = 4500;
+
+type Slide = {
+  id: string;
+  /** Absent until the artwork for that slide has been drawn. */
+  art?: ImageSourcePropType;
+  /** Intrinsic height divided by width, so the drawing is never distorted. */
+  artRatio?: number;
+  artLabel?: string;
+  title?: string;
+  subtitle?: string;
+  tagline?: string;
+};
+
+const SLIDES: Slide[] = [
   {
     id: '0',
-    type: 'splash',
+    art: require('@/assets/images/onboarding-gathering.png'),
+    artRatio: 1217 / 1056,
+    artLabel: 'Four friends high-fiving around a table with a coffee and a film reel',
+    tagline: 'Somewhere nearby, four strangers\nare about to become your next story.',
   },
   {
     id: '1',
-    type: 'intro',
+    art: require('@/assets/images/onboarding-tables.png'),
+    artRatio: 1216 / 1056,
+    artLabel: 'Pairs and groups talking over coffee, dinner and a film, wrapped in swirls',
     title: 'Every table has a story',
     subtitle: 'before anyone sits down.',
   },
   {
     id: '2',
-    type: 'intro',
+    art: require('@/assets/images/onboarding-hands.png'),
+    artRatio: 1410 / 1200,
+    artLabel: 'Hands drawing four strangers together into one group',
     title: 'We craft your group.',
     subtitle: 'You just show up.',
   },
   {
     id: '3',
-    type: 'intro',
+    art: require('@/assets/images/onboarding-invitation.png'),
+    artRatio: 1335 / 1072,
+    artLabel: 'An open envelope with a laid table and a film reel spilling out of it',
     title: 'No swiping.',
     subtitle: 'Just an invitation.',
   },
 ];
 
-const screenWidth = Dimensions.get('window').width;
-
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
+  const markWidth = Math.min(110, screenWidth * 0.29);
+  // Every slide gets the same art box: full-bleed but for a small margin, and
+  // tall enough for the tallest drawing. Each image then fits inside it, so the
+  // copy underneath sits at the same height on every page instead of hopping
+  // about as you swipe. The box is clamped so it cannot crowd out the footer.
+  const tallestRatio = Math.max(...SLIDES.map((s) => s.artRatio ?? 0));
+  const artWidth = Math.min(screenWidth - 22, (screenHeight - 400) / tallestRatio);
+  const artHeight = artWidth * tallestRatio;
+
+  const isLast = currentIndex === SLIDES.length - 1;
+
+  // Every page is exactly one screen wide, so scrolling by offset is both the
+  // simplest and the most reliable option. `scrollToIndex` depends on the row
+  // having been measured and quietly does nothing when it has not been.
+  const goToSlide = (index: number) => {
+    setCurrentIndex(index);
+    flatListRef.current?.scrollToOffset({ offset: screenWidth * index, animated: true });
+  };
+
   const handleNext = () => {
-    if (currentIndex < ONBOARDING_SCREENS.length - 1) {
-      const nextIndex = currentIndex + 1;
-      setCurrentIndex(nextIndex);
-      flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
+    if (currentIndex < SLIDES.length - 1) {
+      goToSlide(currentIndex + 1);
     } else {
       router.push('/(auth)/email-input');
     }
@@ -50,101 +101,201 @@ export default function OnboardingScreen() {
     router.push('/(auth)/email-input');
   };
 
-  const handleScroll = (event: any) => {
-    const offsetX = event.nativeEvent.contentOffset.x;
-    const newIndex = Math.round(offsetX / screenWidth);
+  // Only trust the index once a scroll has settled. Reading it continuously
+  // during the glide would report the page being left behind and flip the
+  // footer back for a frame or two.
+  const handleScrollSettled = (event: any) => {
+    const newIndex = Math.round(event.nativeEvent.contentOffset.x / screenWidth);
     if (newIndex !== currentIndex) {
       setCurrentIndex(newIndex);
     }
   };
 
-  const renderScreen = ({ item }: { item: typeof ONBOARDING_SCREENS[0] }) => {
-    if (item.type === 'splash') {
-      return (
-        <View style={{ width: screenWidth }} className="flex-1 items-center justify-center px-6">
-          <View className="gap-6 items-center">
-            <Image
-              source={require('@/assets/images/splash-icon.png')}
-              className="w-20 h-20"
-            />
-            <ThemedText type="default" className="text-center text-xl leading-7">
-              Somewhere nearby, four strangers are about to become your next story.
-            </ThemedText>
-          </View>
-        </View>
-      );
-    }
+  // Walk the slides along on their own. The timer restarts whenever the slide
+  // changes, so a swipe or a tap on Next resets the dwell rather than fighting
+  // it, and it stops on the last slide so the call to action stays put.
+  useEffect(() => {
+    if (currentIndex >= SLIDES.length - 1) return;
 
-    return (
-      <View style={{ width: screenWidth }} className="flex-1 items-center justify-center px-6">
-        <View className="gap-3">
-          <ThemedText type="title" className="text-center text-3xl font-bold">
-            {item.title}
-          </ThemedText>
-          {item.subtitle && (
-            <ThemedText type="default" className="text-center text-lg">
-              {item.subtitle}
-            </ThemedText>
-          )}
-        </View>
-      </View>
-    );
-  };
+    const timer = setTimeout(() => {
+      const nextIndex = currentIndex + 1;
+      setCurrentIndex(nextIndex);
+      flatListRef.current?.scrollToOffset({
+        offset: screenWidth * nextIndex,
+        animated: true,
+      });
+    }, AUTO_ADVANCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [currentIndex, screenWidth]);
+
+  const renderSlide = ({ item }: { item: Slide }) => (
+    <View style={[styles.page, { width: screenWidth }]}>
+      <Image
+        source={require('@/assets/images/onboarding-mark.png')}
+        style={{ width: markWidth, height: markWidth * MARK_RATIO }}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      {item.art ? (
+        <Image
+          source={item.art}
+          style={{ width: artWidth, height: artHeight, marginTop: -4 }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          accessible
+          accessibilityRole="image"
+          accessibilityLabel={item.artLabel}
+        />
+      ) : (
+        <View style={{ width: artWidth, height: artHeight, marginTop: -4 }} />
+      )}
+      {/* The break in `tagline` is deliberate: it is the split in the design. */}
+      {item.tagline && <Text style={styles.tagline}>{item.tagline}</Text>}
+      {item.title && <Text style={styles.title}>{item.title}</Text>}
+      {item.subtitle && <Text style={styles.subtitle}>{item.subtitle}</Text>}
+    </View>
+  );
 
   return (
-    <ThemedView className="flex-1">
+    <View style={styles.root}>
       <FlatList
         ref={flatListRef}
-        data={ONBOARDING_SCREENS}
-        renderItem={renderScreen}
+        data={SLIDES}
+        renderItem={renderSlide}
         keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
+        getItemLayout={(_, index) => ({
+          length: screenWidth,
+          offset: screenWidth * index,
+          index,
+        })}
         scrollEnabled
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        onMomentumScrollEnd={handleScrollSettled}
+        onScrollEndDrag={handleScrollSettled}
       />
 
       {currentIndex === 0 ? (
-        <View className="gap-4 px-6 pb-8">
-          <Pressable
-            onPress={handleNext}
-            className="rounded-lg bg-white py-3 px-4"
-          >
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Begin →
-            </ThemedText>
-          </Pressable>
-          <Pressable onPress={handleContinue}>
-            <ThemedText themeColor="textSecondary" className="text-center font-semibold">
-              Already in? Continue
-            </ThemedText>
+        <View style={styles.footerSplash}>
+          <AuthButton label="Begin  →" onPress={handleNext} />
+          <Pressable onPress={handleContinue} hitSlop={12}>
+            {({ pressed }) => (
+              <Text style={[styles.quietLink, pressed && styles.pressedText]}>
+                Already in? Continue
+              </Text>
+            )}
           </Pressable>
         </View>
       ) : (
-        <View className="flex-row items-center justify-between gap-4 px-6 pb-8">
-          <View className="flex-row gap-2">
-            {ONBOARDING_SCREENS.slice(1).map((_, idx) => (
-              <View
-                key={idx}
-                className={`h-2 rounded-full ${
-                  idx === currentIndex - 1 ? 'w-8 bg-white' : 'w-2 bg-gray-500'
-                }`}
-              />
-            ))}
-          </View>
-
-          <Pressable
-            onPress={handleNext}
-            className="flex-1 rounded-lg bg-white py-3 px-4"
-          >
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {currentIndex === ONBOARDING_SCREENS.length - 1 ? 'Begin →' : 'Next →'}
-            </ThemedText>
-          </Pressable>
+        <View style={styles.footerIntro}>
+          <PageDots count={SLIDES.length - 1} active={currentIndex - 1} />
+          <AuthButton label={isLast ? 'Begin  →' : 'Next  →'} onPress={handleNext} />
         </View>
       )}
-    </ThemedView>
+    </View>
   );
 }
+
+/** The page you are on is a cream spark; the rest are muted dots. */
+function PageDots({ count, active }: { count: number; active: number }) {
+  return (
+    <View
+      style={styles.dots}
+      accessibilityRole="tablist"
+      accessibilityLabel={`Page ${active + 1} of ${count}`}>
+      {Array.from({ length: count }, (_, idx) =>
+        idx === active ? (
+          <Image
+            key={idx}
+            source={require('@/assets/images/onboarding-spark.png')}
+            style={styles.spark}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+        ) : (
+          <View key={idx} style={styles.dot} />
+        )
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  page: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 56,
+  },
+  tagline: {
+    color: Palette.text,
+    fontSize: 19.5,
+    lineHeight: 29,
+    fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: -0.2,
+    paddingHorizontal: 18,
+    marginTop: 24,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 28,
+    lineHeight: 36,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.6,
+    paddingHorizontal: 14,
+    marginTop: 20,
+  },
+  subtitle: {
+    color: Palette.text,
+    fontSize: 19,
+    lineHeight: 27,
+    fontWeight: '400',
+    textAlign: 'center',
+    paddingHorizontal: 14,
+    marginTop: 2,
+  },
+  footerSplash: {
+    paddingHorizontal: 21,
+    paddingBottom: 28,
+    gap: 20,
+  },
+  footerIntro: {
+    paddingHorizontal: 21,
+    paddingBottom: 62,
+    gap: 22,
+  },
+  pressedText: {
+    opacity: 0.6,
+  },
+  quietLink: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  dots: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    // Half the width, not a catch-all number: a radius far larger than the view
+    // makes Android drop the background entirely.
+    borderRadius: 4,
+    backgroundColor: Palette.dotIdle,
+  },
+  spark: {
+    width: 18,
+    height: 18,
+  },
+});
