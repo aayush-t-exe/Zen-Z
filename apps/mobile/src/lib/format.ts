@@ -20,3 +20,11 @@ export function formatSlotDateTime(dateString: string): string {
   const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)} · ${time}`;
 }
+
+export function formatDuration(minutes: number): string {
+  if (minutes % 60 === 0) {
+    const hrs = minutes / 60;
+    return `${hrs} hr${hrs > 1 ? 's' : ''}`;
+  }
+  return `${minutes} min`;
+}

@@ -9,9 +9,11 @@ interface ActivityType {
   id: number;
   name: string;
   emoji: string;
+  is_bookable: boolean;
 }
 
-const taglineFor = (name: string) => (name === 'Movies' ? 'Unlock a seat' : 'Unlock a table');
+const taglineFor = (name: string) =>
+  name === 'Movies' ? 'Unlock a seat' : name === 'Sports' ? 'Enter the arena' : 'Unlock a table';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -22,8 +24,9 @@ export default function HomeScreen() {
     const loadActivities = async () => {
       const { data } = await supabase
         .from('activity_types')
-        .select('id, name, emoji')
+        .select('id, name, emoji, is_bookable')
         .eq('is_live', true)
+        .is('parent_activity_id', null)
         .order('id', { ascending: true });
 
       if (data) setActivities(data);
@@ -33,10 +36,18 @@ export default function HomeScreen() {
     loadActivities();
   }, []);
 
-  const handleActivityPress = (activityId: number) => {
+  const handleActivityPress = (activity: ActivityType) => {
+    if (!activity.is_bookable) {
+      router.push({
+        pathname: '/sports-select' as any,
+        params: { parentId: activity.id.toString() },
+      });
+      return;
+    }
+
     router.push({
       pathname: '/booking-flow' as any,
-      params: { activityId: activityId.toString() },
+      params: { activityId: activity.id.toString() },
     });
   };
 
@@ -61,7 +72,7 @@ export default function HomeScreen() {
             {activities.map((activity) => (
               <Pressable
                 key={activity.id}
-                onPress={() => handleActivityPress(activity.id)}
+                onPress={() => handleActivityPress(activity)}
                 className="flex-1 justify-center rounded-2xl bg-white px-6 dark:bg-gray-900"
               >
                 <View className="gap-3">

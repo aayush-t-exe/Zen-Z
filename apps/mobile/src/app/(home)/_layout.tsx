@@ -59,6 +59,7 @@ export default function HomeLayout() {
         }}
       />
       {/* Flow screens reached via router.push, not persistent tab destinations */}
+      <Tabs.Screen name="sports-select" options={{ href: null }} />
       <Tabs.Screen name="booking-flow" options={{ href: null }} />
       <Tabs.Screen name="payment" options={{ href: null }} />
       <Tabs.Screen name="payment-callback" options={{ href: null }} />

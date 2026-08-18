@@ -63,7 +63,7 @@ export default function VenuesPage() {
     setError('');
 
     const [{ data: activities }, { data: venuesData, error: venuesError }] = await Promise.all([
-      supabase.from('activity_types').select('id, name, emoji').eq('is_live', true),
+      supabase.from('activity_types').select('id, name, emoji').eq('is_live', true).eq('is_bookable', true),
       supabase
         .from('venues')
         .select('*, activity_types:activity_type_id ( name, emoji )')

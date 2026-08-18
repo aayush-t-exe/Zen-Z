@@ -115,6 +115,40 @@ Group Chat → Event Day → Feedback
 ```
 - All three tappable and fully live from day one, per the new constraint — no locked/greyed states anywhere in this screen.
 
+### 1.5a Sports (added post-launch, founder request 2026-08-19)
+A fourth home-screen card, 🏆 Sports, sits alongside Cafés/Dinners/Movies. Unlike
+the other three, tapping it doesn't open the booking flow directly — it opens a
+sub-menu of four games, each with its own fixed price, headcount range, and
+duration (no location field either, per the same constraint as 1.6):
+
+| Game | Players | Duration | Price |
+|---|---|---|---|
+| 🏏 Box Cricket | 10–14 | 2 hrs | ₹221 |
+| ⚽ Football | 8–14 | 1 hr | ₹221 |
+| 🎱 8-Ball Pool | 4 | 1 hr | ₹70 |
+| 🏓 Pickleball | 4 | 1 hr | ₹129 |
+
+Picking a game drops straight into the same booking flow (1.6) used by the
+other activities — each game is its own `activity_types` row under a
+non-bookable `Sports` parent row, so the existing payment and matching-board
+logic (already generic over `min_group_size`/`max_group_size`/
+`convenience_fee`) needed no changes.
+
+**[ASSUMPTION]** Because the price is fixed and shown up front, the Budget
+step (1.6, Step 3) is skipped for Sports games — asking "what's your range?"
+doesn't make sense when there's only one price. The Day & Time and Group
+Preference steps are unchanged.
+
+**[ASSUMPTION]** Sports is a one-off trial for a single upcoming Saturday
+6:00 PM slot per game, not a recurring weekly slot like the other three
+activities. No automatic re-seeding exists — once that Saturday passes,
+Sports shows no available slots until the founder deliberately adds another
+via a migration.
+
+Per the same founder request, Cafés/Dinners/Movies were also trimmed to show
+only their single nearest upcoming occurrence rather than several
+pre-seeded weeks — see `supabase/migrations/0033_trim_future_slots_to_one_week.sql`.
+
 ### 1.6 Booking Flow (No Location Field)
 ```
 Step 1 — Activity: [Dinners] (selected)

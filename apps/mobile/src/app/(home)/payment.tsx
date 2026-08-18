@@ -44,7 +44,9 @@ export default function PaymentScreen() {
             activity_types:activity_type_id (
               name,
               emoji,
-              convenience_fee
+              convenience_fee,
+              min_group_size,
+              max_group_size
             )
           )
         `)
@@ -266,7 +268,7 @@ export default function PaymentScreen() {
                 </ThemedText>
                 <View className="gap-2">
                   <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    ✓ Spot reserved in group of 4–5
+                    ✓ Spot reserved in group of {activity?.min_group_size ?? 4}–{activity?.max_group_size ?? 5}
                   </ThemedText>
                   <ThemedText type="default" themeColor="textSecondary" className="text-sm">
                     ✓ Matched with compatible group

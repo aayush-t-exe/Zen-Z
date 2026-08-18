@@ -5,7 +5,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { formatSlotDateTime } from '@/lib/format';
+import { formatSlotDateTime, formatDuration } from '@/lib/format';
 
 interface Slot {
   id: string;
@@ -17,6 +17,10 @@ interface Activity {
   id: number;
   name: string;
   emoji: string;
+  min_group_size: number;
+  max_group_size: number;
+  duration_minutes: number | null;
+  convenience_fee: number;
 }
 
 const BUDGET_BANDS = [
@@ -24,6 +28,16 @@ const BUDGET_BANDS = [
   { value: '200_400', label: '₹200–400' },
   { value: '400_plus', label: '₹400+' },
 ];
+
+// Activities with a fixed duration (currently just the Sports games) have a
+// fixed, already-known price — asking for a budget range doesn't make sense
+// when there's nothing to range over, so that step is skipped for them.
+// Sports groups are also auto-mixed rather than gender-filtered, so the
+// group-preference step is skipped too — group_preference is stored as
+// 'mixed' for these bookings without asking.
+type BookingStep = 'time' | 'budget' | 'preference' | 'summary';
+const STEPS_WITH_BUDGET: BookingStep[] = ['time', 'budget', 'preference', 'summary'];
+const STEPS_FIXED_PRICE: BookingStep[] = ['time', 'summary'];
 
 const GROUP_PREFERENCES = [
   { value: 'mixed', label: 'Surprise me (mixed)' },
@@ -36,7 +50,7 @@ export default function BookingFlowScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const user = useAuthStore((state) => state.user);
 
-  const [step, setStep] = useState(1);
+  const [stepIndex, setStepIndex] = useState(0);
   const [activity, setActivity] = useState<Activity | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
@@ -48,6 +62,26 @@ export default function BookingFlowScreen() {
   const [profileGender, setProfileGender] = useState<string | null>(null);
 
   const activityNumId = parseInt(activityId || '0');
+  const steps = activity?.duration_minutes ? STEPS_FIXED_PRICE : STEPS_WITH_BUDGET;
+  const currentStep = steps[stepIndex];
+
+  // Expo Router can reuse this screen's instance when navigating here again
+  // with a different activityId (e.g. going back to Sports and picking a
+  // different game) instead of remounting it — without this, a leftover
+  // selectedSlot from the previous activity stays "selected" (silently
+  // enabling Next) even though it no longer matches anything in the newly
+  // loaded slots list, leaving the summary's "When" field blank. Resetting
+  // during render (React's documented pattern for "adjust state when a
+  // prop changes") rather than in an effect, so it happens before paint.
+  const [prevActivityNumId, setPrevActivityNumId] = useState(activityNumId);
+  if (activityNumId !== prevActivityNumId) {
+    setPrevActivityNumId(activityNumId);
+    setStepIndex(0);
+    setSelectedSlot(null);
+    setSelectedBudget(null);
+    setSelectedPreference(null);
+    setError('');
+  }
 
   const loadActivityAndSlots = useCallback(async () => {
     try {
@@ -104,7 +138,14 @@ export default function BookingFlowScreen() {
   );
 
   const handleCreateBooking = async () => {
-    if (!selectedSlot || !selectedBudget || !selectedPreference || !user) {
+    const budgetRequired = steps.includes('budget');
+    const preferenceRequired = steps.includes('preference');
+    if (
+      !selectedSlot ||
+      (budgetRequired && !selectedBudget) ||
+      (preferenceRequired && !selectedPreference) ||
+      !user
+    ) {
       setError('Please select all options');
       return;
     }
@@ -116,8 +157,8 @@ export default function BookingFlowScreen() {
       const { error: bookingError } = await supabase.from('bookings').insert({
         user_id: user.id,
         slot_id: selectedSlot,
-        budget_band: selectedBudget,
-        group_preference: selectedPreference,
+        budget_band: budgetRequired ? selectedBudget : null,
+        group_preference: preferenceRequired ? selectedPreference : 'mixed',
         status: 'pending_match',
       });
 
@@ -147,16 +188,16 @@ export default function BookingFlowScreen() {
   };
 
   const canProceedToNextStep = () => {
-    if (step === 1) return selectedSlot;
-    if (step === 2) return selectedBudget;
-    if (step === 3) return selectedPreference;
+    if (currentStep === 'time') return slots.some((s) => s.id === selectedSlot);
+    if (currentStep === 'budget') return selectedBudget;
+    if (currentStep === 'preference') return selectedPreference;
     return true;
   };
 
   const handleNext = () => {
     setError('');
-    if (step < 4) {
-      setStep(step + 1);
+    if (stepIndex < steps.length - 1) {
+      setStepIndex(stepIndex + 1);
     } else {
       handleCreateBooking();
     }
@@ -164,8 +205,8 @@ export default function BookingFlowScreen() {
 
   const handleBack = () => {
     setError('');
-    if (step > 1) {
-      setStep(step - 1);
+    if (stepIndex > 0) {
+      setStepIndex(stepIndex - 1);
     } else {
       router.back();
     }
@@ -199,7 +240,7 @@ export default function BookingFlowScreen() {
         {/* Step counter + activity context */}
         <View className="mb-6 gap-1">
           <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-            Step {step} of 4
+            Step {stepIndex + 1} of {steps.length}
           </ThemedText>
           {activity && (
             <ThemedText type="default" className="text-sm">
@@ -208,8 +249,8 @@ export default function BookingFlowScreen() {
           )}
         </View>
 
-        {/* Step 1: Day & Time Selection */}
-        {step === 1 && (
+        {/* Day & Time Selection */}
+        {currentStep === 'time' && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -225,7 +266,7 @@ export default function BookingFlowScreen() {
                 {slots.map((slot) => (
                   <Pressable
                     key={slot.id}
-                    onPress={() => setSelectedSlot(slot.id)}
+                    onPress={() => setSelectedSlot(selectedSlot === slot.id ? null : slot.id)}
                     className={`rounded-lg px-4 py-3 ${
                       selectedSlot === slot.id
                         ? 'bg-white'
@@ -236,7 +277,7 @@ export default function BookingFlowScreen() {
                       themeColor={selectedSlot === slot.id ? 'onLight' : undefined}
                       className={selectedSlot === slot.id ? 'font-semibold' : ''}
                     >
-                      ○ {formatSlotDateTime(slot.slot_datetime)}
+                      {selectedSlot === slot.id ? '●' : '○'} {formatSlotDateTime(slot.slot_datetime)}
                     </ThemedText>
                   </Pressable>
                 ))}
@@ -249,8 +290,8 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 2: Budget Selection */}
-        {step === 2 && (
+        {/* Budget Selection */}
+        {currentStep === 'budget' && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -284,8 +325,8 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 3: Group Preference Selection */}
-        {step === 3 && (
+        {/* Group Preference Selection */}
+        {currentStep === 'preference' && (
           <View className="gap-4">
             <View className="gap-2">
               <ThemedText type="title" className="text-xl">
@@ -338,8 +379,12 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {/* Step 4: Confirmation */}
-        {step === 4 && activity && selectedSlot && selectedBudget && selectedPreference && (
+        {/* Confirmation */}
+        {currentStep === 'summary' &&
+          activity &&
+          selectedSlot &&
+          (steps.includes('budget') ? selectedBudget : true) &&
+          (steps.includes('preference') ? selectedPreference : true) && (
           <View className="gap-4">
             <ThemedText type="title" className="text-xl">
               Your adventure awaits
@@ -374,20 +419,37 @@ export default function BookingFlowScreen() {
                     Group
                   </ThemedText>
                   <ThemedText className="text-lg font-semibold">
-                    Group of 4–5 ·{' '}
-                    {GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}
+                    Group of {activity.min_group_size}–{activity.max_group_size}
+                    {steps.includes('preference') &&
+                      ` · ${GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}`}
                   </ThemedText>
                 </View>
 
-                {/* Budget */}
-                <View className="gap-2">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                    Budget
-                  </ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    {BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label}
-                  </ThemedText>
-                </View>
+                {/* Budget (only for activities without a fixed price) */}
+                {steps.includes('budget') && (
+                  <View className="gap-2">
+                    <ThemedText type="default" themeColor="textSecondary" className="text-xs">
+                      Budget
+                    </ThemedText>
+                    <ThemedText className="text-lg font-semibold">
+                      {BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label}
+                    </ThemedText>
+                  </View>
+                )}
+
+                {/* Duration & price (fixed-price activities, e.g. Sports) — sized
+                    to actually catch the eye, not just sit in the line-up like
+                    every other field. */}
+                {activity.duration_minutes != null && (
+                  <View className="items-center gap-1 rounded-xl bg-yellow-50 py-4 dark:bg-yellow-900/20">
+                    <ThemedText themeColor="warning" className="text-4xl font-bold">
+                      ₹{activity.convenience_fee}
+                    </ThemedText>
+                    <ThemedText themeColor="warning" className="text-sm font-semibold">
+                      for {formatDuration(activity.duration_minutes)}? Steal.
+                    </ThemedText>
+                  </View>
+                )}
               </View>
             </View>
           </View>
@@ -418,7 +480,7 @@ export default function BookingFlowScreen() {
             <ActivityIndicator color="#000" />
           ) : (
             <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {step === 4 ? 'Unlock Your Next Adventure' : 'Next →'}
+              {currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next →'}
             </ThemedText>
           )}
         </Pressable>
