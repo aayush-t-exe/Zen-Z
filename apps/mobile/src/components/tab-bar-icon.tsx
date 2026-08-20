@@ -24,7 +24,7 @@ export function TabBarIcon({ name, focused, size = 26 }: TabBarIconProps) {
     <Image
       source={source}
       resizeMode="contain"
-      style={{ width: size * ratio, height: size, opacity: focused ? 1 : 0.45 }}
+      style={{ width: size * ratio, height: size, opacity: focused ? 1 : 0.75 }}
     />
   );
 }

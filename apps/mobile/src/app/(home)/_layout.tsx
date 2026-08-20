@@ -20,10 +20,10 @@ export default function HomeLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: Palette.text,
-        tabBarInactiveTintColor: Palette.dotIdle,
+        tabBarActiveTintColor: Palette.line,
+        tabBarInactiveTintColor: Palette.fieldInk,
         tabBarStyle: {
-          backgroundColor: Palette.canvas,
+          backgroundColor: Palette.paper,
           borderTopColor: Palette.ring,
           borderTopWidth: 1,
           paddingBottom: 4,
