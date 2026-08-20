@@ -1,8 +1,17 @@
 import { useState, useCallback } from 'react';
-import { View, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { formatSlotDateTime, formatDuration } from '@/lib/format';
@@ -45,10 +54,98 @@ const GROUP_PREFERENCES = [
   { value: 'men_only', label: 'Men only' },
 ];
 
+// This map only feeds the summary card's activity row, which sits on a
+// cream background — the opposite of Home's black activity cards. Dinners
+// and Movies use the dark-outlined variant here since their cream-filled
+// Home icon otherwise disappears against the cream card.
+const ACTIVITY_ICONS: Record<string, any> = {
+  Cafés: require('@/assets/images/icon-cafes.png'),
+  Dinners: require('@/assets/images/icon-dinners-dark.png'),
+  Movies: require('@/assets/images/icon-movies-dark.png'),
+  Sports: require('@/assets/images/icon-sports.png'),
+  // Sports bookings carry the specific game's name (not "Sports"), and its
+  // fixed-price flow skips straight from "time" to "summary" — this map
+  // needs an entry for each game or the summary row's icon comes up empty.
+  'Box Cricket': require('@/assets/images/icon-cricket.png'),
+  Football: require('@/assets/images/icon-football.png'),
+  '8-Ball Pool': require('@/assets/images/icon-pool.png'),
+  Pickleball: require('@/assets/images/icon-pickleball.png'),
+};
+
+// Games like 8-Ball Pool and Pickleball have a fixed group size (min ===
+// max) — "Group of 4–4" reads as a typo, so collapse it to a single number.
+const formatGroupSize = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
+
+const PILL_RATIO = 420 / 2059;
+const CARD_SMALL_RATIO = 188 / 978;
+const CARD_LARGE_RATIO = 2500 / 1912;
+const TIME_ART_RATIO = 1086 / 1173;
+
+function OptionPill({
+  label,
+  selected,
+  onPress,
+  width,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  width: number;
+}) {
+  const height = width * PILL_RATIO;
+  return (
+    <Pressable onPress={onPress} style={{ width, height }}>
+      <Image
+        source={require('@/assets/images/bubble-pill.png')}
+        style={{ width, height }}
+        resizeMode="stretch"
+      />
+      <View style={[StyleSheet.absoluteFill, styles.pillContent]}>
+        <Image
+          source={require('@/assets/images/star-dark.png')}
+          style={styles.pillStar}
+          resizeMode="contain"
+        />
+        <Text style={styles.pillLabel}>{label}</Text>
+        {selected && <Text style={styles.pillCheck}>✓</Text>}
+      </View>
+    </Pressable>
+  );
+}
+
+function OptionCard({
+  label,
+  selected,
+  onPress,
+  width,
+}: {
+  label: string;
+  selected: boolean;
+  onPress: () => void;
+  width: number;
+}) {
+  const height = width * CARD_SMALL_RATIO;
+  return (
+    <Pressable onPress={onPress} style={{ width, height }}>
+      <Image
+        source={require('@/assets/images/bubble-card-small.png')}
+        style={{ width, height }}
+        resizeMode="stretch"
+      />
+      <View style={[StyleSheet.absoluteFill, styles.cardContent]}>
+        <Text style={styles.cardLabel}>{label}</Text>
+        {selected && <Text style={styles.pillCheck}>✓</Text>}
+      </View>
+    </Pressable>
+  );
+}
+
 export default function BookingFlowScreen() {
   const router = useRouter();
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const user = useAuthStore((state) => state.user);
+  const { width: screenWidth } = useWindowDimensions();
+  const contentWidth = Math.min(358, screenWidth - 30);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -189,8 +286,8 @@ export default function BookingFlowScreen() {
 
   const canProceedToNextStep = () => {
     if (currentStep === 'time') return slots.some((s) => s.id === selectedSlot);
-    if (currentStep === 'budget') return selectedBudget;
-    if (currentStep === 'preference') return selectedPreference;
+    if (currentStep === 'budget') return !!selectedBudget;
+    if (currentStep === 'preference') return !!selectedPreference;
     return true;
   };
 
@@ -214,112 +311,95 @@ export default function BookingFlowScreen() {
 
   if (isLoading && !activity && !blockedUntil) {
     return (
-      <ThemedView className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator size="large" color={Palette.text} />
+      </View>
     );
   }
 
   if (blockedUntil) {
     return (
-      <ThemedView className="flex-1 items-center justify-center px-6">
-        <ThemedText className="mb-2 text-3xl">🕯️</ThemedText>
-        <ThemedText type="title" className="text-center text-lg">
-          Your invitations are paused.
-        </ThemedText>
-        <ThemedText type="default" themeColor="textSecondary" className="mt-2 text-center text-sm">
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <Text style={{ fontSize: 32, marginBottom: 8 }}>🕯️</Text>
+        <Text style={[styles.title, { textAlign: 'center', fontSize: 22 }]}>Your invitations are paused.</Text>
+        <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>
           Three empty seats in a row does that. Check back {formatSlotDateTime(blockedUntil)}.
-        </ThemedText>
-      </ThemedView>
+        </Text>
+      </View>
     );
   }
 
+  const selectedActivityIcon = activity ? ACTIVITY_ICONS[activity.name] : null;
+
   return (
-    <ThemedView className="flex-1">
-      <ScrollView className="flex-1 px-6 py-8">
+    <View style={styles.root}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Step counter + activity context */}
-        <View className="mb-6 gap-1">
-          <ThemedText type="default" themeColor="textSecondary" className="text-sm">
+        <View style={{ width: contentWidth, marginBottom: 20, gap: 2 }}>
+          <Text style={styles.stepCounter}>
             Step {stepIndex + 1} of {steps.length}
-          </ThemedText>
+          </Text>
           {activity && (
-            <ThemedText type="default" className="text-sm">
+            <Text style={styles.activityLabel}>
               {activity.emoji} {activity.name}
-            </ThemedText>
+            </Text>
           )}
         </View>
 
         {/* Day & Time Selection */}
         {currentStep === 'time' && (
-          <View className="gap-4">
-            <View className="gap-2">
-              <ThemedText type="title" className="text-xl">
-                When do you want your story to begin?
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                Pick a fixed weekly slot
-              </ThemedText>
+          <View style={{ width: contentWidth, gap: 18 }}>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.title}>When do you want your story to begin?</Text>
+              <Text style={styles.subtitle}>Pick a fixed weekly slot</Text>
             </View>
 
             {slots.length > 0 ? (
-              <View className="gap-2">
+              <View style={{ gap: 12 }}>
                 {slots.map((slot) => (
-                  <Pressable
+                  <OptionPill
                     key={slot.id}
+                    label={formatSlotDateTime(slot.slot_datetime)}
+                    selected={selectedSlot === slot.id}
                     onPress={() => setSelectedSlot(selectedSlot === slot.id ? null : slot.id)}
-                    className={`rounded-lg px-4 py-3 ${
-                      selectedSlot === slot.id
-                        ? 'bg-white'
-                        : 'border border-gray-300 dark:border-gray-600'
-                    }`}
-                  >
-                    <ThemedText
-                      themeColor={selectedSlot === slot.id ? 'onLight' : undefined}
-                      className={selectedSlot === slot.id ? 'font-semibold' : ''}
-                    >
-                      {selectedSlot === slot.id ? '●' : '○'} {formatSlotDateTime(slot.slot_datetime)}
-                    </ThemedText>
-                  </Pressable>
+                    width={contentWidth}
+                  />
                 ))}
               </View>
             ) : (
-              <ThemedText type="default" themeColor="textSecondary">
-                No available slots at the moment.
-              </ThemedText>
+              <Text style={styles.subtitle}>No available slots at the moment.</Text>
             )}
+
+            <Image
+              source={require('@/assets/images/booking-time-art.png')}
+              style={{
+                width: contentWidth * 0.85,
+                height: contentWidth * 0.85 * TIME_ART_RATIO,
+                alignSelf: 'center',
+                marginTop: 64,
+              }}
+              resizeMode="contain"
+            />
           </View>
         )}
 
         {/* Budget Selection */}
         {currentStep === 'budget' && (
-          <View className="gap-4">
-            <View className="gap-2">
-              <ThemedText type="title" className="text-xl">
-                What&apos;s your range?
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                This helps us match similar budgets
-              </ThemedText>
+          <View style={{ width: contentWidth, gap: 18 }}>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.title}>What&apos;s your range?</Text>
+              <Text style={styles.subtitle}>This helps us match similar budgets</Text>
             </View>
 
-            <View className="gap-2">
+            <View style={{ gap: 14 }}>
               {BUDGET_BANDS.map((band) => (
-                <Pressable
+                <OptionCard
                   key={band.value}
+                  label={band.label}
+                  selected={selectedBudget === band.value}
                   onPress={() => setSelectedBudget(band.value)}
-                  className={`rounded-lg px-4 py-3 ${
-                    selectedBudget === band.value
-                      ? 'bg-white'
-                      : 'border border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  <ThemedText
-                    themeColor={selectedBudget === band.value ? 'onLight' : undefined}
-                    className={selectedBudget === band.value ? 'font-semibold' : ''}
-                  >
-                    ○ {band.label}
-                  </ThemedText>
-                </Pressable>
+                  width={contentWidth}
+                />
               ))}
             </View>
           </View>
@@ -327,20 +407,18 @@ export default function BookingFlowScreen() {
 
         {/* Group Preference Selection */}
         {currentStep === 'preference' && (
-          <View className="gap-4">
-            <View className="gap-2">
-              <ThemedText type="title" className="text-xl">
-                Who&apos;s in the room?
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                Choose your group dynamic
-              </ThemedText>
+          <View style={{ width: contentWidth, gap: 18 }}>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.title}>Who&apos;s in the room?</Text>
+              <Text style={styles.subtitle}>Choose your group dynamic</Text>
             </View>
 
-            <View className="gap-2">
+            <View style={{ gap: 14 }}>
               {GROUP_PREFERENCES.map((pref) => (
-                <Pressable
+                <OptionCard
                   key={pref.value}
+                  label={pref.label}
+                  selected={selectedPreference === pref.value}
                   onPress={() => {
                     // A men_only/women_only preference only makes sense
                     // for that gender — matches the hard gate
@@ -361,19 +439,8 @@ export default function BookingFlowScreen() {
                     setError('');
                     setSelectedPreference(pref.value);
                   }}
-                  className={`rounded-lg px-4 py-3 ${
-                    selectedPreference === pref.value
-                      ? 'bg-white'
-                      : 'border border-gray-300 dark:border-gray-600'
-                  }`}
-                >
-                  <ThemedText
-                    themeColor={selectedPreference === pref.value ? 'onLight' : undefined}
-                    className={selectedPreference === pref.value ? 'font-semibold' : ''}
-                  >
-                    ○ {pref.label}
-                  </ThemedText>
-                </Pressable>
+                  width={contentWidth}
+                />
               ))}
             </View>
           </View>
@@ -385,69 +452,49 @@ export default function BookingFlowScreen() {
           selectedSlot &&
           (steps.includes('budget') ? selectedBudget : true) &&
           (steps.includes('preference') ? selectedPreference : true) && (
-          <View className="gap-4">
-            <ThemedText type="title" className="text-xl">
-              Your adventure awaits
-            </ThemedText>
+          <View style={{ width: contentWidth, gap: 18 }}>
+            <Text style={styles.title}>Your adventure awaits</Text>
+            <Text style={styles.subtitle}>Confirm your choices</Text>
 
-            <View className="rounded-2xl bg-white px-6 py-8 dark:bg-gray-900">
-              <View className="gap-6">
-                {/* Activity */}
-                <View className="gap-2">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                    Activity
-                  </ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    {activity.emoji} {activity.name}
-                  </ThemedText>
-                </View>
-
-                {/* Date & Time */}
-                <View className="gap-2">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                    When
-                  </ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    {slots.find((s) => s.id === selectedSlot) &&
-                      formatSlotDateTime(slots.find((s) => s.id === selectedSlot)!.slot_datetime)}
-                  </ThemedText>
-                </View>
-
-                {/* Group */}
-                <View className="gap-2">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                    Group
-                  </ThemedText>
-                  <ThemedText className="text-lg font-semibold">
-                    Group of {activity.min_group_size}–{activity.max_group_size}
-                    {steps.includes('preference') &&
-                      ` · ${GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}`}
-                  </ThemedText>
-                </View>
-
-                {/* Budget (only for activities without a fixed price) */}
+            <View style={{ width: contentWidth, height: contentWidth * CARD_LARGE_RATIO }}>
+              <Image
+                source={require('@/assets/images/bubble-card-large.png')}
+                style={{ width: contentWidth, height: contentWidth * CARD_LARGE_RATIO }}
+                resizeMode="stretch"
+              />
+              <View style={[StyleSheet.absoluteFill, styles.summaryContent]}>
+                <SummaryRow icon={selectedActivityIcon} label={activity.name} />
+                <SummaryRow
+                  iconSource={require('@/assets/images/star-dark.png')}
+                  label={
+                    slots.find((s) => s.id === selectedSlot)
+                      ? formatSlotDateTime(slots.find((s) => s.id === selectedSlot)!.slot_datetime)
+                      : ''
+                  }
+                />
+                <SummaryRow
+                  iconSource={require('@/assets/images/icon-group.png')}
+                  label={
+                    `Group of ${formatGroupSize(activity.min_group_size, activity.max_group_size)}` +
+                    (steps.includes('preference')
+                      ? ` · ${GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}`
+                      : '')
+                  }
+                />
                 {steps.includes('budget') && (
-                  <View className="gap-2">
-                    <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                      Budget
-                    </ThemedText>
-                    <ThemedText className="text-lg font-semibold">
-                      {BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label}
-                    </ThemedText>
-                  </View>
+                  <SummaryRow
+                    iconSource={require('@/assets/images/icon-budget.png')}
+                    label={BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label ?? ''}
+                  />
                 )}
 
-                {/* Duration & price (fixed-price activities, e.g. Sports) — sized
-                    to actually catch the eye, not just sit in the line-up like
-                    every other field. */}
+                {/* Duration & price (fixed-price activities, e.g. Sports) */}
                 {activity.duration_minutes != null && (
-                  <View className="items-center gap-1 rounded-xl bg-yellow-50 py-4 dark:bg-yellow-900/20">
-                    <ThemedText themeColor="warning" className="text-4xl font-bold">
-                      ₹{activity.convenience_fee}
-                    </ThemedText>
-                    <ThemedText themeColor="warning" className="text-sm font-semibold">
+                  <View style={styles.priceBox}>
+                    <Text style={styles.priceValue}>₹{activity.convenience_fee}</Text>
+                    <Text style={styles.priceCaption}>
                       for {formatDuration(activity.duration_minutes)}? Steal.
-                    </ThemedText>
+                    </Text>
                   </View>
                 )}
               </View>
@@ -455,36 +502,162 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
-        {error && (
-          <ThemedText type="default" themeColor="error" className="mt-4">
-            {error}
-          </ThemedText>
-        )}
+        {error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
 
       {/* Navigation buttons */}
-      <View className="gap-3 px-6 pb-8">
-        <Pressable
-          onPress={handleBack}
-          className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
-        >
-          <ThemedText className="text-center font-semibold">← Back</ThemedText>
+      <View style={{ width: contentWidth, alignSelf: 'center', paddingBottom: 32, paddingTop: 12, gap: 14 }}>
+        <Pressable onPress={handleBack} hitSlop={8}>
+          <Text style={styles.backLabel}>← Back</Text>
         </Pressable>
 
-        <Pressable
+        <AuthButton
+          label={currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next  →'}
           onPress={handleNext}
-          disabled={!canProceedToNextStep() || isLoading}
-          className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next →'}
-            </ThemedText>
-          )}
-        </Pressable>
+          loading={isLoading}
+          disabled={!canProceedToNextStep()}
+          style={{ width: contentWidth }}
+        />
       </View>
-    </ThemedView>
+    </View>
   );
 }
+
+function SummaryRow({
+  icon,
+  iconSource,
+  label,
+}: {
+  icon?: any;
+  iconSource?: any;
+  label: string;
+}) {
+  return (
+    <View>
+      <View style={styles.summaryRow}>
+        <Image source={icon ?? iconSource} style={styles.summaryIcon} resizeMode="contain" />
+        <Text style={styles.summaryLabel}>{label}</Text>
+      </View>
+      <View style={styles.summaryDivider} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  scroll: {
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingHorizontal: 16,
+  },
+  stepCounter: {
+    color: Palette.muted,
+    fontSize: 13,
+  },
+  activityLabel: {
+    color: Palette.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: Palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  pillContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    gap: 10,
+  },
+  pillStar: {
+    width: 16,
+    height: 16,
+  },
+  pillLabel: {
+    color: Palette.line,
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+  },
+  pillCheck: {
+    color: Palette.line,
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  cardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    gap: 10,
+  },
+  cardLabel: {
+    color: Palette.line,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  summaryContent: {
+    padding: '10%',
+    justifyContent: 'space-evenly',
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  summaryDivider: {
+    height: 1,
+    backgroundColor: Palette.ring,
+    opacity: 0.4,
+    marginTop: 10,
+  },
+  summaryIcon: {
+    width: 32,
+    height: 32,
+  },
+  summaryLabel: {
+    color: Palette.line,
+    fontSize: 17,
+    fontWeight: '700',
+    flex: 1,
+  },
+  priceBox: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  priceValue: {
+    color: Palette.line,
+    fontSize: 34,
+    fontWeight: '800',
+  },
+  priceCaption: {
+    color: Palette.line,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  error: {
+    color: Palette.error,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  backLabel: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+});

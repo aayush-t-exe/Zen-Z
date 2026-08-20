@@ -26,11 +26,13 @@ export function AuthButton({
   label,
   onPress,
   loading = false,
+  disabled = false,
   style,
 }: {
   label: string;
   onPress: () => void;
   loading?: boolean;
+  disabled?: boolean;
   style?: object;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -40,11 +42,11 @@ export function AuthButton({
       onPress={onPress}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
-      disabled={loading}
+      disabled={loading || disabled}
       accessibilityRole="button"
-      accessibilityState={{ busy: loading }}
+      accessibilityState={{ busy: loading, disabled }}
       accessibilityLabel={label}
-      style={[styles.ring, style]}>
+      style={[styles.ring, disabled && styles.ringDisabled, style]}>
       <View style={[styles.pill, pressed && styles.pillPressed]}>
         {loading ? (
           <ActivityIndicator color={Palette.line} />
@@ -64,6 +66,9 @@ const styles = StyleSheet.create({
     borderRadius: PILL_HEIGHT / 2 + RING_GAP + RING_BORDER,
     padding: RING_GAP,
     backgroundColor: Palette.canvas,
+  },
+  ringDisabled: {
+    opacity: 0.4,
   },
   pill: {
     backgroundColor: Palette.paper,

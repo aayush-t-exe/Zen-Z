@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Tabs } from 'expo-router';
 import { TabBarIcon } from '@/components/tab-bar-icon';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { useAuthStore } from '@/store/auth';
 import { registerForPushNotificationsAsync, addNotificationResponseListener } from '@/lib/notifications';
 
@@ -19,10 +20,11 @@ export default function HomeLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#000',
-        tabBarInactiveTintColor: '#999',
+        tabBarActiveTintColor: Palette.text,
+        tabBarInactiveTintColor: Palette.dotIdle,
         tabBarStyle: {
-          borderTopColor: '#e5e7eb',
+          backgroundColor: Palette.canvas,
+          borderTopColor: Palette.ring,
           borderTopWidth: 1,
           paddingBottom: 4,
           paddingTop: 8,
@@ -34,28 +36,28 @@ export default function HomeLayout() {
         name="index"
         options={{
           title: 'Discover',
-          tabBarIcon: ({ color }) => <TabBarIcon name="compass" color={color} />,
+          tabBarIcon: ({ focused }) => <TabBarIcon name="compass" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="bookings"
         options={{
           title: 'Bookings',
-          tabBarIcon: ({ color }) => <TabBarIcon name="calendar" color={color} />,
+          tabBarIcon: ({ focused }) => <TabBarIcon name="calendar" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="chats"
         options={{
           title: 'Chats',
-          tabBarIcon: ({ color }) => <TabBarIcon name="message-circle" color={color} />,
+          tabBarIcon: ({ focused }) => <TabBarIcon name="message-circle" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <TabBarIcon name="user" color={color} />,
+          tabBarIcon: ({ focused }) => <TabBarIcon name="user" focused={focused} />,
         }}
       />
       {/* Flow screens reached via router.push, not persistent tab destinations */}

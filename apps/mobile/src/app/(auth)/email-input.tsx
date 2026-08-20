@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   TextInput,
@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Animated,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -25,11 +26,39 @@ export default function EmailInputScreen() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const setAuthError = useAuthStore((state) => state.setError);
 
   const headerWidth = Math.min(360, screenWidth - 40);
   const fieldWidth = Math.min(358, screenWidth - 30);
   const fieldHeight = fieldWidth * FIELD_RATIO;
+
+  // The native cursor for an empty, center-aligned TextInput renders off to
+  // one side on both iOS and Android instead of at the visual center — a
+  // platform caret-gravity quirk, not something `textAlign` controls. So
+  // while the field is empty and focused we hide the real caret and blink
+  // this centered fake one in its place; once there's text, the native
+  // caret is accurately positioned by the (now non-empty) content and takes
+  // back over.
+  const showFakeCaret = isFocused && email.length === 0;
+  const [caretOpacity] = useState(() => new Animated.Value(1));
+
+  useEffect(() => {
+    if (!showFakeCaret) return;
+
+    const blink = Animated.loop(
+      Animated.sequence([
+        Animated.timing(caretOpacity, { toValue: 0, duration: 530, useNativeDriver: true }),
+        Animated.timing(caretOpacity, { toValue: 1, duration: 530, useNativeDriver: true }),
+      ])
+    );
+    blink.start();
+
+    return () => {
+      blink.stop();
+      caretOpacity.setValue(1);
+    };
+  }, [showFakeCaret, caretOpacity]);
 
   const handleContinue = async () => {
     if (!email.trim()) {
@@ -99,6 +128,8 @@ export default function EmailInputScreen() {
               setEmail(text);
               setError('');
             }}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
             editable={!isLoading}
             autoCapitalize="none"
             autoCorrect={false}
@@ -107,6 +138,8 @@ export default function EmailInputScreen() {
             returnKeyType="go"
             onSubmitEditing={handleContinue}
             accessibilityLabel="Email address"
+            caretHidden={showFakeCaret}
+            cursorColor={showFakeCaret ? 'transparent' : Palette.fieldInk}
             // Sits inside the drawn bubble, clear of its wobbly edges and tail.
             style={[
               styles.input,
@@ -118,6 +151,21 @@ export default function EmailInputScreen() {
               },
             ]}
           />
+          {showFakeCaret ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.fakeCaret,
+                {
+                  left: fieldWidth / 2,
+                  top: fieldHeight * 0.22 + fieldHeight * 0.36 * 0.2,
+                  height: fieldHeight * 0.36 * 0.6,
+                  backgroundColor: Palette.fieldInk,
+                  opacity: caretOpacity,
+                },
+              ]}
+            />
+          ) : null}
         </View>
 
         {error ? (
@@ -169,6 +217,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textAlignVertical: 'center',
     padding: 0,
+  },
+  fakeCaret: {
+    position: 'absolute',
+    width: 1.5,
+    borderRadius: 1,
   },
   error: {
     color: Palette.error,

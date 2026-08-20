@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Pressable, Image, ActivityIndicator, StyleSheet } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 
 interface BookingDetails {
@@ -17,6 +17,23 @@ interface BookingDetails {
 
 const PAYMENT_POLL_ATTEMPTS = 5;
 const PAYMENT_POLL_DELAY_MS = 1500;
+
+// Games like 8-Ball Pool and Pickleball have a fixed group size (min ===
+// max) — "group of 4–4" reads as a typo, so collapse it to a single number.
+const formatGroupSize = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
+
+const ACTIVITY_ICONS: Record<string, any> = {
+  Cafés: require('@/assets/images/icon-cafes.png'),
+  Dinners: require('@/assets/images/icon-dinners.png'),
+  Movies: require('@/assets/images/icon-movies.png'),
+  Sports: require('@/assets/images/icon-sports.png'),
+  // A Sports booking carries the specific game's name (not "Sports") —
+  // same gap that left the booking-flow summary icon blank for these.
+  'Box Cricket': require('@/assets/images/icon-cricket.png'),
+  Football: require('@/assets/images/icon-football.png'),
+  '8-Ball Pool': require('@/assets/images/icon-pool.png'),
+  Pickleball: require('@/assets/images/icon-pickleball.png'),
+};
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -170,32 +187,21 @@ export default function PaymentScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <View style={[styles.root, styles.centered]}>
+        <ActivityIndicator size="large" color={Palette.text} />
+      </View>
     );
   }
 
   if (!booking) {
     return (
-      <ThemedView className="flex-1 items-center justify-center px-6">
-        <View className="gap-4">
-          <ThemedText type="title" className="text-xl">
-            Booking Not Found
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            {error || 'Could not load your booking.'}
-          </ThemedText>
-          <Pressable
-            onPress={() => router.push('/(home)')}
-            className="rounded-lg bg-white py-3 px-4"
-          >
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Go Back
-            </ThemedText>
-          </Pressable>
+      <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
+        <View style={{ gap: 14 }}>
+          <Text style={styles.title}>Booking Not Found</Text>
+          <Text style={styles.subtitle}>{error || 'Could not load your booking.'}</Text>
+          <AuthButton label="Go Back" onPress={() => router.push('/(home)')} />
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -204,146 +210,190 @@ export default function PaymentScreen() {
 
   if (booking.payment_status === 'paid') {
     return (
-      <ThemedView className="flex-1 items-center justify-center px-6">
-        <View className="items-center gap-4">
-          <ThemedText className="text-5xl">🔒</ThemedText>
-          <ThemedText type="title" className="text-center text-2xl">
-            Your invitation is sealed
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary" className="text-center">
+      <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
+        <View style={{ alignItems: 'center', gap: 14 }}>
+          <Text style={{ fontSize: 44 }}>🔒</Text>
+          <Text style={[styles.title, { textAlign: 'center' }]}>Your invitation is sealed</Text>
+          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
             We&apos;ll let you know once your table is set.
-          </ThemedText>
-          <Pressable
-            onPress={() => router.push('/(home)')}
-            className="mt-4 rounded-lg bg-white px-6 py-3"
-          >
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue →
-            </ThemedText>
-          </Pressable>
+          </Text>
+          <AuthButton label="Continue  →" onPress={() => router.push('/(home)')} style={{ marginTop: 8 }} />
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
   return (
-    <ThemedView className="flex-1">
-      <ScrollView className="flex-1 px-6 py-8">
-        <View className="gap-6">
-          <View className="gap-2">
-            <ThemedText type="title" className="text-2xl">
-              Unlock Your Adventure
-            </ThemedText>
-            <ThemedText type="default" themeColor="textSecondary">
-              Complete your payment to confirm your spot
-            </ThemedText>
-          </View>
-
-          {/* Order Summary */}
-          <View className="rounded-2xl bg-white px-6 py-8 dark:bg-gray-900">
-            <View className="gap-6">
-              <View className="gap-3 items-center">
-                <ThemedText className="text-5xl">
-                  {activity?.emoji}
-                </ThemedText>
-                <ThemedText className="text-lg font-semibold">
-                  {activity?.name}
-                </ThemedText>
-              </View>
-
-              {/* Amount */}
-              <View className="border-t border-gray-300 pt-6 dark:border-gray-700">
-                <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-                  Convenience fee
-                </ThemedText>
-                <ThemedText className="text-3xl font-bold">
-                  ₹{fee}
-                </ThemedText>
-              </View>
-
-              {/* What's included */}
-              <View className="gap-2 border-t border-gray-300 pt-4 dark:border-gray-700">
-                <ThemedText type="default" className="text-sm font-semibold">
-                  Your unlock includes:
-                </ThemedText>
-                <View className="gap-2">
-                  <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    ✓ Spot reserved in group of {activity?.min_group_size ?? 4}–{activity?.max_group_size ?? 5}
-                  </ThemedText>
-                  <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    ✓ Matched with compatible group
-                  </ThemedText>
-                  <ThemedText type="default" themeColor="textSecondary" className="text-sm">
-                    ✓ Venue revealed before event
-                  </ThemedText>
-                </View>
-              </View>
-            </View>
-          </View>
-
-          {hasAttemptedPayment && booking.payment_status !== 'paid' && (
-            <View className="rounded-lg border border-gray-300 px-4 py-3 dark:border-gray-600">
-              <ThemedText type="default" className="text-sm font-semibold">
-                We haven&apos;t received your payment yet
-              </ThemedText>
-              <ThemedText type="default" themeColor="textSecondary" className="mt-1 text-sm">
-                If you completed payment, give it a moment and check again.
-              </ThemedText>
-            </View>
-          )}
-
-          {error && (
-            <ThemedText type="default" themeColor="error">
-              {error}
-            </ThemedText>
-          )}
-
-          {isTestMode && (
-            <View className="rounded-lg bg-yellow-50 px-4 py-3 dark:bg-yellow-900/20">
-              <ThemedText type="default" themeColor="warning" className="text-xs">
-                Test mode: this is a simulated Razorpay payment, no real money moves.
-              </ThemedText>
-            </View>
-          )}
+    <View style={styles.root}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={{ gap: 6, marginBottom: 20 }}>
+          <Text style={styles.title}>Unlock Your Adventure</Text>
+          <Text style={styles.subtitle}>Complete your payment to confirm your spot</Text>
         </View>
+
+        {/* Order Summary */}
+        <View style={styles.card}>
+          <View style={{ alignItems: 'center', gap: 10 }}>
+            <Image
+              source={ACTIVITY_ICONS[activity?.name]}
+              style={{ width: 40, height: 40 }}
+              resizeMode="contain"
+            />
+            <Text style={styles.activityName}>{activity?.name}</Text>
+          </View>
+
+          <View style={[styles.cardSection, { alignItems: 'center' }]}>
+            <Text style={styles.cardLabel}>Convenience fee</Text>
+            <Text style={styles.feeValue}>₹{fee}</Text>
+          </View>
+
+          <View style={styles.cardSection}>
+            <Text style={styles.includesTitle}>Your unlock includes:</Text>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.includesItem}>
+                ✓ Spot reserved in group of {formatGroupSize(activity?.min_group_size ?? 4, activity?.max_group_size ?? 5)}
+              </Text>
+              <Text style={styles.includesItem}>✓ Matched with compatible group</Text>
+              <Text style={styles.includesItem}>✓ Venue revealed before event</Text>
+            </View>
+          </View>
+        </View>
+
+        {hasAttemptedPayment && booking.payment_status !== 'paid' && (
+          <View style={[styles.noticeBox, { marginTop: 20 }]}>
+            <Text style={styles.noticeTitle}>We haven&apos;t received your payment yet</Text>
+            <Text style={styles.noticeBody}>
+              If you completed payment, give it a moment and check again.
+            </Text>
+          </View>
+        )}
+
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+
+        {isTestMode && (
+          <View style={[styles.noticeBox, { marginTop: 20 }]}>
+            <Text style={styles.noticeBody}>
+              Test mode: this is a simulated Razorpay payment, no real money moves.
+            </Text>
+          </View>
+        )}
       </ScrollView>
 
       {/* Payment Button */}
-      <View className="gap-3 px-6 pb-8">
+      <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 14 }}>
         {hasAttemptedPayment && booking.payment_status !== 'paid' && (
-          <Pressable
-            onPress={handleCheckAgain}
-            disabled={isProcessing}
-            className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
-          >
-            <ThemedText className="text-center font-semibold">Check Again</ThemedText>
+          <Pressable onPress={handleCheckAgain} disabled={isProcessing} style={styles.secondaryButton}>
+            <Text style={styles.secondaryLabel}>Check Again</Text>
           </Pressable>
         )}
 
-        <Pressable
+        <AuthButton
+          label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
           onPress={handlePay}
-          disabled={isProcessing}
-          className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
-        >
-          {isProcessing ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              {hasAttemptedPayment ? 'Try Again →' : `Pay ₹${fee} to Unlock →`}
-            </ThemedText>
-          )}
-        </Pressable>
+          loading={isProcessing}
+        />
 
-        <Pressable
-          onPress={() => router.push('/(home)')}
-          disabled={isProcessing}
-          className="rounded-lg border border-gray-300 py-3 px-4 dark:border-gray-600"
-        >
-          <ThemedText className="text-center font-semibold">
-            Maybe Later
-          </ThemedText>
+        <Pressable onPress={() => router.push('/(home)')} disabled={isProcessing} style={styles.secondaryButton}>
+          <Text style={styles.secondaryLabel}>Maybe Later</Text>
         </Pressable>
       </View>
-    </ThemedView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  centered: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 24,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: Palette.muted,
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  card: {
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    borderRadius: 20,
+    padding: 20,
+    gap: 18,
+  },
+  cardSection: {
+    borderTopWidth: 1,
+    borderTopColor: Palette.ring,
+    paddingTop: 16,
+    gap: 6,
+  },
+  activityName: {
+    color: Palette.text,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  cardLabel: {
+    color: Palette.muted,
+    fontSize: 12,
+  },
+  feeValue: {
+    color: Palette.text,
+    fontSize: 30,
+    fontWeight: '800',
+  },
+  includesTitle: {
+    color: Palette.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  includesItem: {
+    color: Palette.muted,
+    fontSize: 14,
+  },
+  noticeBox: {
+    borderWidth: 2,
+    borderColor: Palette.ring,
+    borderRadius: 14,
+    padding: 14,
+    gap: 4,
+  },
+  noticeTitle: {
+    color: Palette.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  noticeBody: {
+    color: Palette.muted,
+    fontSize: 13,
+  },
+  error: {
+    color: Palette.error,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 20,
+  },
+  secondaryButton: {
+    borderWidth: 2,
+    borderColor: Palette.ring,
+    borderRadius: 27,
+    paddingVertical: 14,
+  },
+  secondaryLabel: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+});

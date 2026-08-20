@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { View, Pressable, ScrollView, Image, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import * as Linking from 'expo-linking';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -14,6 +15,7 @@ export default function ProfileScreen() {
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoLoading, setPhotoLoading] = useState(true);
+  const [isDialing, setIsDialing] = useState(false);
 
   useEffect(() => {
     const loadPhoto = async () => {
@@ -45,6 +47,18 @@ export default function ProfileScreen() {
     loadPhoto();
   }, [user?.id]);
 
+  const dialEmergencyContact = async (fetchPhone: () => Promise<string | null>) => {
+    if (isDialing) return;
+    setIsDialing(true);
+
+    const phone = await fetchPhone();
+    if (phone) {
+      await Linking.openURL(`tel:${phone}`);
+    }
+
+    setIsDialing(false);
+  };
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -57,59 +71,129 @@ export default function ProfileScreen() {
   };
 
   return (
-    <ThemedView className="flex-1">
-      <ScrollView className="flex-1 px-6 py-8">
-        <ThemedText type="title" className="mb-6 text-xl">
-          Your Profile
-        </ThemedText>
+    <View style={styles.root}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={styles.pageTitle}>Your Profile</Text>
 
-        <View className="mb-6 items-center">
+        <View style={{ alignItems: 'center', marginBottom: 24 }}>
           {photoLoading ? (
-            <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <ActivityIndicator />
+            <View style={styles.photo}>
+              <ActivityIndicator color={Palette.text} />
             </View>
           ) : photoUrl ? (
-            <Image
-              source={{ uri: photoUrl }}
-              className="h-24 w-24 rounded-full bg-gray-100 dark:bg-gray-800"
-            />
+            <Image source={{ uri: photoUrl }} style={styles.photo} />
           ) : (
-            <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
-              <ThemedText className="text-3xl">📷</ThemedText>
+            <View style={styles.photo}>
+              <Text style={{ fontSize: 28 }}>📷</Text>
             </View>
           )}
         </View>
 
-        <View className="mb-6 gap-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-          <View>
-            <ThemedText type="default" className="font-semibold">
-              Email
-            </ThemedText>
-            <ThemedText type="default" themeColor="textSecondary" className="mt-1">
-              {user?.email || 'Not set'}
-            </ThemedText>
-          </View>
+        <View style={styles.card}>
+          <Text style={styles.fieldLabel}>Email</Text>
+          <Text style={styles.fieldValue}>{user?.email || 'Not set'}</Text>
         </View>
 
-        <View className="mb-8 gap-2">
-          <ThemedText type="default" themeColor="textSecondary" className="text-xs font-semibold uppercase">
-            Account
-          </ThemedText>
+        <View style={{ marginTop: 24, gap: 10 }}>
+          <Text style={styles.sectionLabel}>Account</Text>
 
           <Pressable
-            onPress={handleSignOut}
-            className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-700 dark:bg-red-900"
+            onPress={() => dialEmergencyContact(fetchEmergencyContactPhone)}
+            disabled={isDialing}
+            style={styles.actionCard}
           >
-            <ThemedText themeColor="error" className="text-center font-semibold">
-              Sign Out
-            </ThemedText>
+            <Text style={styles.actionLabel}>Need help now</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => dialEmergencyContact(fetchEmergencyContactPhoneBackup)}
+            disabled={isDialing}
+            style={styles.actionCard}
+          >
+            <Text style={styles.actionLabel}>Need help now (backup)</Text>
+          </Pressable>
+
+          <Pressable onPress={handleSignOut} style={[styles.actionCard, styles.signOutCard]}>
+            <Text style={[styles.actionLabel, styles.signOutLabel]}>Sign Out</Text>
           </Pressable>
         </View>
 
-        <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-          App Version: 1.0.0
-        </ThemedText>
+        <Text style={styles.versionText}>App Version: 1.0.0</Text>
       </ScrollView>
-    </ThemedView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 40,
+  },
+  pageTitle: {
+    color: Palette.text,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 24,
+  },
+  photo: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    borderRadius: 20,
+    padding: 16,
+    gap: 4,
+  },
+  fieldLabel: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  fieldValue: {
+    color: Palette.muted,
+    fontSize: 14,
+  },
+  sectionLabel: {
+    color: Palette.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  actionCard: {
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+  },
+  actionLabel: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  signOutCard: {
+    borderColor: Palette.error,
+  },
+  signOutLabel: {
+    color: Palette.error,
+  },
+  versionText: {
+    color: Palette.muted,
+    fontSize: 12,
+    marginTop: 32,
+  },
+});
