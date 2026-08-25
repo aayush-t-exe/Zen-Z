@@ -77,7 +77,7 @@ Group Chat → Event Day → Feedback
 └─────────────────────────────┘
 ```
 - **[NEW DETAIL]** The privacy line ("seen only by our team... never by other members") is shown directly on the upload screen, not buried in a settings page — this is a trust-critical disclosure given the new no-verification model and must be explicit at the point of capture, not just in a privacy policy.
-- **[ASSUMPTION]** A WhatsApp number field is collected here, separate from the auth method (email or phone OTP). This is for founder-to-group event-day logistics (venue changes, reminders) and is not an identity check — it doesn't gate anything, isn't used for OTP, and has no verification step. Stored in `profiles.phone`, the same column the phone-OTP auth path uses; email-OTP users simply populate it here instead of at sign-in.
+- **[ASSUMPTION]** A WhatsApp number field is collected here, separate from the auth method (email OTP — phone OTP was scoped but dropped before launch, see docs/ARCHITECTURE.md "Auth architecture"). This is for founder-to-group event-day logistics (venue changes, reminders) and is not an identity check — it doesn't gate anything, isn't used for OTP, and has no verification step. Stored in `profiles.phone`, which exists solely for this contact field now.
 
 ### 1.4 Modular Personality Quiz (Frontend Rendering)
 ```

@@ -27,9 +27,12 @@ before touching anything you're unsure about; don't guess at product rules.
   user-facing string, check docs/PRODUCT_SPEC.md's microcopy tables. Avoid
   copy like "Booking Confirmed" — prefer the established voice ("Your
   invitation is sealed").
-- **Auth: phone OTP OR email OTP, user's choice, never both required.** No
-  student ID, no student email domain check, no photo ID upload, no manual
-  identity verification anywhere in the product.
+- **Auth: email OTP only.** Phone/SMS OTP was scoped but dropped before it
+  was ever built — do not add a phone sign-in option. No student ID, no
+  student email domain check, no photo ID upload, no manual identity
+  verification anywhere in the product. Note: `profiles.phone` still exists,
+  but only holds a WhatsApp contact number collected at profile creation —
+  it is never an auth identity.
 
 ## Stack (locked — do not deviate without asking first)
 - Mobile: Expo + React Native + TypeScript + Expo Router + NativeWind +
@@ -40,8 +43,9 @@ before touching anything you're unsure about; don't guess at product rules.
   (Deno runtime)
 - Payments: Razorpay — server-side order creation + webhook verification.
   Never trust a client-reported "payment succeeded" state alone.
-- SMS OTP: MSG91 (India, DLT-compliant) · Email OTP: Brevo (custom SMTP —
-  do not rely on Supabase's default email sending in production)
+- Email OTP: Brevo (custom SMTP — do not rely on Supabase's default email
+  sending in production), migrating to Zoho ZeptoMail (10,000 free
+  emails/month). No SMS/phone OTP — dropped, see auth rule above.
 - Monorepo: npm workspaces — `apps/mobile`, `apps/admin`, `packages/shared`,
   `supabase/`
 - Matching engine: a Supabase Edge Function, not a separate backend service

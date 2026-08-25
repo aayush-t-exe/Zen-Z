@@ -5,17 +5,24 @@ picked and why" decision made before any code was written. Treat these as
 settled unless the founder explicitly reopens one.
 
 ## Auth architecture
+**Update (2026-08-25):** phone/SMS OTP was scoped but never built, and is no
+longer planned — **email OTP only.** The dual-auth design below is kept as a
+decision record. The `phone` column it introduced still exists, but now
+holds a WhatsApp contact number collected at profile creation, not an auth
+identity (see docs/PRODUCT_SPEC.md §1.3) — it is never used for sign-in.
+
 Supabase Auth natively supports phone OTP and email OTP as independent
-sign-in methods on the same project.
+sign-in methods on the same project; the original plan used both. That plan
+is superseded.
 
 | Decision | Choice | Why |
 |---|---|---|
-| Email delivery | 6-digit OTP code, not magic link | Magic links deep-link back into the app, which is finicky in Expo (cold-start handling, in-app browser interception). A code means phone and email share one input screen. |
-| Identity linking | Exactly one method per user, never both required | No merge logic, no "add a backup method" flow. |
+| Email delivery | 6-digit OTP code, not magic link | Magic links deep-link back into the app, which is finicky in Expo (cold-start handling, in-app browser interception). |
 | Profile creation | Postgres trigger (`handle_new_user()` on `auth.users` insert), not app-side code | Keeps every other table's foreign keys uniform regardless of which auth method a user picked — nothing downstream needs to know or care. |
 
-**Schema delta this forces** (apply as the first migration, not a rewrite of
-the rest of the schema in docs/PRODUCT_SPEC.md):
+**Schema delta this forced** (historical — applied in migration 0001; the
+`phone is not null` half of the identity check is now dead weight kept for
+backward compatibility, not an active auth path):
 ```sql
 alter table profiles alter column email drop not null;
 alter table profiles add column phone text;
@@ -29,8 +36,8 @@ never off email specifically.
 
 | Decision | Options considered | Choice | Why |
 |---|---|---|---|
-| SMS/phone OTP | Twilio vs. MSG91 | MSG91 | Better Indian carrier deliverability, and built around India's DLT compliance requirement (see below) — Twilio leaves that entirely on you. |
-| Email OTP delivery | Supabase default vs. custom SMTP | Brevo | Supabase's built-in email sending is rate-limited, not production-grade. Switched from an initial Resend pick (Milestone 20) — Brevo's free tier allows 300 emails/day vs. Resend's 100/day. |
+| SMS/phone OTP | Twilio vs. MSG91 | **Dropped (2026-08-25)** | Phone OTP was never built; email-only auth going forward. MSG91/DLT registration is no longer needed. |
+| Email OTP delivery | Supabase default vs. custom SMTP | Brevo, migrating to Zoho ZeptoMail | Supabase's built-in email sending is rate-limited, not production-grade. Switched from an initial Resend pick (Milestone 20) — Brevo's free tier allows 300 emails/day vs. Resend's 100/day. Next planned switch: Zoho ZeptoMail, which gives 10,000 free emails/month — OTP rate limiting is being deferred until that migration lands. |
 | Monorepo tooling | npm workspaces vs. pnpm vs. Turborepo/Nx | npm workspaces | Ships with Node, no extra tool to learn. Can graduate to Turborepo later without restructuring if build times become a problem. |
 | Mobile navigation | Expo Router vs. React Navigation directly | Expo Router | File-based routing, automatic deep linking (relevant to the OTP flow). |
 | Styling | NativeWind/Tailwind vs. StyleSheet vs. Tamagui | NativeWind (mobile) + Tailwind (admin) | One mental model across both apps; also what Claude Code generates most reliably. |
@@ -52,28 +59,14 @@ never off email specifically.
    `storage.objects` restrict read access to the uploading user's own folder
    and admins only.
 
-## India SMS compliance — DLT registration (start this immediately)
-Since 2020, TRAI requires any business sending SMS to Indian numbers —
-including OTP — to register on a DLT (Distributed Ledger Technology) platform,
-or telecom operators silently block the messages. Three phases, done in
-order:
+## Lead-time items to start early
+~~India SMS/DLT compliance (TRAI registration for MSG91)~~ — no longer
+applicable now that phone/SMS OTP has been dropped.
 
-| Phase | Typical turnaround |
-|---|---|
-| Entity registration | 2-7 business days |
-| Sender ID / header registration | 1-3 business days |
-| Message template registration (exact OTP wording) | 1-3 business days |
-
-Budget 1-2 weeks end to end. Register OTP templates under "Service Implicit,"
-not "Transactional" (that category is effectively reserved for banks now —
-getting this wrong causes silent delivery failures). MSG91 offers DLT
-registration assistance as part of onboarding — start that conversation
-early, well before the Auth milestone needs it working.
-
-**Other lead-time items worth starting in parallel, not when the relevant
-milestone arrives:** Razorpay business KYC, Apple Developer Program
-enrollment, Google Play Console account setup, Brevo account + domain
-verification.
+Items still worth starting in parallel, not when the relevant milestone
+arrives: Razorpay business KYC, Apple Developer Program enrollment, Google
+Play Console account setup, and email sending domain verification (Brevo
+today, Zoho ZeptoMail once that migration starts).
 
 ## Finalized dependency stack
 ```
