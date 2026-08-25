@@ -2,16 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Dark-only admin theme — mirrors the mobile app's Colors.dark
-   (apps/mobile/src/constants/theme.ts): black canvas, white text.
-   Pinning color-scheme (rather than leaving it to the OS) keeps native
-   form controls, scrollbars, etc. dark regardless of the admin's own
-   OS-level theme setting. */
+/* This app has no dark: variants anywhere — every screen is built
+   assuming a light background with dark text. `color-scheme: light dark`
+   combined with --foreground-rgb/--background-rgb never being defined
+   left `color`/`background` invalid, so browsers with a dark system
+   theme fell back to a white default text color — invisible on the
+   white buttons/cards used throughout (e.g. "+ New Group", unselected
+   activity buttons). Pinning color-scheme to light and setting real
+   values fixes that for every element that doesn't set its own
+   Tailwind text color. */
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
-  color: #ffffff;
-  background: #000000;
+  color: #111827;
+  background: #f9fafb;
 }

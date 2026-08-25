@@ -131,11 +131,11 @@ export default function StudentProfilePage() {
 
   if (error || !profile) {
     return (
-      <div className="min-h-screen bg-canvas flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-ink mb-4">Not Found</h1>
-          <p className="text-ink-muted mb-6">{error || 'Student profile could not be loaded'}</p>
-          <Link href="/matching" className="text-ink-muted hover:text-ink">
+          <h1 className="text-2xl font-bold mb-4">Not Found</h1>
+          <p className="text-gray-600 mb-6">{error || 'Student profile could not be loaded'}</p>
+          <Link href="/matching" className="text-blue-600 hover:text-blue-800">
             ← Back to matching
           </Link>
         </div>
@@ -149,10 +149,10 @@ export default function StudentProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="bg-surface border-b border-line">
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b">
         <div className="max-w-3xl mx-auto px-6 py-4">
-          <Link href="/matching" className="text-ink-muted hover:text-ink text-sm font-medium">
+          <Link href="/matching" className="text-blue-600 hover:text-blue-800 text-sm font-medium">
             ← Back to matching
           </Link>
         </div>
@@ -160,25 +160,25 @@ export default function StudentProfilePage() {
 
       <main className="max-w-3xl mx-auto px-6 py-8">
         {/* Profile Header */}
-        <div className="bg-surface rounded-lg border border-line p-8 mb-8">
+        <div className="bg-white rounded-lg border p-8 mb-8">
           <div className="flex gap-6 items-start mb-6">
             {photoUrl ? (
               <img
                 src={photoUrl}
                 alt={profile.full_name}
-                className="w-24 h-24 rounded-lg object-cover bg-surface-selected"
+                className="w-24 h-24 rounded-lg object-cover bg-gray-200"
               />
             ) : (
-              <div className="w-24 h-24 rounded-lg bg-surface-selected flex items-center justify-center text-4xl">
+              <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center text-4xl">
                 📷
               </div>
             )}
             <div className="flex-1">
-              <h1 className="text-3xl font-bold text-ink mb-2">{profile.full_name}</h1>
-              <p className="text-ink-muted mb-4">
+              <h1 className="text-3xl font-bold mb-2">{profile.full_name}</h1>
+              <p className="text-gray-600 mb-4">
                 {profile.gender ? profile.gender.charAt(0).toUpperCase() : '—'} · {profile.year_of_study}{getYearSuffix(profile.year_of_study)} year
               </p>
-              <div className="text-sm text-ink-muted space-y-1">
+              <div className="text-sm text-gray-600 space-y-1">
                 <p>Email: {profile.email}</p>
                 {profile.phone && <p>Phone: {profile.phone}</p>}
               </div>
@@ -187,11 +187,11 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Personality Profile */}
-        <div className="bg-surface rounded-lg border border-line p-8 mb-8">
-          <h2 className="text-2xl font-bold text-ink mb-6">Personality Profile</h2>
+        <div className="bg-white rounded-lg border p-8 mb-8">
+          <h2 className="text-2xl font-bold mb-6">Personality Profile</h2>
 
           {dimensions.length === 0 ? (
-            <p className="text-ink-muted">No personality dimensions available yet</p>
+            <p className="text-gray-600">No personality dimensions available yet</p>
           ) : (
             <div className="space-y-6">
               {dimensions.map(dim => {
@@ -201,12 +201,12 @@ export default function StudentProfilePage() {
                 return (
                   <div key={dim.id}>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="font-medium text-ink">{dim.label}</label>
-                      <span className="text-sm font-semibold text-ink-muted">{percentage}%</span>
+                      <label className="font-medium text-gray-900">{dim.label}</label>
+                      <span className="text-sm font-semibold text-gray-600">{percentage}%</span>
                     </div>
-                    <div className="w-full bg-surface-selected rounded-full h-2">
+                    <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-ink h-2 rounded-full transition-all"
+                        className="bg-gray-900 h-2 rounded-full transition-all"
                         style={{ width: `${percentage}%` }}
                       ></div>
                     </div>
@@ -218,19 +218,19 @@ export default function StudentProfilePage() {
         </div>
 
         {/* Raw Answers */}
-        <div className="bg-surface rounded-lg border border-line p-8">
-          <h2 className="text-2xl font-bold text-ink mb-6">Quiz Responses</h2>
+        <div className="bg-white rounded-lg border p-8">
+          <h2 className="text-2xl font-bold mb-6">Quiz Responses</h2>
 
           {answers.length === 0 ? (
-            <p className="text-ink-muted">No responses yet</p>
+            <p className="text-gray-600">No responses yet</p>
           ) : (
             <div className="space-y-6">
               {answers.map(answer => (
-                <div key={answer.question_id} className="pb-6 border-b border-line last:border-b-0">
-                  <h3 className="font-semibold text-ink mb-2">
+                <div key={answer.question_id} className="pb-6 border-b last:border-b-0">
+                  <h3 className="font-semibold text-gray-900 mb-2">
                     {answer.question.prompt}
                   </h3>
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-sm text-gray-600">
                     {answer.scale_value !== null
                       ? `Selected: ${answer.scale_value}`
                       : answer.selected_option_ids

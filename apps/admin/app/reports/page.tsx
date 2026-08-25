@@ -18,7 +18,6 @@ interface Report {
   reason: string | null;
   status: 'open' | 'resolved' | 'dismissed';
   created_at: string;
-  message_id: string | null;
   reporter: ReportPerson | null;
   reported: ReportPerson | null;
   group: {
@@ -28,13 +27,6 @@ interface Report {
   } | null;
 }
 
-interface RevealedMessage {
-  content: string | null;
-  is_deleted: boolean;
-  sender_id: string;
-  created_at: string;
-}
-
 export default function ReportsPage() {
   const { status } = useAdminGuard();
   const [reports, setReports] = useState<Report[]>([]);
@@ -42,8 +34,6 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actingOnId, setActingOnId] = useState<string | null>(null);
-  const [revealedMessages, setRevealedMessages] = useState<Record<string, RevealedMessage>>({});
-  const [revealingId, setRevealingId] = useState<string | null>(null);
 
   const loadReports = async () => {
     setLoading(true);
@@ -52,7 +42,7 @@ export default function ReportsPage() {
     const { data, error: fetchError } = await supabase
       .from('reports')
       .select(
-        `id, reason, status, created_at, message_id,
+        `id, reason, status, created_at,
          reporter:reporter_id ( id, full_name, photo_url ),
          reported:reported_user_id ( id, full_name, photo_url ),
          groups:group_id (
@@ -73,7 +63,6 @@ export default function ReportsPage() {
       reason: r.reason,
       status: r.status,
       created_at: r.created_at,
-      message_id: r.message_id,
       reporter: r.reporter,
       reported: r.reported,
       group: r.groups?.slots
@@ -114,25 +103,6 @@ export default function ReportsPage() {
     setActingOnId(null);
   };
 
-  // Message content is never included in the reports query above (see
-  // docs/ARCHITECTURE.md "Chat privacy") — this is the one deliberate,
-  // logged exception: each call inserts an audit row in
-  // report_message_reveals via the RPC before returning content.
-  const revealMessage = async (reportId: string) => {
-    setRevealingId(reportId);
-    const { data, error: revealError } = await supabase
-      .rpc('reveal_reported_message', { p_report_id: reportId })
-      .single();
-
-    if (revealError) {
-      console.error('Error revealing message:', revealError);
-      setError('Failed to reveal that message');
-    } else {
-      setRevealedMessages((prev) => ({ ...prev, [reportId]: data as RevealedMessage }));
-    }
-    setRevealingId(null);
-  };
-
   if (status === 'checking') {
     return <AdminAuthLoading />;
   }
@@ -153,31 +123,31 @@ export default function ReportsPage() {
         <img
           src={photoFor(person)}
           alt={person?.full_name}
-          className="w-8 h-8 rounded-lg object-cover bg-surface-selected"
+          className="w-8 h-8 rounded-lg object-cover bg-gray-200"
         />
       ) : (
-        <div className="w-8 h-8 rounded-lg bg-surface-selected flex items-center justify-center text-xs">
+        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-xs">
           📷
         </div>
       )}
       <div>
-        <p className="text-[11px] uppercase tracking-wide text-ink-muted">{label}</p>
-        <p className="text-sm font-medium text-ink">{person?.full_name ?? 'Unknown'}</p>
+        <p className="text-[11px] uppercase tracking-wide text-gray-400">{label}</p>
+        <p className="text-sm font-medium text-gray-900">{person?.full_name ?? 'Unknown'}</p>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="bg-surface border-b border-line sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-ink-muted hover:text-ink">
+            <Link href="/" className="text-blue-600 hover:text-blue-800">
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-bold text-ink">Reports</h1>
+            <h1 className="text-2xl font-bold">Reports</h1>
           </div>
-          <Link href="/analytics" className="text-sm text-ink-muted hover:text-ink">
+          <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
             Analytics →
           </Link>
         </div>
@@ -185,79 +155,53 @@ export default function ReportsPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
           </div>
         ) : (
           <>
             <section className="mb-10">
-              <h2 className="text-lg font-semibold text-ink mb-1">Open ({openReports.length})</h2>
-              <p className="text-sm text-ink-muted mb-4">
+              <h2 className="text-lg font-semibold mb-1">Open ({openReports.length})</h2>
+              <p className="text-sm text-gray-500 mb-4">
                 Reported students aren&apos;t paused automatically — they&apos;re flagged with a warning badge
                 in the matching queue so you can watch for a pattern before acting.
               </p>
               {openReports.length === 0 ? (
-                <div className="bg-surface rounded-lg border border-line p-8 text-center text-ink-muted">
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
                   No open reports.
                 </div>
               ) : (
                 <div className="space-y-4">
                   {openReports.map((report) => (
-                    <div key={report.id} className="bg-surface rounded-lg border border-line p-5">
+                    <div key={report.id} className="bg-white rounded-lg border p-5">
                       <div className="flex flex-wrap items-center gap-6 mb-3">
                         <PersonBadge person={report.reporter} label="Reported by" />
                         <PersonBadge person={report.reported} label="Reported" />
                       </div>
-                      <p className="text-sm text-ink mb-2">{report.reason || 'No reason given'}</p>
-                      <p className="text-xs text-ink-muted mb-4">
+                      <p className="text-sm text-gray-800 mb-2">{report.reason || 'No reason given'}</p>
+                      <p className="text-xs text-gray-500 mb-4">
                         {report.group &&
                           `${report.group.activity_emoji} ${report.group.activity_name} · ${formatSlotDateTime(report.group.slot_datetime)} · `}
                         Filed {new Date(report.created_at).toLocaleString('en-IN')}
                       </p>
-                      {report.message_id && (
-                        <div className="mb-4">
-                          {revealedMessages[report.id] ? (
-                            <div className="rounded-lg border border-warn/30 bg-warn/10 px-3 py-2">
-                              <p className="text-[11px] uppercase tracking-wide text-warn mb-1">
-                                Flagged message · revealed, logged
-                              </p>
-                              <p className="text-sm text-ink">
-                                {revealedMessages[report.id].is_deleted
-                                  ? 'Message was deleted by the sender before review.'
-                                  : revealedMessages[report.id].content}
-                              </p>
-                            </div>
-                          ) : (
-                            <button
-                              disabled={revealingId === report.id}
-                              onClick={() => revealMessage(report.id)}
-                              className="px-3 py-1.5 rounded-lg border border-warn/30 bg-warn/10 text-warn text-xs font-medium disabled:opacity-50 hover:bg-warn/20"
-                            >
-                              {revealingId === report.id
-                                ? 'Revealing…'
-                                : '⚠ Reveal flagged message (logged)'}
-                            </button>
-                          )}
-                        </div>
-                      )}
                       <div className="flex gap-2">
                         <button
                           disabled={actingOnId === report.id}
                           onClick={() => setReportStatus(report.id, 'resolved')}
-                          className="px-4 py-2 rounded-lg bg-ink text-black text-sm font-medium disabled:opacity-50"
+                          className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium disabled:opacity-50"
                         >
                           Mark resolved
                         </button>
                         <button
                           disabled={actingOnId === report.id}
                           onClick={() => setReportStatus(report.id, 'dismissed')}
-                          className="px-4 py-2 rounded-lg border border-line text-ink text-sm font-medium disabled:opacity-50 hover:bg-surface-selected"
+                          className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium disabled:opacity-50 hover:bg-gray-50"
                         >
                           Dismiss
                         </button>
@@ -265,7 +209,7 @@ export default function ReportsPage() {
                           href={`/student/${report.reported?.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="px-4 py-2 rounded-lg border border-line text-ink text-sm font-medium hover:bg-surface-selected"
+                          className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50"
                         >
                           View reported student
                         </a>
@@ -277,25 +221,25 @@ export default function ReportsPage() {
             </section>
 
             <section>
-              <h2 className="text-lg font-semibold text-ink mb-4">History ({closedReports.length})</h2>
+              <h2 className="text-lg font-semibold mb-4">History ({closedReports.length})</h2>
               {closedReports.length === 0 ? (
-                <div className="bg-surface rounded-lg border border-line p-8 text-center text-ink-muted">
+                <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
                   Nothing resolved or dismissed yet.
                 </div>
               ) : (
                 <div className="space-y-3">
                   {closedReports.map((report) => (
-                    <div key={report.id} className="bg-surface rounded-lg border border-line p-4 flex items-center justify-between">
+                    <div key={report.id} className="bg-white rounded-lg border p-4 flex items-center justify-between">
                       <div className="flex flex-wrap items-center gap-6">
                         <PersonBadge person={report.reporter} label="Reported by" />
                         <PersonBadge person={report.reported} label="Reported" />
-                        <p className="text-sm text-ink-muted">{report.reason || 'No reason given'}</p>
+                        <p className="text-sm text-gray-600">{report.reason || 'No reason given'}</p>
                       </div>
                       <span
                         className={`text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
                           report.status === 'resolved'
-                            ? 'bg-emerald-500/15 text-emerald-400'
-                            : 'bg-surface-selected text-ink-muted'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600'
                         }`}
                       >
                         {report.status}

@@ -29,30 +29,24 @@ import {
 } from './calculations';
 
 // Fixed categorical order (never cycled) — Café / Dinner / Movie, matching
-// CLAUDE.md's canonical activity order. Validated all-pairs at this app's
-// dark surface #212225 (worst CVD ΔE 9.4, worst normal-vision ΔE 26.5) via
-// the dataviz skill's palette (dark categorical steps for the same blue/
-// orange/aqua hues used on the light surface previously).
+// CLAUDE.md's canonical activity order. Validated all-pairs at light-surface
+// #ffffff (worst CVD ΔE 9.2, worst normal-vision ΔE 24.0) via the dataviz
+// skill's palette. Aqua (Movies) sits below 3:1 contrast on white, so it
+// always ships with a visible legend/direct label, never color alone.
 const ACTIVITY_COLORS: Record<string, string> = {
-  'Cafés': '#3987e5',
-  Dinners: '#d95926',
-  Movies: '#199e70',
+  'Cafés': '#2a78d6',
+  Dinners: '#eb6834',
+  Movies: '#1baf7a',
 };
 const FALLBACK_COLOR = '#898781';
 
 // Sequential single-hue ramp (blue), for magnitude-over-time and the
-// ordinal funnel. Same ramp as the light theme, reordered dark→light so
-// the most-advanced funnel stage is the brightest step (brightness reads
-// as emphasis on a dark surface, the inverse of a light one) — validated
-// monotone with visible step gaps and the near-surface step clearing
-// 2.4:1 against #212225.
-const REVENUE_COLOR = '#3987e5';
-const FUNNEL_STEPS = ['#1c5cab', '#2a78d6', '#86b6ef'];
+// ordinal funnel. Ordinal steps (250/400/550) validated monotone with
+// visible step gaps and the light end clearing 2:1 against white.
+const REVENUE_COLOR = '#2a78d6';
+const FUNNEL_STEPS = ['#86b6ef', '#3987e5', '#1c5cab'];
 
 // Fixed status palette (never themed, never reused for series identity).
-// Same hex values as the light theme — the dataviz skill's reference
-// documents these four as mode-invariant, clearing 3:1 against a dark
-// surface unchanged.
 const STATUS = {
   good: '#0ca30c',
   warning: '#fab219',
@@ -61,21 +55,21 @@ const STATUS = {
   muted: '#898781',
 };
 
-const GRID_COLOR = '#2E3135'; // matches this app's border/line token
-const AXIS_COLOR = '#B0B4BA'; // matches this app's ink-muted token
+const GRID_COLOR = '#e5e7eb'; // matches this app's existing border-gray-200
+const AXIS_COLOR = '#6b7280'; // matches existing text-gray-500
 
 function CustomTooltip({ active, payload, label, formatter }: any) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-surface border border-line rounded-lg shadow-sm shadow-black/40 px-3 py-2 text-xs">
-      <p className="font-semibold text-ink mb-1">{label}</p>
+    <div className="bg-white border border-gray-200 rounded-lg shadow-sm px-3 py-2 text-xs">
+      <p className="font-semibold text-gray-900 mb-1">{label}</p>
       {payload.map((entry: any) => (
-        <p key={entry.dataKey} className="flex items-center gap-1.5 text-ink-muted">
+        <p key={entry.dataKey} className="flex items-center gap-1.5 text-gray-600">
           <span
             className="inline-block w-2 h-2 rounded-full shrink-0"
             style={{ backgroundColor: entry.color }}
           />
-          {entry.name}: <span className="font-medium text-ink">{formatter ? formatter(entry.value) : entry.value}</span>
+          {entry.name}: <span className="font-medium text-gray-900">{formatter ? formatter(entry.value) : entry.value}</span>
         </p>
       ))}
     </div>
@@ -85,8 +79,8 @@ function CustomTooltip({ active, payload, label, formatter }: any) {
 function Meter({ label, percent, color }: { label: string; percent: number; color: string }) {
   const clamped = Math.max(0, Math.min(100, percent));
   return (
-    <div className="bg-surface rounded-lg border border-line p-6">
-      <p className="text-ink-muted text-sm font-medium mb-3">{label}</p>
+    <div className="bg-white rounded-lg border p-6">
+      <p className="text-gray-600 text-sm font-medium mb-3">{label}</p>
       <div className="flex items-center gap-3">
         <div className="flex-1 h-3 rounded-full" style={{ backgroundColor: `${color}22` }}>
           <div
@@ -94,7 +88,7 @@ function Meter({ label, percent, color }: { label: string; percent: number; colo
             style={{ width: `${clamped}%`, backgroundColor: color }}
           />
         </div>
-        <span className="text-lg font-bold text-ink shrink-0">{clamped.toFixed(0)}%</span>
+        <span className="text-lg font-bold text-gray-900 shrink-0">{clamped.toFixed(0)}%</span>
       </div>
     </div>
   );
@@ -209,50 +203,50 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="bg-surface border-b border-line sticky top-0 z-10">
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-ink-muted hover:text-ink">
+            <Link href="/" className="text-blue-600 hover:text-blue-800">
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-bold text-ink">Analytics</h1>
+            <h1 className="text-2xl font-bold">Analytics</h1>
           </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
         {/* KPI row */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-surface rounded-lg border border-line p-6">
-            <p className="text-ink-muted text-sm font-medium">Total users</p>
-            <p className="text-4xl font-bold text-ink mt-2">{totalUsers.toLocaleString('en-IN')}</p>
-            <p className="text-sm text-ink-muted mt-4">Students, not admin accounts</p>
+          <div className="bg-white rounded-lg border p-6">
+            <p className="text-gray-600 text-sm font-medium">Total users</p>
+            <p className="text-4xl font-bold mt-2">{totalUsers.toLocaleString('en-IN')}</p>
+            <p className="text-sm text-gray-500 mt-4">Students, not admin accounts</p>
           </div>
-          <div className="bg-surface rounded-lg border border-line p-6">
-            <p className="text-ink-muted text-sm font-medium">Total bookings</p>
-            <p className="text-4xl font-bold text-ink mt-2">{totals.totalBookings.toLocaleString('en-IN')}</p>
-            <p className="text-sm text-ink-muted mt-4">All-time, every activity</p>
+          <div className="bg-white rounded-lg border p-6">
+            <p className="text-gray-600 text-sm font-medium">Total bookings</p>
+            <p className="text-4xl font-bold mt-2">{totals.totalBookings.toLocaleString('en-IN')}</p>
+            <p className="text-sm text-gray-500 mt-4">All-time, every activity</p>
           </div>
-          <div className="bg-surface rounded-lg border border-line p-6">
-            <p className="text-ink-muted text-sm font-medium">Total revenue</p>
-            <p className="text-4xl font-bold text-ink mt-2">{formatINR(totals.revenue)}</p>
-            <p className="text-sm text-ink-muted mt-4">Convenience fee, paid bookings</p>
+          <div className="bg-white rounded-lg border p-6">
+            <p className="text-gray-600 text-sm font-medium">Total revenue</p>
+            <p className="text-4xl font-bold mt-2">{formatINR(totals.revenue)}</p>
+            <p className="text-sm text-gray-500 mt-4">Convenience fee, paid bookings</p>
           </div>
           <Meter label="Payment conversion" percent={totals.paymentConversionPct} color={STATUS.good} />
           <Meter label="Repeat booking rate" percent={totals.repeatRatePct} color={REVENUE_COLOR} />
         </div>
 
         {/* Booking funnel */}
-        <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-          <h2 className="font-bold text-ink mb-1">Booking funnel</h2>
-          <p className="text-sm text-ink-muted mb-4">All-time — where bookings drop off before a group forms.</p>
+        <div className="bg-white rounded-lg border p-6 mb-8">
+          <h2 className="font-bold mb-1">Booking funnel</h2>
+          <p className="text-sm text-gray-500 mb-4">All-time — where bookings drop off before a group forms.</p>
           <div className="space-y-3">
             {[
               { label: 'Booked', value: totals.totalBookings, color: FUNNEL_STEPS[0] },
@@ -263,12 +257,12 @@ export default function AnalyticsPage() {
               return (
                 <div key={stage.label}>
                   <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium text-ink">{stage.label}</span>
-                    <span className="text-ink-muted">
+                    <span className="font-medium text-gray-900">{stage.label}</span>
+                    <span className="text-gray-500">
                       {stage.value.toLocaleString('en-IN')} ({pct.toFixed(0)}%)
                     </span>
                   </div>
-                  <div className="h-3 rounded-full bg-surface-selected">
+                  <div className="h-3 rounded-full bg-gray-100">
                     <div
                       className="h-3 rounded-full transition-all"
                       style={{ width: `${pct}%`, backgroundColor: stage.color }}
@@ -288,8 +282,8 @@ export default function AnalyticsPage() {
               onClick={() => setGranularity(g)}
               className={`px-4 py-1.5 rounded-lg border text-sm font-medium transition ${
                 granularity === g
-                  ? 'bg-ink text-black border-ink'
-                  : 'bg-surface text-ink-muted border-line hover:border-ink-muted'
+                  ? 'bg-gray-900 text-white border-gray-900'
+                  : 'bg-white text-gray-700 hover:border-gray-400'
               }`}
             >
               {g === 'week' ? 'Week' : 'Day'}
@@ -300,16 +294,16 @@ export default function AnalyticsPage() {
         {granularity === 'week' ? (
           <>
             {/* Weekly bookings by activity */}
-            <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-              <h2 className="font-bold text-ink mb-1">Bookings by week</h2>
-              <p className="text-sm text-ink-muted mb-4">Last 8 weeks, by event date and activity.</p>
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Bookings by week</h2>
+              <p className="text-sm text-gray-500 mb-4">Last 8 weeks, by event date and activity.</p>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={weeklyBookings} margin={{ left: -10 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
                   <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
                   <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
-                  <Legend wrapperStyle={{ fontSize: 12, color: AXIS_COLOR }} iconType="circle" />
+                  <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
                   {ACTIVITY_ORDER.map((activity) => (
                     <Bar
                       key={activity}
@@ -326,15 +320,15 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Weekly revenue */}
-            <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-              <h2 className="font-bold text-ink mb-1">Revenue by week</h2>
-              <p className="text-sm text-ink-muted mb-4">Convenience fee collected on paid bookings.</p>
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Revenue by week</h2>
+              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings.</p>
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={weeklyBookings} margin={{ left: -10 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
                   <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
                   <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `₹${v}`} />
-                  <Tooltip content={<CustomTooltip formatter={formatINR} />} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
+                  <Tooltip content={<CustomTooltip formatter={formatINR} />} cursor={{ fill: '#f3f4f6' }} />
                   <Bar dataKey="revenue" name="Revenue" fill={REVENUE_COLOR} radius={[4, 4, 0, 0]} maxBarSize={28} />
                 </BarChart>
               </ResponsiveContainer>
@@ -343,16 +337,16 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* Daily bookings by activity */}
-            <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-              <h2 className="font-bold text-ink mb-1">Bookings by day</h2>
-              <p className="text-sm text-ink-muted mb-4">Last 14 days, by the day booked (not the event date), by activity.</p>
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Bookings by day</h2>
+              <p className="text-sm text-gray-500 mb-4">Last 14 days, by the day booked (not the event date), by activity.</p>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
                   <XAxis dataKey="dayLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
                   <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 12, color: AXIS_COLOR }} iconType="circle" />
+                  <Legend wrapperStyle={{ fontSize: 12 }} iconType="circle" />
                   {ACTIVITY_ORDER.map((activity) => (
                     <Line
                       key={activity}
@@ -370,9 +364,9 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Daily revenue */}
-            <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-              <h2 className="font-bold text-ink mb-1">Revenue by day</h2>
-              <p className="text-sm text-ink-muted mb-4">Convenience fee collected on paid bookings, by the day booked, last 14 days.</p>
+            <div className="bg-white rounded-lg border p-6 mb-8">
+              <h2 className="font-bold mb-1">Revenue by day</h2>
+              <p className="text-sm text-gray-500 mb-4">Convenience fee collected on paid bookings, by the day booked, last 14 days.</p>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
@@ -395,9 +389,9 @@ export default function AnalyticsPage() {
         )}
 
         {/* New signups */}
-        <div className="bg-surface rounded-lg border border-line p-6 mb-8">
-          <h2 className="font-bold text-ink mb-1">New signups by {granularity}</h2>
-          <p className="text-sm text-ink-muted mb-4">
+        <div className="bg-white rounded-lg border p-6 mb-8">
+          <h2 className="font-bold mb-1">New signups by {granularity}</h2>
+          <p className="text-sm text-gray-500 mb-4">
             {granularity === 'week' ? 'Last 8 weeks' : 'Last 14 days'}, students only — admin accounts excluded.
           </p>
           <ResponsiveContainer width="100%" height={220}>
@@ -406,7 +400,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid vertical={false} stroke={GRID_COLOR} />
                 <XAxis dataKey="weekLabel" stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={{ stroke: GRID_COLOR }} />
                 <YAxis stroke={AXIS_COLOR} fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.06)' }} />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6' }} />
                 <Bar dataKey="count" name="Signups" fill={STATUS.good} radius={[4, 4, 0, 0]} maxBarSize={28} />
               </BarChart>
             ) : (
@@ -431,9 +425,9 @@ export default function AnalyticsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* No-show trend */}
-          <div className="bg-surface rounded-lg border border-line p-6">
-            <h2 className="font-bold text-ink mb-1">⚠️ No-shows by week</h2>
-            <p className="text-sm text-ink-muted mb-4">Marked manually by the founder — reflects what&apos;s been recorded.</p>
+          <div className="bg-white rounded-lg border p-6">
+            <h2 className="font-bold mb-1">⚠️ No-shows by week</h2>
+            <p className="text-sm text-gray-500 mb-4">Marked manually by the founder — reflects what&apos;s been recorded.</p>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={noShowTrend} margin={{ left: -10, right: 12, top: 8 }}>
                 <CartesianGrid vertical={false} stroke={GRID_COLOR} />
@@ -460,16 +454,16 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Reports snapshot */}
-          <div className="bg-surface rounded-lg border border-line p-6">
+          <div className="bg-white rounded-lg border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-ink">🚩 Reports</h2>
-              <Link href="/reports" className="text-sm text-ink-muted hover:text-ink">
+              <h2 className="font-bold">🚩 Reports</h2>
+              <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
                 Review reports →
               </Link>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <p className="text-xs font-medium text-ink-muted mb-1">
+                <p className="text-xs font-medium text-gray-500 mb-1">
                   <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: STATUS.critical }} />
                   Open
                 </p>
@@ -478,7 +472,7 @@ export default function AnalyticsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-ink-muted mb-1">
+                <p className="text-xs font-medium text-gray-500 mb-1">
                   <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: STATUS.good }} />
                   Resolved
                 </p>
@@ -487,7 +481,7 @@ export default function AnalyticsPage() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-medium text-ink-muted mb-1">
+                <p className="text-xs font-medium text-gray-500 mb-1">
                   <span className="inline-block w-2 h-2 rounded-full mr-1" style={{ backgroundColor: STATUS.muted }} />
                   Dismissed
                 </p>

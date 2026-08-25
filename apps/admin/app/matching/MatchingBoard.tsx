@@ -328,7 +328,7 @@ export default function MatchingBoard({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
       </div>
     );
   }
@@ -336,18 +336,18 @@ export default function MatchingBoard({
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       {boardError && (
-        <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
           {boardError}
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
-        <DropZone id="pool" className="bg-surface rounded-lg border border-line p-4">
-          <h3 className="font-bold text-ink mb-1">Unmatched Pool</h3>
-          <p className="text-sm text-ink-muted mb-4">{poolBookings.length} waiting</p>
+        <DropZone id="pool" className="bg-white rounded-lg border p-4">
+          <h3 className="font-bold mb-1">Unmatched Pool</h3>
+          <p className="text-sm text-gray-500 mb-4">{poolBookings.length} waiting</p>
           <div className="space-y-3">
             {poolBookings.length === 0 ? (
-              <p className="text-sm text-ink-muted">✨ Everyone&apos;s been placed into a group.</p>
+              <p className="text-sm text-gray-500">✨ Everyone&apos;s been placed into a group.</p>
             ) : (
               poolBookings.map((booking) => {
                 const fit = bestFitForPoolCard(booking);
@@ -368,17 +368,17 @@ export default function MatchingBoard({
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-ink">Groups ({minGroupSize}–{maxGroupSize} students)</h3>
+            <h3 className="font-bold">Groups ({minGroupSize}–{maxGroupSize} students)</h3>
             <button
               onClick={addGroup}
-              className="px-4 py-2 rounded-lg border border-line text-ink hover:bg-surface-selected text-sm font-medium"
+              className="px-4 py-2 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium"
             >
               + New Group
             </button>
           </div>
 
           {groups.length === 0 ? (
-            <div className="bg-surface rounded-lg border border-line p-8 text-center text-ink-muted">
+            <div className="bg-white rounded-lg border p-8 text-center text-gray-500">
               Add a group, then drag students in from the unmatched pool.
             </div>
           ) : (
@@ -394,34 +394,34 @@ export default function MatchingBoard({
                   <DropZone
                     key={group.localId}
                     id={`group-${group.localId}`}
-                    className="bg-surface rounded-lg border border-line p-4"
+                    className="bg-white rounded-lg border p-4"
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-semibold text-ink flex items-center gap-2">
+                      <h4 className="font-semibold flex items-center gap-2">
                         Group {idx + 1} ({members.length}/{maxGroupSize})
                         {genderConstraint && (
-                          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-surface-selected text-ink-muted">
+                          <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                             {genderConstraint === 'female' ? 'Women only' : 'Men only'}
                           </span>
                         )}
                       </h4>
                       <button
                         onClick={() => removeGroup(group.localId)}
-                        className="text-xs text-ink-muted hover:text-danger"
+                        className="text-xs text-gray-400 hover:text-red-600"
                       >
                         Remove
                       </button>
                     </div>
 
                     {score !== null && (
-                      <p className="text-xs text-ink-muted mb-3">
+                      <p className="text-xs text-gray-500 mb-3">
                         Compatibility: {(score * 100).toFixed(0)}%
                       </p>
                     )}
 
                     <div className="space-y-2 min-h-[60px] mb-4">
                       {members.length === 0 ? (
-                        <p className="text-sm text-ink-muted italic">Drop students here</p>
+                        <p className="text-sm text-gray-400 italic">Drop students here</p>
                       ) : (
                         members.map((booking) => (
                           <DraggableCard key={booking.id} id={booking.id}>
@@ -439,7 +439,7 @@ export default function MatchingBoard({
                       <select
                         value={group.venueId ?? ''}
                         onChange={(e) => setGroupVenue(group.localId, e.target.value)}
-                        className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink"
+                        className="w-full border rounded-lg px-3 py-2 text-sm"
                       >
                         <option value="">Select venue…</option>
                         {venues.map((v) => (
@@ -449,14 +449,14 @@ export default function MatchingBoard({
                         ))}
                       </select>
                       {!sizeOk && members.length > 0 && (
-                        <p className="text-xs text-warn">
+                        <p className="text-xs text-orange-600">
                           Needs {minGroupSize}–{maxGroupSize} students to book.
                         </p>
                       )}
                       <button
                         disabled={!canBook}
                         onClick={() => handleBookGroup(group)}
-                        className="w-full py-2 rounded-lg bg-ink text-black text-sm font-semibold disabled:bg-surface-selected disabled:text-ink-muted disabled:cursor-not-allowed"
+                        className="w-full py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
                       >
                         {confirmingGroupId === group.localId ? 'Booking…' : 'Book Venue'}
                       </button>
@@ -494,7 +494,7 @@ function DropZone({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div ref={setNodeRef} className={`${className ?? ''} ${isOver ? 'ring-2 ring-ink' : ''}`}>
+    <div ref={setNodeRef} className={`${className ?? ''} ${isOver ? 'ring-2 ring-blue-400' : ''}`}>
       {children}
     </div>
   );
@@ -538,35 +538,35 @@ function StudentCard({
 
   return (
     <div
-      className={`border rounded-lg bg-surface ${compact ? 'p-2' : 'p-3'} ${
-        dragging ? 'shadow-lg shadow-black/50' : ''
-      } ${hasOpenReport ? 'border-danger/40 bg-danger/10' : 'border-line'}`}
+      className={`border rounded-lg bg-white ${compact ? 'p-2' : 'p-3'} ${
+        dragging ? 'shadow-lg' : ''
+      } ${hasOpenReport ? 'border-red-300 bg-red-50' : ''}`}
     >
       {hasOpenReport && (
-        <p className="text-xs font-medium text-danger mb-1">⚠️ Open report — review before matching</p>
+        <p className="text-xs font-medium text-red-600 mb-1">⚠️ Open report — review before matching</p>
       )}
       <div className="flex gap-3 items-center">
         {photoUrl ? (
           <img
             src={photoUrl}
             alt={profile.full_name}
-            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg object-cover bg-surface-selected`}
+            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg object-cover bg-gray-200`}
           />
         ) : (
           <div
-            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-surface-selected flex items-center justify-center text-sm`}
+            className={`${compact ? 'w-8 h-8' : 'w-10 h-10'} rounded-lg bg-gray-200 flex items-center justify-center text-sm`}
           >
             📷
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-ink text-sm truncate">{profile.full_name}</p>
-          <p className="text-xs text-ink-muted">
+          <p className="font-medium text-gray-900 text-sm truncate">{profile.full_name}</p>
+          <p className="text-xs text-gray-500">
             {profile.gender ? profile.gender.charAt(0).toUpperCase() : '—'} · {profile.year_of_study}yr ·{' '}
             {formatBudget(booking.budget_band)}
           </p>
           {booking.group_preference !== 'mixed' && (
-            <p className="text-xs font-medium text-ink-muted mt-0.5">
+            <p className="text-xs font-medium text-gray-700 mt-0.5">
               {booking.group_preference === 'women_only' ? 'Women only' : 'Men only'}
             </p>
           )}
@@ -576,13 +576,13 @@ function StudentCard({
           target="_blank"
           rel="noopener noreferrer"
           onPointerDown={(e) => e.stopPropagation()}
-          className="text-xs text-ink-muted hover:text-ink shrink-0"
+          className="text-xs text-blue-600 hover:text-blue-800 shrink-0"
         >
           View
         </a>
       </div>
       {compatibilityBadge && !compact && (
-        <p className="text-xs text-ink-muted mt-2">
+        <p className="text-xs text-gray-500 mt-2">
           {(compatibilityBadge.score * 100).toFixed(0)}% w/ Group {compatibilityBadge.groupNumber}
         </p>
       )}

@@ -57,10 +57,10 @@ export function useAdminGuard() {
 
 export function AdminAccessDenied() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-canvas">
+    <div className="flex items-center justify-center min-h-screen">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-ink mb-4">Access Denied</h1>
-        <p className="text-ink-muted">You don&apos;t have permission to access this page.</p>
+        <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+        <p className="text-gray-600">You don&apos;t have permission to access this page.</p>
       </div>
     </div>
   );
@@ -68,8 +68,8 @@ export function AdminAccessDenied() {
 
 export function AdminAuthLoading() {
   return (
-    <div className="flex items-center justify-center min-h-screen bg-canvas">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink"></div>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
     </div>
   );
 }
