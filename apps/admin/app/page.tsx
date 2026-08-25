@@ -113,25 +113,25 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-canvas">
+      <header className="bg-surface border-b border-line">
         <div className="max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Campus Social</h1>
+          <h1 className="text-3xl font-bold text-ink">Campus Social</h1>
           <div className="text-right">
-            <p className="text-sm text-gray-600">Founder: {founder}</p>
-            <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
+            <p className="text-sm text-ink-muted">Founder: {founder}</p>
+            <Link href="/groups" className="text-sm text-ink-muted hover:text-ink">
               View groups
             </Link>
             {' · '}
-            <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/venues" className="text-sm text-ink-muted hover:text-ink">
               Manage venues
             </Link>
             {' · '}
-            <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/reports" className="text-sm text-ink-muted hover:text-ink">
               Reports
             </Link>
             {' · '}
-            <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/analytics" className="text-sm text-ink-muted hover:text-ink">
               Analytics
             </Link>
             {' · '}
@@ -140,7 +140,7 @@ export default function Dashboard() {
                 await supabase.auth.signOut();
                 router.push('/login');
               }}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-sm text-ink-muted hover:text-ink"
             >
               Sign out
             </button>
@@ -151,7 +151,7 @@ export default function Dashboard() {
       <main className="max-w-7xl mx-auto px-6 py-8">
         {/* Date header */}
         <div className="mb-8">
-          <p className="text-gray-600">
+          <p className="text-ink-muted">
             {new Date().toLocaleDateString('en-IN', {
               weekday: 'long',
               year: 'numeric',
@@ -164,15 +164,15 @@ export default function Dashboard() {
         {/* Metrics grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Bookings this week */}
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-surface rounded-lg border border-line p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Bookings this week</p>
-                <p className="text-4xl font-bold mt-2">{metrics.bookings_this_week}</p>
+                <p className="text-ink-muted text-sm font-medium">Bookings this week</p>
+                <p className="text-4xl font-bold text-ink mt-2">{metrics.bookings_this_week}</p>
               </div>
               <span className="text-3xl">📋</span>
             </div>
-            <div className="mt-4 text-sm text-gray-600 space-y-1">
+            <div className="mt-4 text-sm text-ink-muted space-y-1">
               <p>☕ Cafés: {metrics.cafe_bookings}</p>
               <p>🍽 Dinners: {metrics.dinner_bookings}</p>
               <p>🎬 Movies: {metrics.movie_bookings}</p>
@@ -181,46 +181,46 @@ export default function Dashboard() {
           </div>
 
           {/* Groups formed */}
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-surface rounded-lg border border-line p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Groups formed</p>
-                <p className="text-4xl font-bold mt-2">{metrics.groups_formed}</p>
+                <p className="text-ink-muted text-sm font-medium">Groups formed</p>
+                <p className="text-4xl font-bold text-ink mt-2">{metrics.groups_formed}</p>
               </div>
               <span className="text-3xl">✅</span>
             </div>
-            <p className="text-sm text-gray-500 mt-4">Confirmed groups ready to meet</p>
+            <p className="text-sm text-ink-muted mt-4">Confirmed groups ready to meet</p>
           </div>
 
           {/* Unmatched bookings */}
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-surface rounded-lg border border-line p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Unmatched (need action)</p>
-                <p className="text-4xl font-bold mt-2 text-orange-600">{metrics.unmatched_count}</p>
+                <p className="text-ink-muted text-sm font-medium">Unmatched (need action)</p>
+                <p className="text-4xl font-bold mt-2 text-warn">{metrics.unmatched_count}</p>
               </div>
               <span className="text-3xl">⚠️</span>
             </div>
             <Link
               href="/matching"
-              className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
+              className="text-sm text-ink-muted hover:text-ink mt-4 block"
             >
               Go to matching queue →
             </Link>
           </div>
 
           {/* Pending reports */}
-          <div className="bg-white rounded-lg border p-6">
+          <div className="bg-surface rounded-lg border border-line p-6">
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-gray-600 text-sm font-medium">Pending reports</p>
-                <p className="text-4xl font-bold mt-2 text-red-600">{metrics.pending_reports}</p>
+                <p className="text-ink-muted text-sm font-medium">Pending reports</p>
+                <p className="text-4xl font-bold mt-2 text-danger">{metrics.pending_reports}</p>
               </div>
               <span className="text-3xl">🚩</span>
             </div>
             <Link
               href="/reports"
-              className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
+              className="text-sm text-ink-muted hover:text-ink mt-4 block"
             >
               Review reports →
             </Link>
@@ -228,14 +228,14 @@ export default function Dashboard() {
         </div>
 
         {/* CTA Section */}
-        <div className="bg-white rounded-lg border p-8 text-center">
-          <h2 className="text-2xl font-bold mb-2">Ready to match?</h2>
-          <p className="text-gray-600 mb-6">
+        <div className="bg-surface rounded-lg border border-line p-8 text-center">
+          <h2 className="text-2xl font-bold text-ink mb-2">Ready to match?</h2>
+          <p className="text-ink-muted mb-6">
             {metrics.unmatched_count} students are waiting for their group
           </p>
           <Link
             href="/matching"
-            className="inline-block bg-gray-900 text-white px-8 py-3 rounded-lg font-semibold hover:bg-gray-800"
+            className="inline-block bg-ink text-black px-8 py-3 rounded-lg font-semibold hover:bg-ink-muted"
           >
             Go to Matching Queue →
           </Link>

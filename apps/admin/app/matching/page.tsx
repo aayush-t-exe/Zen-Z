@@ -145,26 +145,26 @@ export default function MatchingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
+    <div className="min-h-screen bg-canvas">
+      <header className="bg-surface border-b border-line sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-800">
+            <Link href="/" className="text-ink-muted hover:text-ink">
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-bold">Matching Queue</h1>
+            <h1 className="text-2xl font-bold text-ink">Matching Queue</h1>
           </div>
           <div className="flex items-center gap-4">
-            <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/groups" className="text-sm text-ink-muted hover:text-ink">
               View groups →
             </Link>
-            <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/venues" className="text-sm text-ink-muted hover:text-ink">
               Manage venues →
             </Link>
-            <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/reports" className="text-sm text-ink-muted hover:text-ink">
               Reports →
             </Link>
-            <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
+            <Link href="/analytics" className="text-sm text-ink-muted hover:text-ink">
               Analytics →
             </Link>
           </div>
@@ -173,16 +173,16 @@ export default function MatchingPage() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
         {/* Activity & Slot Selection */}
-        <div className="bg-white rounded-lg border p-6 mb-8">
+        <div className="bg-surface rounded-lg border border-line p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-ink-muted mb-3">
                 Activity
               </label>
               <div className="grid grid-cols-1 gap-2">
@@ -195,14 +195,14 @@ export default function MatchingPage() {
                     }}
                     className={`relative p-3 rounded-lg border text-left transition ${
                       selectedActivityId === activity.id
-                        ? 'bg-gray-900 text-white border-gray-900'
-                        : 'hover:border-gray-400'
+                        ? 'bg-ink text-black border-ink'
+                        : 'border-line text-ink hover:border-ink-muted'
                     }`}
                   >
                     <span className="text-xl mr-2">{activity.emoji}</span>
                     <span className="font-medium">{activity.name}</span>
                     {pendingCountsByActivity[activity.id] > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                      <span className="absolute -top-1.5 -right-1.5 flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-white">
                         {pendingCountsByActivity[activity.id]}
                       </span>
                     )}
@@ -212,11 +212,11 @@ export default function MatchingPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-3">
+              <label className="block text-sm font-semibold text-ink-muted mb-3">
                 Slot
               </label>
               {loading ? (
-                <p className="text-gray-500 text-sm">Loading slots…</p>
+                <p className="text-ink-muted text-sm">Loading slots…</p>
               ) : slots.length > 0 ? (
                 <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto">
                   {slots.map(slot => (
@@ -225,13 +225,13 @@ export default function MatchingPage() {
                       onClick={() => setSelectedSlotId(slot.id)}
                       className={`relative flex items-center justify-between p-3 rounded-lg border text-left transition ${
                         selectedSlotId === slot.id
-                          ? 'bg-gray-900 text-white border-gray-900'
-                          : 'hover:border-gray-400'
+                          ? 'bg-ink text-black border-ink'
+                          : 'border-line text-ink hover:border-ink-muted'
                       }`}
                     >
                       {formatSlotDateTime(slot.slot_datetime)}
                       {pendingCountsBySlot[slot.id] > 0 && (
-                        <span className="flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                        <span className="flex h-5 min-w-5 animate-pulse items-center justify-center rounded-full bg-danger px-1 text-xs font-bold text-white">
                           {pendingCountsBySlot[slot.id]}
                         </span>
                       )}
@@ -239,7 +239,7 @@ export default function MatchingPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm">No slots available</p>
+                <p className="text-ink-muted text-sm">No slots available</p>
               )}
             </div>
           </div>
@@ -247,8 +247,8 @@ export default function MatchingPage() {
 
         {/* Current Selection Summary */}
         {selectedActivity && selectedSlot && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
-            <p className="text-blue-900">
+          <div className="bg-surface-selected border border-line rounded-lg p-4 mb-8">
+            <p className="text-ink">
               <span className="font-semibold">{selectedActivity.emoji} {selectedActivity.name}</span>
               {' '} • {formatSlotDateTime(selectedSlot.slot_datetime)}
             </p>

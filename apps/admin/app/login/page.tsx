@@ -77,17 +77,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-canvas flex items-center justify-center p-4">
+      <div className="bg-surface border border-line rounded-lg p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Campus Social</h1>
-          <p className="text-gray-600">Founder Dashboard</p>
+          <h1 className="text-3xl font-bold text-ink mb-2">Campus Social</h1>
+          <p className="text-ink-muted">Founder Dashboard</p>
         </div>
 
         {step === 'email' ? (
           <form onSubmit={handleSendCode} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-ink-muted mb-2">
                 Email
               </label>
               <input
@@ -96,12 +96,12 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                className="w-full px-4 py-2 bg-canvas border border-line rounded-lg text-ink placeholder:text-ink-muted focus:ring-2 focus:ring-ink focus:border-transparent"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -109,7 +109,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50"
+              className="w-full bg-ink text-black py-2 px-4 rounded-lg font-semibold hover:bg-ink-muted disabled:opacity-50"
             >
               {loading ? 'Sending...' : 'Send the code →'}
             </button>
@@ -117,7 +117,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleVerifyCode} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-ink-muted mb-2">
                 Enter the 6-digit code
               </label>
               <input
@@ -127,15 +127,15 @@ export default function LoginPage() {
                 placeholder="000000"
                 maxLength={6}
                 required
-                className="w-full px-4 py-2 text-center tracking-widest text-2xl border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                className="w-full px-4 py-2 text-center tracking-widest text-2xl bg-canvas border border-line rounded-lg text-ink placeholder:text-ink-muted focus:ring-2 focus:ring-ink focus:border-transparent"
               />
-              <p className="text-sm text-gray-600 mt-2">
+              <p className="text-sm text-ink-muted mt-2">
                 Check {email} for the code
               </p>
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
             )}
@@ -143,7 +143,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || code.length !== 6}
-              className="w-full bg-gray-900 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-800 disabled:opacity-50"
+              className="w-full bg-ink text-black py-2 px-4 rounded-lg font-semibold hover:bg-ink-muted disabled:opacity-50"
             >
               {loading ? 'Verifying...' : 'Verify code →'}
             </button>
@@ -155,7 +155,7 @@ export default function LoginPage() {
                 setCode('');
                 setError('');
               }}
-              className="w-full text-gray-600 hover:text-gray-900 font-medium"
+              className="w-full text-ink-muted hover:text-ink font-medium"
             >
               ← Back
             </button>

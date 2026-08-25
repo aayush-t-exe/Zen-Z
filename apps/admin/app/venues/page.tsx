@@ -190,16 +190,16 @@ export default function VenuesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b sticky top-0 z-10">
+    <div className="min-h-screen bg-canvas">
+      <header className="bg-surface border-b border-line sticky top-0 z-10">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-blue-600 hover:text-blue-800">
+            <Link href="/" className="text-ink-muted hover:text-ink">
               ← Dashboard
             </Link>
-            <h1 className="text-2xl font-bold">Venues</h1>
+            <h1 className="text-2xl font-bold text-ink">Venues</h1>
           </div>
-          <Link href="/matching" className="text-sm text-blue-600 hover:text-blue-800">
+          <Link href="/matching" className="text-sm text-ink-muted hover:text-ink">
             Go to Matching Queue →
           </Link>
         </div>
@@ -207,26 +207,26 @@ export default function VenuesPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-danger/10 border border-danger/30 text-danger px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
         {/* Add Venue */}
-        <div className="bg-white rounded-lg border p-6 mb-8">
-          <h2 className="text-lg font-bold mb-4">Add a venue</h2>
+        <div className="bg-surface rounded-lg border border-line p-6 mb-8">
+          <h2 className="text-lg font-bold text-ink mb-4">Add a venue</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input
               type="text"
               placeholder="Venue name"
               value={newVenue.name}
               onChange={(e) => setNewVenue({ ...newVenue, name: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
             />
             <select
               value={newVenue.activity_type_id}
               onChange={(e) => setNewVenue({ ...newVenue, activity_type_id: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink"
             >
               <option value="">Select activity…</option>
               {activityTypes.map((a) => (
@@ -240,72 +240,72 @@ export default function VenuesPage() {
               placeholder="Address"
               value={newVenue.address}
               onChange={(e) => setNewVenue({ ...newVenue, address: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted md:col-span-2"
             />
             <input
               type="number"
               placeholder="Capacity"
               value={newVenue.capacity}
               onChange={(e) => setNewVenue({ ...newVenue, capacity: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
             />
             <input
               type="number"
               placeholder="Commission %"
               value={newVenue.commission_pct}
               onChange={(e) => setNewVenue({ ...newVenue, commission_pct: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
             />
             <input
               type="text"
               placeholder="Contact info"
               value={newVenue.contact_info}
               onChange={(e) => setNewVenue({ ...newVenue, contact_info: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
             />
             <input
               type="text"
               placeholder="Notes"
               value={newVenue.notes}
               onChange={(e) => setNewVenue({ ...newVenue, notes: e.target.value })}
-              className="border rounded-lg px-3 py-2 text-sm"
+              className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
             />
           </div>
           <button
             onClick={handleCreate}
             disabled={creating}
-            className="mt-4 px-6 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:bg-gray-300"
+            className="mt-4 px-6 py-2 rounded-lg bg-ink text-black text-sm font-semibold disabled:bg-surface-selected disabled:text-ink-muted"
           >
             {creating ? 'Adding…' : 'Add Venue'}
           </button>
         </div>
 
         {/* Venue List */}
-        <div className="bg-white rounded-lg border p-6">
-          <h2 className="text-lg font-bold mb-4">All venues</h2>
+        <div className="bg-surface rounded-lg border border-line p-6">
+          <h2 className="text-lg font-bold text-ink mb-4">All venues</h2>
 
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ink"></div>
             </div>
           ) : venues.length === 0 ? (
-            <p className="text-gray-500 text-sm">No venues yet — add one above.</p>
+            <p className="text-ink-muted text-sm">No venues yet — add one above.</p>
           ) : (
             <div className="space-y-4">
               {venues.map((venue) =>
                 editingId === venue.id ? (
-                  <div key={venue.id} className="border rounded-lg p-4">
+                  <div key={venue.id} className="border border-line rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
                       <input
                         type="text"
                         value={editForm.name}
                         onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink"
                       />
                       <select
                         value={editForm.activity_type_id}
                         onChange={(e) => setEditForm({ ...editForm, activity_type_id: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink"
                       >
                         <option value="">Select activity…</option>
                         {activityTypes.map((a) => (
@@ -319,80 +319,80 @@ export default function VenuesPage() {
                         placeholder="Address"
                         value={editForm.address}
                         onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted md:col-span-2"
                       />
                       <input
                         type="number"
                         placeholder="Capacity"
                         value={editForm.capacity}
                         onChange={(e) => setEditForm({ ...editForm, capacity: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
                       />
                       <input
                         type="number"
                         placeholder="Commission %"
                         value={editForm.commission_pct}
                         onChange={(e) => setEditForm({ ...editForm, commission_pct: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
                       />
                       <input
                         type="text"
                         placeholder="Contact info"
                         value={editForm.contact_info}
                         onChange={(e) => setEditForm({ ...editForm, contact_info: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
                       />
                       <input
                         type="text"
                         placeholder="Notes"
                         value={editForm.notes}
                         onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
-                        className="border rounded-lg px-3 py-2 text-sm"
+                        className="bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted"
                       />
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={handleSaveEdit}
                         disabled={saving}
-                        className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold disabled:bg-gray-300"
+                        className="px-4 py-2 rounded-lg bg-ink text-black text-sm font-semibold disabled:bg-surface-selected disabled:text-ink-muted"
                       >
                         {saving ? 'Saving…' : 'Save'}
                       </button>
                       <button
                         onClick={cancelEdit}
-                        className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50"
+                        className="px-4 py-2 rounded-lg border border-line text-ink text-sm font-medium hover:bg-surface-selected"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div key={venue.id} className="border rounded-lg p-4 flex items-start justify-between">
+                  <div key={venue.id} className="border border-line rounded-lg p-4 flex items-start justify-between">
                     <div>
-                      <p className="font-semibold text-gray-900">
+                      <p className="font-semibold text-ink">
                         {venue.activity_types?.emoji} {venue.name}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-ink-muted">
                         {venue.activity_types?.name ?? 'No activity set'}
                         {venue.address && ` · ${venue.address}`}
                         {venue.capacity !== null && ` · Capacity ${venue.capacity}`}
                       </p>
                       {venue.contact_info && (
-                        <p className="text-sm text-gray-500 mt-1">Contact: {venue.contact_info}</p>
+                        <p className="text-sm text-ink-muted mt-1">Contact: {venue.contact_info}</p>
                       )}
-                      {venue.notes && <p className="text-sm text-gray-500 mt-1">{venue.notes}</p>}
+                      {venue.notes && <p className="text-sm text-ink-muted mt-1">{venue.notes}</p>}
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => startEdit(venue)}
-                        className="text-sm text-blue-600 hover:text-blue-800"
+                        className="text-sm text-ink-muted hover:text-ink"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(venue)}
                         disabled={deletingId === venue.id}
-                        className="text-sm text-red-600 hover:text-red-800 disabled:text-gray-400"
+                        className="text-sm text-danger hover:text-danger/80 disabled:text-ink-muted"
                       >
                         {deletingId === venue.id ? 'Deleting…' : 'Delete'}
                       </button>
