@@ -42,4 +42,24 @@ describe('formatSlotDateTime', () => {
     const result = formatSlotDateTime('2026-08-11T09:00:00');
     expect(result).toMatch(/^Tue, 11th · /);
   });
+
+  it('shows "Evening" instead of a clock time for Cafés', () => {
+    const result = formatSlotDateTime('2026-08-09T19:30:00', 'Cafés');
+    expect(result).toBe('Sun, 9th · Evening');
+  });
+
+  it('shows "Evening" instead of a clock time for Dinners', () => {
+    const result = formatSlotDateTime('2026-08-11T17:00:00', 'Dinners');
+    expect(result).toBe('Tue, 11th · Evening');
+  });
+
+  it('drops the time entirely for Movies, leaving just the day', () => {
+    const result = formatSlotDateTime('2026-08-09T19:30:00', 'Movies');
+    expect(result).toBe('Sun, 9th');
+  });
+
+  it('keeps the exact clock time for activities without a special case (e.g. Sports)', () => {
+    const result = formatSlotDateTime('2026-08-09T19:30:00', 'Football');
+    expect(result).toMatch(/^Sun, 9th · /);
+  });
 });

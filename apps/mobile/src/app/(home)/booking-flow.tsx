@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
@@ -32,6 +33,10 @@ interface Activity {
   convenience_fee: number;
 }
 
+// Must match the 24h floor in the "own bookings insert" RLS policy
+// (supabase/migrations/0039_booking_cutoff_and_slot_rollover.sql).
+const BOOKING_CUTOFF_HOURS = 24;
+
 const BUDGET_BANDS = [
   { value: 'under_200', label: 'Under ₹200' },
   { value: '200_400', label: '₹200–400' },
@@ -44,9 +49,13 @@ const BUDGET_BANDS = [
 // Sports groups are also auto-mixed rather than gender-filtered, so the
 // group-preference step is skipped too — group_preference is stored as
 // 'mixed' for these bookings without asking.
+// Movies also charges a fixed price (hardcoded convenience_fee, see
+// migration 0040) but still gender-filters groups like Cafés/Dinners, so it
+// skips only the budget step, not preference.
 type BookingStep = 'time' | 'budget' | 'preference' | 'summary';
 const STEPS_WITH_BUDGET: BookingStep[] = ['time', 'budget', 'preference', 'summary'];
 const STEPS_FIXED_PRICE: BookingStep[] = ['time', 'summary'];
+const STEPS_FIXED_PRICE_WITH_PREFERENCE: BookingStep[] = ['time', 'preference', 'summary'];
 
 const GROUP_PREFERENCES = [
   { value: 'mixed', label: 'Surprise me (mixed)' },
@@ -159,7 +168,11 @@ export default function BookingFlowScreen() {
   const [profileGender, setProfileGender] = useState<string | null>(null);
 
   const activityNumId = parseInt(activityId || '0');
-  const steps = activity?.duration_minutes ? STEPS_FIXED_PRICE : STEPS_WITH_BUDGET;
+  const steps = activity?.duration_minutes
+    ? STEPS_FIXED_PRICE
+    : activity?.name === 'Movies'
+    ? STEPS_FIXED_PRICE_WITH_PREFERENCE
+    : STEPS_WITH_BUDGET;
   const currentStep = steps[stepIndex];
 
   // Expo Router can reuse this screen's instance when navigating here again
@@ -210,15 +223,23 @@ export default function BookingFlowScreen() {
 
       if (actData) setActivity(actData);
 
-      // Fetch available slots for this activity (next 30 days)
+      // Only the single nearest open slot — offering weeks of Tuesdays to
+      // choose from read like a duplicate ("2 slots for Movies") when really
+      // it was next week's slot opening early. One fixed weekly slot at a
+      // time matches the actual product model.
+      //
+      // The lower bound mirrors the 24h cutoff enforced by the "own bookings
+      // insert" RLS policy — a slot inside that window would fail on submit
+      // anyway, so it's excluded here rather than shown and then rejected.
       const { data: slotData } = await supabase
         .from('slots')
         .select('*')
         .eq('activity_type_id', activityNumId)
         .eq('status', 'open')
-        .gt('slot_datetime', new Date().toISOString())
+        .gt('slot_datetime', new Date(Date.now() + BOOKING_CUTOFF_HOURS * 60 * 60 * 1000).toISOString())
         .lt('slot_datetime', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('slot_datetime', { ascending: true });
+        .order('slot_datetime', { ascending: true })
+        .limit(1);
 
       if (slotData) setSlots(slotData);
     } catch (err) {
@@ -260,13 +281,16 @@ export default function BookingFlowScreen() {
       });
 
       if (bookingError) {
-        // A blocked student can slip past the pre-check above if the block
-        // was applied in the moment between screen load and submit — the
-        // RLS policy (0020_no_show_strikes.sql) still catches it, just with
-        // an opaque Postgres message that isn't fit to show directly.
+        // The "own bookings insert" RLS policy (0020_no_show_strikes.sql,
+        // extended by 0039_booking_cutoff_and_slot_rollover.sql) now guards
+        // two unrelated things at once — a no-show block applied mid-session,
+        // or the slot crossing the 24h cutoff while this screen sat open —
+        // and Postgres gives back the same opaque message for both. Naming
+        // either reason specifically would be wrong half the time, so this
+        // stays neutral rather than wrongly implying a no-show penalty.
         setError(
           bookingError.message.includes('row-level security policy')
-            ? "Your invitations are paused right now — check back later."
+            ? "That invitation just slipped out of reach — go back and check again."
             : bookingError.message
         );
         return;
@@ -334,17 +358,6 @@ export default function BookingFlowScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Step counter + activity context */}
-        <View style={{ width: contentWidth, marginBottom: 20, gap: 2 }}>
-          <Text style={styles.stepCounter}>
-            Step {stepIndex + 1} of {steps.length}
-          </Text>
-          {activity && (
-            <Text style={styles.activityLabel}>
-              {activity.emoji} {activity.name}
-            </Text>
-          )}
-        </View>
 
         {/* Day & Time Selection */}
         {currentStep === 'time' && (
@@ -359,7 +372,7 @@ export default function BookingFlowScreen() {
                 {slots.map((slot) => (
                   <OptionPill
                     key={slot.id}
-                    label={formatSlotDateTime(slot.slot_datetime)}
+                    label={formatSlotDateTime(slot.slot_datetime, activity?.name)}
                     selected={selectedSlot === slot.id}
                     onPress={() => setSelectedSlot(selectedSlot === slot.id ? null : slot.id)}
                     width={contentWidth}
@@ -468,7 +481,7 @@ export default function BookingFlowScreen() {
                   iconSource={require('@/assets/images/star-dark.png')}
                   label={
                     slots.find((s) => s.id === selectedSlot)
-                      ? formatSlotDateTime(slots.find((s) => s.id === selectedSlot)!.slot_datetime)
+                      ? formatSlotDateTime(slots.find((s) => s.id === selectedSlot)!.slot_datetime, activity?.name)
                       : ''
                   }
                 />
@@ -553,26 +566,19 @@ const styles = StyleSheet.create({
     paddingTop: 40,
     paddingHorizontal: 16,
   },
-  stepCounter: {
-    color: Palette.muted,
-    fontSize: 13,
-  },
-  activityLabel: {
-    color: Palette.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   title: {
     color: Palette.text,
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     letterSpacing: -0.5,
   },
   subtitle: {
     color: Palette.muted,
     fontSize: 14,
     lineHeight: 20,
+    fontFamily: FontFamily.body.regular,
   },
   pillContent: {
     flexDirection: 'row',
@@ -588,12 +594,14 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     flex: 1,
   },
   pillCheck: {
     color: Palette.line,
     fontSize: 18,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
   },
   cardContent: {
     flexDirection: 'row',
@@ -606,6 +614,7 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
   },
   summaryContent: {
     padding: '10%',
@@ -630,6 +639,7 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
     flex: 1,
   },
   priceBox: {
@@ -640,16 +650,19 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 34,
     fontWeight: '800',
+    fontFamily: FontFamily.body.bold,
   },
   priceCaption: {
     color: Palette.line,
     fontSize: 13,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
   },
   error: {
     color: Palette.error,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 8,
@@ -658,6 +671,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
   },
 });
