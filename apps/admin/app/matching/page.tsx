@@ -39,7 +39,8 @@ export default function MatchingPage() {
       const { data } = await supabase
         .from('activity_types')
         .select('*')
-        .eq('is_live', true);
+        .eq('is_live', true)
+        .eq('is_bookable', true);
       if (data) {
         setActivities(data);
         if (data.length > 0) {

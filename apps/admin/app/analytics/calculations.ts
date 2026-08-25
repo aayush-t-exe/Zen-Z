@@ -3,7 +3,15 @@
 // here is built from raw booking/no-show/report rows fetched directly
 // from Supabase — no server-side aggregation view exists for this yet.
 
-export const ACTIVITY_ORDER = ['Cafés', 'Dinners', 'Movies'];
+export const ACTIVITY_ORDER = [
+  'Cafés',
+  'Dinners',
+  'Movies',
+  'Box Cricket',
+  'Football',
+  '8-Ball Pool',
+  'Pickleball',
+];
 
 export interface BookingRow {
   id: string;

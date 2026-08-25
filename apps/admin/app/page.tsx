@@ -11,6 +11,7 @@ interface DashboardMetrics {
   cafe_bookings: number;
   dinner_bookings: number;
   movie_bookings: number;
+  sports_bookings: number;
   groups_formed: number;
   unmatched_count: number;
   pending_reports: number;
@@ -50,7 +51,8 @@ export default function Dashboard() {
             id,
             slots:slot_id (
               activity_types:activity_type_id (
-                name
+                name,
+                parent_activity_id
               )
             )
           `)
@@ -72,12 +74,14 @@ export default function Dashboard() {
           .select('id')
           .eq('status', 'open');
 
-        let cafe = 0, dinner = 0, movie = 0;
+        let cafe = 0, dinner = 0, movie = 0, sports = 0;
         bookings?.forEach((b: any) => {
-          const activity = b.slots?.activity_types?.name;
+          const activityType = b.slots?.activity_types;
+          const activity = activityType?.name;
           if (activity === 'Cafés') cafe++;
           else if (activity === 'Dinners') dinner++;
           else if (activity === 'Movies') movie++;
+          else if (activityType?.parent_activity_id != null) sports++;
         });
 
         setMetrics({
@@ -85,6 +89,7 @@ export default function Dashboard() {
           cafe_bookings: cafe,
           dinner_bookings: dinner,
           movie_bookings: movie,
+          sports_bookings: sports,
           groups_formed: groups?.length || 0,
           unmatched_count: unmatched?.length || 0,
           pending_reports: reports?.length || 0,
@@ -171,6 +176,7 @@ export default function Dashboard() {
               <p>☕ Cafés: {metrics.cafe_bookings}</p>
               <p>🍽 Dinners: {metrics.dinner_bookings}</p>
               <p>🎬 Movies: {metrics.movie_bookings}</p>
+              <p>🏆 Sports: {metrics.sports_bookings}</p>
             </div>
           </div>
 
