@@ -10,3 +10,71 @@ body {
   color: #f3f0ff;
   background: #0c0a14;
 }
+
+.legal-body h2 {
+  margin-top: 8px;
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #f3f0ff;
+}
+
+.legal-body h3 {
+  margin-top: 4px;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #f3f0ff;
+}
+
+.legal-body ul,
+.legal-body ol {
+  margin-top: 12px;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legal-body ul {
+  list-style-type: disc;
+}
+
+.legal-body ol {
+  list-style-type: decimal;
+}
+
+.legal-body p + h2,
+.legal-body ul + h2,
+.legal-body table + h2 {
+  margin-top: 8px;
+}
+
+.legal-body table {
+  width: 100%;
+  margin-top: 16px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.legal-body th,
+.legal-body td {
+  border-bottom: 1px solid rgba(243, 240, 255, 0.12);
+  padding: 10px 8px;
+  text-align: left;
+}
+
+.legal-body th {
+  color: #f3f0ff;
+  font-weight: 500;
+}
+
+.legal-body a {
+  color: inherit;
+  text-underline-offset: 2px;
+  text-decoration: underline;
+}
+
+.legal-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

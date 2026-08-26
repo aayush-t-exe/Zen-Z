@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 const steps = [
   {
     title: 'Sign up',
@@ -102,6 +104,16 @@ export default function Home() {
 
       <footer className="mx-auto max-w-3xl px-6 py-16 text-center text-sm text-violet-100/40">
         <p>Currently testing on campus. Full launch coming soon.</p>
+        <nav className="mt-6 flex flex-wrap justify-center gap-4">
+          <Link href="/about" className="hover:text-violet-100/70">About</Link>
+          <Link href="/pricing" className="hover:text-violet-100/70">Pricing</Link>
+          <Link href="/faq" className="hover:text-violet-100/70">FAQ</Link>
+          <Link href="/contact" className="hover:text-violet-100/70">Contact</Link>
+          <Link href="/privacy" className="hover:text-violet-100/70">Privacy</Link>
+          <Link href="/terms" className="hover:text-violet-100/70">Terms</Link>
+          <Link href="/refund" className="hover:text-violet-100/70">Refunds</Link>
+          <Link href="/community-guidelines" className="hover:text-violet-100/70">Community Guidelines</Link>
+        </nav>
       </footer>
     </main>
   );
