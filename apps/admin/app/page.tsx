@@ -57,7 +57,8 @@ export default function Dashboard() {
             )
           `)
           .gte('created_at', weekStart.toISOString())
-          .lte('created_at', today.toISOString());
+          .lte('created_at', today.toISOString())
+          .eq('payment_status', 'paid');
 
         const { data: groups } = await supabase
           .from('groups')
