@@ -1,20 +1,23 @@
 import { supabase } from '@/lib/supabase';
 
-// profiles.photo_url stores the storage path ("{user_id}/profile.jpg"),
-// not a usable URL — the profile-photos bucket is private, so every
-// admin view has to exchange that path for a time-limited signed URL
-// per docs/STORAGE.md. Rendering photo_url directly as an <img src>
-// (what this used to do) just fails silently: it's a bare path, not
-// a fetchable address.
+// profiles.photo_url is self-updatable by the student (0051_profiles_
+// column_grants.sql) and only ever meant to be a boolean "has a photo" —
+// the actual storage path is never trusted from that column's string
+// value. A student could otherwise set photo_url to another student's real
+// path ("<other_id>/profile.jpg") and have that student's real photo
+// displayed under their own name across the admin dashboard. Every upload
+// path (apps/mobile/.../profile-creation.tsx) writes to "<user_id>/
+// profile.jpg", so that's the only path we ever ask the bucket to sign.
 export async function getSignedPhotoUrl(
-  path: string | null,
+  studentId: string,
+  hasPhoto: boolean,
   expiresInSeconds = 86400
 ): Promise<string | null> {
-  if (!path) return null;
+  if (!hasPhoto) return null;
 
   const { data, error } = await supabase.storage
     .from('profile-photos')
-    .createSignedUrl(path, expiresInSeconds);
+    .createSignedUrl(`${studentId}/profile.jpg`, expiresInSeconds);
 
   if (error) {
     console.error('Failed to sign photo URL:', error);
@@ -24,16 +27,20 @@ export async function getSignedPhotoUrl(
   return data.signedUrl;
 }
 
+// Returns a map keyed by student id (not by any client-supplied path).
 export async function getSignedPhotoUrls(
-  paths: (string | null | undefined)[],
+  students: { id: string; hasPhoto: boolean }[],
   expiresInSeconds = 86400
 ): Promise<Record<string, string>> {
-  const uniquePaths = Array.from(new Set(paths.filter((p): p is string => !!p)));
-  if (uniquePaths.length === 0) return {};
+  const idsWithPhotos = Array.from(
+    new Set(students.filter((s) => s.hasPhoto).map((s) => s.id))
+  );
+  if (idsWithPhotos.length === 0) return {};
 
+  const paths = idsWithPhotos.map((id) => `${id}/profile.jpg`);
   const { data, error } = await supabase.storage
     .from('profile-photos')
-    .createSignedUrls(uniquePaths, expiresInSeconds);
+    .createSignedUrls(paths, expiresInSeconds);
 
   if (error || !data) {
     console.error('Failed to sign photo URLs:', error);
@@ -43,7 +50,8 @@ export async function getSignedPhotoUrls(
   const map: Record<string, string> = {};
   data.forEach((item) => {
     if (item.path && item.signedUrl) {
-      map[item.path] = item.signedUrl;
+      const studentId = item.path.split('/')[0];
+      map[studentId] = item.signedUrl;
     }
   });
   return map;

@@ -76,8 +76,11 @@ export default function ReportsPage() {
 
     setReports(mapped);
 
-    const paths = mapped.flatMap((r) => [r.reporter?.photo_url, r.reported?.photo_url]);
-    getSignedPhotoUrls(paths).then(setPhotoUrls);
+    const people = mapped
+      .flatMap((r) => [r.reporter, r.reported])
+      .filter((p): p is ReportPerson => !!p)
+      .map((p) => ({ id: p.id, hasPhoto: !!p.photo_url }));
+    getSignedPhotoUrls(people).then(setPhotoUrls);
 
     setLoading(false);
   };
@@ -114,8 +117,7 @@ export default function ReportsPage() {
   const openReports = reports.filter((r) => r.status === 'open');
   const closedReports = reports.filter((r) => r.status !== 'open');
 
-  const photoFor = (person: ReportPerson | null) =>
-    person?.photo_url ? photoUrls[person.photo_url] : undefined;
+  const photoFor = (person: ReportPerson | null) => (person ? photoUrls[person.id] : undefined);
 
   const PersonBadge = ({ person, label }: { person: ReportPerson | null; label: string }) => (
     <div className="flex items-center gap-2">

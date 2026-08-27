@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
             .from('bookings')
             .select(
               `id, user_id, status, payment_status, created_at,
-               slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee ) )`
+               slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee, profit_amount ) )`
             )
             // A cancelled booking isn't an active reservation — counting
             // it would inflate every downstream number (bookings by
@@ -163,6 +163,7 @@ export default function AnalyticsPage() {
           // what was actually charged at the time. Acceptable approximation
           // at this scale; would need a booking-level price snapshot to fix.
           convenience_fee: b.slots?.activity_types?.convenience_fee ?? 0,
+          profit_amount: b.slots?.activity_types?.profit_amount ?? 0,
         }))
       );
       setNoShowDates((noShows ?? []).map((n: any) => n.created_at));
@@ -223,7 +224,7 @@ export default function AnalyticsPage() {
         )}
 
         {/* KPI row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6 mb-8">
           <div className="bg-white rounded-lg border p-6">
             <p className="text-gray-600 text-sm font-medium">Total users</p>
             <p className="text-4xl font-bold mt-2">{totalUsers.toLocaleString('en-IN')}</p>
@@ -231,13 +232,18 @@ export default function AnalyticsPage() {
           </div>
           <div className="bg-white rounded-lg border p-6">
             <p className="text-gray-600 text-sm font-medium">Total bookings</p>
-            <p className="text-4xl font-bold mt-2">{totals.totalBookings.toLocaleString('en-IN')}</p>
-            <p className="text-sm text-gray-500 mt-4">All-time, every activity</p>
+            <p className="text-4xl font-bold mt-2">{totals.paid.toLocaleString('en-IN')}</p>
+            <p className="text-sm text-gray-500 mt-4">Confirmed &amp; paid, every activity</p>
           </div>
           <div className="bg-white rounded-lg border p-6">
             <p className="text-gray-600 text-sm font-medium">Total revenue</p>
             <p className="text-4xl font-bold mt-2">{formatINR(totals.revenue)}</p>
             <p className="text-sm text-gray-500 mt-4">Convenience fee, paid bookings</p>
+          </div>
+          <div className="bg-white rounded-lg border p-6">
+            <p className="text-gray-600 text-sm font-medium">Profit</p>
+            <p className="text-4xl font-bold mt-2">{formatINR(totals.profit)}</p>
+            <p className="text-sm text-gray-500 mt-4">After per-activity costs, paid bookings</p>
           </div>
           <Meter label="Payment conversion" percent={totals.paymentConversionPct} color={STATUS.good} />
           <Meter label="Repeat booking rate" percent={totals.repeatRatePct} color={REVENUE_COLOR} />
@@ -296,7 +302,7 @@ export default function AnalyticsPage() {
             {/* Weekly bookings by activity */}
             <div className="bg-white rounded-lg border p-6 mb-8">
               <h2 className="font-bold mb-1">Bookings by week</h2>
-              <p className="text-sm text-gray-500 mb-4">Last 8 weeks, by event date and activity.</p>
+              <p className="text-sm text-gray-500 mb-4">Confirmed &amp; paid, last 8 weeks, by event date and activity.</p>
               <ResponsiveContainer width="100%" height={280}>
                 <BarChart data={weeklyBookings} margin={{ left: -10 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />
@@ -339,7 +345,7 @@ export default function AnalyticsPage() {
             {/* Daily bookings by activity */}
             <div className="bg-white rounded-lg border p-6 mb-8">
               <h2 className="font-bold mb-1">Bookings by day</h2>
-              <p className="text-sm text-gray-500 mb-4">Last 14 days, by the day booked (not the event date), by activity.</p>
+              <p className="text-sm text-gray-500 mb-4">Confirmed &amp; paid, last 14 days, by the day booked (not the event date), by activity.</p>
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={dailyBookings} margin={{ left: -10, right: 12, top: 8 }}>
                   <CartesianGrid vertical={false} stroke={GRID_COLOR} />

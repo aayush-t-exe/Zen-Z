@@ -71,7 +71,7 @@ export default function StudentProfilePage() {
         }
 
         setProfile(profileData);
-        getSignedPhotoUrl(profileData.photo_url).then(setPhotoUrl);
+        getSignedPhotoUrl(studentId, !!profileData.photo_url).then(setPhotoUrl);
 
         // Fetch dimensions
         const { data: dimensionsData } = await supabase

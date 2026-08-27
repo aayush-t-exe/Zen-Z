@@ -22,6 +22,7 @@ export interface BookingRow {
   slot_datetime: string;
   activity_name: string;
   convenience_fee: number;
+  profit_amount: number;
 }
 
 export interface WeekBucket {
@@ -78,15 +79,14 @@ export function computeWeeklyBookings(
 
   bookings.forEach((b) => {
     if (!b.slot_datetime) return;
+    if (b.payment_status !== 'paid') return; // a pending/abandoned payment isn't a confirmed booking yet
     const key = weekStartOf(b.slot_datetime).toISOString();
     const bucket = buckets[key];
     if (!bucket) return; // outside the last N weeks
     bucket.total = (bucket.total as number) + 1;
     const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
     bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
-    if (b.payment_status === 'paid') {
-      bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
-    }
+    bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
   });
 
   return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
@@ -150,15 +150,14 @@ export function computeDailyBookings(
 
   bookings.forEach((b) => {
     if (!b.created_at) return;
+    if (b.payment_status !== 'paid') return; // a pending/abandoned payment isn't a confirmed booking yet
     const key = dayStartOf(b.created_at).toISOString();
     const bucket = buckets[key];
     if (!bucket) return; // outside the last N days
     bucket.total = (bucket.total as number) + 1;
     const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
     bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
-    if (b.payment_status === 'paid') {
-      bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
-    }
+    bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
   });
 
   return Object.values(buckets).sort((a, b) => a.dayStart.localeCompare(b.dayStart));
@@ -241,6 +240,7 @@ export interface Totals {
   paid: number;
   matched: number;
   revenue: number;
+  profit: number;
   paymentConversionPct: number;
   repeatRatePct: number;
 }
@@ -249,9 +249,15 @@ export function computeTotals(bookings: BookingRow[]): Totals {
   const totalBookings = bookings.length;
   const paid = bookings.filter((b) => b.payment_status === 'paid').length;
   const matched = bookings.filter((b) => b.status === 'matched').length;
-  const revenue = bookings
-    .filter((b) => b.payment_status === 'paid')
-    .reduce((sum, b) => sum + b.convenience_fee, 0);
+  const paidBookings = bookings.filter((b) => b.payment_status === 'paid');
+  const revenue = paidBookings.reduce((sum, b) => sum + b.convenience_fee, 0);
+  // Revenue is what the student is charged (convenience_fee); profit is
+  // what's actually left after per-activity costs (venue/equipment/movie
+  // tickets etc.) — founder-supplied flat amount per activity
+  // (activity_types.profit_amount, 0061_activity_profit_amount.sql), not
+  // derivable from convenience_fee alone since the gap varies a lot per
+  // activity (e.g. Movies charges ₹126 but nets ₹26).
+  const profit = paidBookings.reduce((sum, b) => sum + b.profit_amount, 0);
 
   const byUser: Record<string, number> = {};
   bookings.forEach((b) => {
@@ -265,6 +271,7 @@ export function computeTotals(bookings: BookingRow[]): Totals {
     paid,
     matched,
     revenue,
+    profit,
     paymentConversionPct: totalBookings > 0 ? (paid / totalBookings) * 100 : 0,
     repeatRatePct: bookers > 0 ? (repeatBookers / bookers) * 100 : 0,
   };
