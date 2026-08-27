@@ -112,7 +112,7 @@ export default function StudentsPage() {
 
         <p className="text-sm text-gray-500 mb-4">
           {filtered.length.toLocaleString('en-IN')} of {students.length.toLocaleString('en-IN')} student
-          {students.length === 1 ? '' : 's'} — every signed-up profile, whether or not they've booked yet.
+          {students.length === 1 ? '' : 's'} — every signed-up profile, whether or not they&apos;ve booked yet.
         </p>
 
         {filtered.length === 0 ? (
