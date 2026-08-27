@@ -65,10 +65,15 @@ export default function Dashboard() {
           .select('id')
           .eq('status', 'confirmed');
 
+        // Mirrors the matching queue's own pool query (matching/page.tsx,
+        // MatchingBoard.tsx) — an unpaid pending_match booking can't
+        // actually be matched (confirm_group() requires payment_status =
+        // 'paid'), so counting it here as "needs action" is misleading.
         const { data: unmatched } = await supabase
           .from('bookings')
           .select('id')
-          .eq('status', 'pending_match');
+          .eq('status', 'pending_match')
+          .eq('payment_status', 'paid');
 
         const { data: reports } = await supabase
           .from('reports')
