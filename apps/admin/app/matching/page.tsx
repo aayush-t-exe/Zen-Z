@@ -155,6 +155,9 @@ export default function MatchingPage() {
             <h1 className="text-2xl font-bold">Matching Queue</h1>
           </div>
           <div className="flex items-center gap-4">
+            <Link href="/students" className="text-sm text-blue-600 hover:text-blue-800">
+              Students →
+            </Link>
             <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
               View groups →
             </Link>
