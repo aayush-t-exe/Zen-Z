@@ -24,7 +24,7 @@ export interface MyGroupDetails {
 
 export interface GroupMember {
   id: string;
-  full_name: string;
+  first_name: string;
   year_of_study: number;
 }
 
@@ -73,24 +73,28 @@ export async function fetchMyGroups(): Promise<MyGroupDetails[]> {
 // Queries group_member_public (never profiles directly) — the same
 // privacy-safe view the rest of the app uses for groupmate info, so
 // there's no code path here that can pull in photo_url.
+//
+// Member ids come from group_member_ids(), not a group_members ->
+// bookings embedded join — that join used to resolve to null for every
+// groupmate (bookings' RLS only allows reading your own row), silently
+// dropping everyone but yourself. group_member_ids() (0065) does the same
+// join server-side under SECURITY DEFINER, the same pattern already used
+// for groupmate_user_ids()/group_member_public itself.
 export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]> {
-  const { data: memberBookings, error: memberError } = await supabase
-    .from('group_members')
-    .select('bookings:booking_id ( user_id )')
-    .eq('group_id', groupId);
+  const { data: memberIds, error: idsError } = await supabase.rpc('group_member_ids', {
+    p_group_id: groupId,
+  });
 
-  if (memberError || !memberBookings) {
-    console.error('Failed to fetch group members:', memberError);
+  if (idsError || !memberIds) {
+    console.error('Failed to fetch group member ids:', idsError);
     return [];
   }
-
-  const userIds = (memberBookings as any[]).map((gm) => gm.bookings?.user_id).filter(Boolean);
-  if (userIds.length === 0) return [];
+  if (memberIds.length === 0) return [];
 
   const { data: members, error: profileError } = await supabase
     .from('group_member_public')
-    .select('id, full_name, year_of_study')
-    .in('id', userIds);
+    .select('id, first_name, year_of_study')
+    .in('id', memberIds);
 
   if (profileError || !members) {
     console.error('Failed to fetch member profiles:', profileError);
@@ -98,4 +102,32 @@ export async function fetchGroupMembers(groupId: string): Promise<GroupMember[]>
   }
 
   return members as GroupMember[];
+}
+
+// Total unread chat messages across every group the caller is in — powers
+// the Chats tab's nav-bar badge. security-invoker (0066): relies on the
+// caller's own RLS on messages/bookings to naturally scope this correctly
+// (an unrevealed group's messages aren't readable yet, so they can't
+// count as unread; bookings' "own bookings only" policy scopes the join
+// to the caller's own group_members row per group).
+export async function fetchUnreadMessageCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('my_unread_message_count');
+
+  if (error) {
+    console.error('Failed to fetch unread message count:', error);
+    return 0;
+  }
+
+  return typeof data === 'number' ? data : 0;
+}
+
+// Bumps the caller's own last_read_at for this group to now — a dedicated
+// RPC rather than a direct update() because group_members' own "leave"
+// trigger (0048, fixed for this in 0068) needs to tell this apart from an
+// actual leave attempt.
+export async function markGroupRead(groupId: string): Promise<void> {
+  const { error } = await supabase.rpc('mark_group_read', { p_group_id: groupId });
+  if (error) {
+    console.error('Failed to mark group read:', error);
+  }
 }

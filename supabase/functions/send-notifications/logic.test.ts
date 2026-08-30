@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { partitionByPushToken, chunk, buildExpoMessages, resolveTicketOutcome } from './logic';
+import {
+  partitionByPushToken,
+  chunk,
+  buildExpoMessages,
+  resolveTicketOutcome,
+  isAuthorizedCronCaller,
+  MAX_ATTEMPTS,
+} from './logic';
 
 describe('partitionByPushToken', () => {
   it('splits rows into those with and without a push token', () => {
@@ -56,25 +63,74 @@ describe('buildExpoMessages', () => {
   });
 });
 
+describe('isAuthorizedCronCaller', () => {
+  const key = 'service-role-secret';
+
+  it('accepts the exact service-role bearer token the cron job sends', () => {
+    expect(isAuthorizedCronCaller(`Bearer ${key}`, key)).toBe(true);
+  });
+
+  it('rejects the anon key (or any other valid-but-wrong JWT)', () => {
+    expect(isAuthorizedCronCaller('Bearer some-anon-or-user-jwt', key)).toBe(false);
+  });
+
+  it('rejects a missing Authorization header', () => {
+    expect(isAuthorizedCronCaller(null, key)).toBe(false);
+  });
+
+  it('rejects a header missing the "Bearer " prefix', () => {
+    expect(isAuthorizedCronCaller(key, key)).toBe(false);
+  });
+});
+
 describe('resolveTicketOutcome', () => {
   it('marks sent when the response is ok and the ticket status is ok', () => {
-    expect(resolveTicketOutcome({ ok: true, status: 200 }, { status: 'ok' })).toEqual({
+    expect(resolveTicketOutcome({ ok: true, status: 200 }, { status: 'ok' }, 1)).toEqual({
       status: 'sent',
       error: null,
+      clearPushToken: false,
     });
   });
 
-  it('marks failed with the ticket message when the ticket reports an error', () => {
-    expect(resolveTicketOutcome({ ok: true, status: 200 }, { status: 'error', message: 'DeviceNotRegistered' })).toEqual({
+  it('permanently fails and clears the push token on DeviceNotRegistered, even on the first attempt', () => {
+    expect(
+      resolveTicketOutcome(
+        { ok: true, status: 200 },
+        { status: 'error', message: 'DeviceNotRegistered', details: { error: 'DeviceNotRegistered' } },
+        1
+      )
+    ).toEqual({
       status: 'failed',
       error: 'DeviceNotRegistered',
+      clearPushToken: true,
     });
   });
 
-  it('marks failed with the HTTP status when the response itself failed and no ticket exists', () => {
-    expect(resolveTicketOutcome({ ok: false, status: 500 }, undefined)).toEqual({
+  it('requeues a transient error (no specific Expo error code) for retry while under the attempt cap', () => {
+    expect(
+      resolveTicketOutcome({ ok: true, status: 200 }, { status: 'error', message: 'MessageRateExceeded' }, 1)
+    ).toEqual({
+      status: 'pending',
+      error: 'MessageRateExceeded',
+      clearPushToken: false,
+    });
+  });
+
+  it('requeues an HTTP-level failure (no ticket at all) for retry while under the attempt cap', () => {
+    expect(resolveTicketOutcome({ ok: false, status: 500 }, undefined, 1)).toEqual({
+      status: 'pending',
+      error: 'HTTP 500',
+      clearPushToken: false,
+    });
+  });
+
+  it('gives up permanently once a transient error has used up all its attempts', () => {
+    expect(
+      resolveTicketOutcome({ ok: false, status: 500 }, undefined, MAX_ATTEMPTS)
+    ).toEqual({
       status: 'failed',
       error: 'HTTP 500',
+      clearPushToken: false,
     });
   });
 });

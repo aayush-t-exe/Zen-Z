@@ -59,12 +59,42 @@ never off email specifically.
    `storage.objects` restrict read access to the uploading user's own folder
    and admins only.
 
+## Chat privacy (founder decision, 2026-08-26): policy-level, not RLS-enforced
+Unlike photo privacy above, this is **not** a technical guarantee — it can't
+be, because the founder holds the Supabase `service_role` key for the
+project, which bypasses RLS by design (same reason `my_group_ids()` is
+`security definer`, see migration 0009). No RLS policy or view can hide a
+row from a role that has infra-level DB access.
+
+What this decision actually commits to:
+1. **No admin UI or API ever renders `messages` content.** The admin
+   dashboard's Reports queue (PRODUCT_SPEC.md §2.6) shows the reporter,
+   reported student, group, and free-text reason — never the chat itself.
+   Do not add a "view chat" feature to the admin dashboard, including for
+   moderation/debugging purposes, without the founder explicitly reopening
+   this decision.
+2. **The founder commits to not querying `messages` directly** (Supabase
+   Studio, ad hoc scripts) as a matter of practice — this is
+   self-discipline, not code enforcement.
+3. Existing RLS on `messages` (migration 0018) is unchanged: it still gates
+   `anon`/`authenticated` access by group membership + the 48h reveal
+   window. This decision doesn't touch that — it only rules out ever
+   building an admin-side reader on top of the `service_role` bypass.
+
+If a future incident needs actual message content reviewed (e.g. a safety
+report escalates), that is a deliberate, logged exception to commitment #2 —
+not a standing admin feature. True end-to-end encryption (where even
+`service_role` only sees ciphertext) was considered and explicitly rejected
+for now: it would remove the founder's ability to ever investigate a safety
+report involving chat content, which outweighs the privacy gain at this
+product's current risk profile (students meeting strangers via the app).
+
 ## Lead-time items to start early
 ~~India SMS/DLT compliance (TRAI registration for MSG91)~~ — no longer
 applicable now that phone/SMS OTP has been dropped.
 
 Items still worth starting in parallel, not when the relevant milestone
-arrives: Razorpay business KYC, Apple Developer Program enrollment, Google
+arrives: PayU business KYC, Apple Developer Program enrollment, Google
 Play Console account setup, and email sending domain verification (Brevo
 today, Zoho ZeptoMail once that migration starts).
 

@@ -24,16 +24,36 @@ describe('applyOptionWeights', () => {
 });
 
 describe('applyScaleMapping', () => {
-  it('multiplies the scale value by each mapping multiplier', () => {
+  it('normalizes the raw 0/5/10 scale value to -1/0/1 before applying the multiplier', () => {
     const totals: DimensionTotals = {};
-    applyScaleMapping(totals, 0.8, [
+    applyScaleMapping(totals, 10, [
       { dimension_id: 3, multiplier: 1 },
       { dimension_id: 4, multiplier: -1 },
     ]);
     expect(totals).toEqual({
-      3: { sum: 0.8, count: 1 },
-      4: { sum: -0.8, count: 1 },
+      3: { sum: 1, count: 1 },
+      4: { sum: -1, count: 1 },
     });
+  });
+
+  it('maps the neutral middle tier (5) to 0 regardless of multiplier', () => {
+    const totals: DimensionTotals = {};
+    applyScaleMapping(totals, 5, [{ dimension_id: 1, multiplier: 1 }]);
+    expect(totals[1]).toEqual({ sum: 0, count: 1 });
+  });
+
+  it('does not collapse the middle and top tiers to the same clamped score when a dimension has only this one contributor', () => {
+    const middleTotals: DimensionTotals = {};
+    applyScaleMapping(middleTotals, 5, [{ dimension_id: 1, multiplier: 1 }]);
+    const topTotals: DimensionTotals = {};
+    applyScaleMapping(topTotals, 10, [{ dimension_id: 1, multiplier: 1 }]);
+
+    const middleScore = clampScore(middleTotals[1].sum, middleTotals[1].count);
+    const topScore = clampScore(topTotals[1].sum, topTotals[1].count);
+
+    expect(middleScore).not.toBe(topScore);
+    expect(middleScore).toBe(0);
+    expect(topScore).toBe(1);
   });
 });
 

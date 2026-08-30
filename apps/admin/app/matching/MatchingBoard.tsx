@@ -176,7 +176,9 @@ export default function MatchingBoard({
         new Set((reportsData ?? []).map((r: any) => pairKey(r.reporter_id, r.reported_user_id)))
       );
 
-      getSignedPhotoUrls(bookingsList.map((b) => b.profile.photo_url)).then(setPhotoUrls);
+      getSignedPhotoUrls(
+        bookingsList.map((b) => ({ id: b.profile.id, hasPhoto: !!b.profile.photo_url }))
+      ).then(setPhotoUrls);
 
       const userIds = bookingsList.map((b) => b.user_id);
       if (userIds.length > 0) {
@@ -206,8 +208,7 @@ export default function MatchingBoard({
 
   const poolBookings = unmatched.filter((b) => !placements[b.id]);
 
-  const photoFor = (booking: Booking): string | undefined =>
-    booking.profile.photo_url ? photoUrls[booking.profile.photo_url] : undefined;
+  const photoFor = (booking: Booking): string | undefined => photoUrls[booking.profile.id];
 
   const addGroup = () => {
     groupCounter.current += 1;

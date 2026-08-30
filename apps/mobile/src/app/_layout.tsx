@@ -1,9 +1,35 @@
 import '@/global.css';
 import { useEffect, useState } from 'react';
+import { LogBox } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useFonts } from 'expo-font';
+import {
+  Fraunces_400Regular,
+  Fraunces_500Medium,
+  Fraunces_600SemiBold,
+  Fraunces_700Bold,
+} from '@expo-google-fonts/fraunces';
+import {
+  InstrumentSans_400Regular,
+  InstrumentSans_500Medium,
+  InstrumentSans_600SemiBold,
+  InstrumentSans_700Bold,
+} from '@expo-google-fonts/instrument-sans';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { NetworkStatusOverlay } from '@/components/network-status-overlay';
+
+SplashScreen.preventAutoHideAsync();
+
+// Purely a dev-mode notice that the test device/browser has the OS-level
+// "reduce motion" accessibility setting on — animations still behave
+// correctly (per-animation `ReduceMotion.Never` overrides still work, and
+// everything else still degrades to instant/disabled as it should for
+// users with that setting on). This just silences the noisy LogBox popup.
+LogBox.ignoreLogs(['[Reanimated] Reduced motion setting is enabled on this device.']);
 
 const queryClient = new QueryClient();
 
@@ -31,7 +57,12 @@ function RootLayoutContent() {
           setLoading(false);
           setIsReady(true);
         }
-      } catch {
+      } catch (err) {
+        // Swallowing this silently makes "the persisted session failed to
+        // load" indistinguishable from "there never was a session" — both
+        // land the student back on the logged-out onboarding splash with no
+        // trace of which one actually happened. Surface it.
+        console.warn('Failed to restore session on boot:', err);
         if (mounted) {
           setLoading(false);
           setIsReady(true);
@@ -71,15 +102,40 @@ function RootLayoutContent() {
       ) : (
         <Stack.Screen name="(home)" options={{ headerShown: false }} />
       )}
+      {session ? <Stack.Screen name="(flow)" options={{ headerShown: false }} /> : null}
       <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Fraunces_400Regular,
+    Fraunces_500Medium,
+    Fraunces_600SemiBold,
+    Fraunces_700Bold,
+    InstrumentSans_400Regular,
+    InstrumentSans_500Medium,
+    InstrumentSans_600SemiBold,
+    InstrumentSans_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <RootLayoutContent />
-    </QueryClientProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <QueryClientProvider client={queryClient}>
+        <RootLayoutContent />
+        <NetworkStatusOverlay />
+      </QueryClientProvider>
+    </GestureHandlerRootView>
   );
 }

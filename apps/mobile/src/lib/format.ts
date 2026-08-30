@@ -12,11 +12,10 @@ export function getOrdinalSuffix(day: number): string {
   }
 }
 
-// Cafés and Dinners run in the evening every week — showing the exact clock
-// time (5pm vs 7pm) reads as an operational schedule, not an invitation.
-// Movies runs on a fixed showing per slot, so even "Evening" is redundant —
-// just the day is enough. Sports (and anything else) keeps the exact time
-// since games are booked at specific, varying hours.
+// Movies varies which theater/showing the founder assigns at match time, so
+// even the slot's own fixed hour isn't the real showtime — just the day is
+// shown. Every other activity (Cafés, Dinners, Sports, ...) runs at a real,
+// fixed, already-known hour, so the exact clock time is shown for all of them.
 export function formatSlotDateTime(dateString: string, activityName?: string): string {
   const date = new Date(dateString);
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -25,10 +24,16 @@ export function formatSlotDateTime(dateString: string, activityName?: string): s
   const dayLabel = `${dayName}, ${dayNum}${getOrdinalSuffix(dayNum)}`;
 
   if (activityName === 'Movies') return dayLabel;
-  if (activityName === 'Cafés' || activityName === 'Dinners') return `${dayLabel} · Evening`;
 
   const time = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   return `${dayLabel} · ${time}`;
+}
+
+// Once the venue is revealed the mystery is over — a matched student needs
+// to know exactly when to show up, so (unlike formatSlotDateTime) this
+// always includes the actual clock time regardless of activity.
+export function formatEventTime(dateString: string): string {
+  return new Date(dateString).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 export function formatDuration(minutes: number): string {

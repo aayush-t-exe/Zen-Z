@@ -25,7 +25,7 @@ describe('handleNotificationResponse', () => {
   it('routes a no_show notification to the no-show screen with its bookingId', () => {
     handleNotificationResponse(responseWithData({ type: 'no_show', bookingId: 'booking-1' }));
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(home)/no-show',
+      pathname: '/(flow)/no-show',
       params: { bookingId: 'booking-1' },
     });
   });
@@ -33,7 +33,7 @@ describe('handleNotificationResponse', () => {
   it('routes a groupId-bearing notification (e.g. group matched) to the group screen', () => {
     handleNotificationResponse(responseWithData({ type: 'group_matched', groupId: 'group-1' }));
     expect(mockPush).toHaveBeenCalledWith({
-      pathname: '/(home)/group/[groupId]',
+      pathname: '/(flow)/group/[groupId]',
       params: { groupId: 'group-1' },
     });
   });

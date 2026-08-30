@@ -70,6 +70,7 @@ function booking(overrides: Partial<BookingRow>): BookingRow {
     slot_datetime: REFERENCE.toISOString(),
     activity_name: 'Cafés',
     convenience_fee: 21,
+    profit_amount: 21,
     ...overrides,
   };
 }
@@ -91,6 +92,18 @@ describe('computeWeeklyBookings', () => {
       REFERENCE
     );
     expect(buckets[buckets.length - 1].revenue).toBe(0);
+  });
+
+  it('excludes a booking still awaiting payment from the total and activity count', () => {
+    const buckets = computeWeeklyBookings(
+      [booking({ payment_status: 'pending' })],
+      ACTIVITY_ORDER,
+      8,
+      REFERENCE
+    );
+    const thisWeek = buckets[buckets.length - 1];
+    expect(thisWeek.total).toBe(0);
+    expect(thisWeek['Cafés']).toBe(0);
   });
 
   it('files an unrecognized activity name under "Other"', () => {
@@ -173,6 +186,18 @@ describe('computeDailyBookings', () => {
     expect(buckets[buckets.length - 1].revenue).toBe(0);
   });
 
+  it('excludes a booking still awaiting payment from the total and activity count', () => {
+    const buckets = computeDailyBookings(
+      [booking({ payment_status: 'pending' })],
+      ACTIVITY_ORDER,
+      14,
+      REFERENCE
+    );
+    const today = buckets[buckets.length - 1];
+    expect(today.total).toBe(0);
+    expect(today['Cafés']).toBe(0);
+  });
+
   it('drops a booking made outside the requested day window instead of throwing', () => {
     const old = new Date(REFERENCE);
     old.setDate(old.getDate() - 90);
@@ -247,6 +272,15 @@ describe('computeTotals', () => {
       booking({ payment_status: 'unpaid', convenience_fee: 21 }),
     ]);
     expect(totals.revenue).toBe(21);
+  });
+
+  it('sums profit_amount only across paid bookings, independently of revenue', () => {
+    const totals = computeTotals([
+      booking({ payment_status: 'paid', convenience_fee: 126, profit_amount: 26 }),
+      booking({ payment_status: 'unpaid', convenience_fee: 126, profit_amount: 26 }),
+    ]);
+    expect(totals.profit).toBe(26);
+    expect(totals.revenue).toBe(126);
   });
 
   it('computes the repeat-booker rate from per-user booking counts', () => {

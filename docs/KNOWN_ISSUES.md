@@ -11,10 +11,10 @@ stale checkbox.
 
 - [ ] **Cancel/payment race lets a cancelled booking still get marked paid.**
       `create-payment-order` (`supabase/functions/create-payment-order/index.ts:58-88`)
-      only checks booking ownership, never status. `razorpay-webhook`
+      only checks booking ownership, never status. `payu-webhook`
       (`index.ts:44-47`) unconditionally sets `payment_status='paid'` by
       booking id with no status guard. If a student cancels a booking after
-      opening Razorpay checkout but completes payment anyway (or the webhook
+      opening PayU checkout but completes payment anyway (or the webhook
       is delayed), the booking ends up `cancelled` **and** `paid` — money
       captured, no refund triggered, invisible to `confirm_group` since that
       requires `pending_match`.
@@ -44,7 +44,7 @@ stale checkbox.
       errors, has a working retry UI) — copy that pattern.
 
 - [ ] **Group chat messages can silently vanish on send failure.**
-      `apps/mobile/src/app/(home)/group/[groupId].tsx:108-120` clears the
+      `apps/mobile/src/app/(flow)/group/[groupId].tsx:108-120` clears the
       input before the insert resolves, no optimistic UI; a failed insert is
       only `console.error`'d — the user sees their message disappear with no
       indication it wasn't sent.
@@ -78,8 +78,8 @@ stale checkbox.
   bookings into groups after the fact rather than capping at insert time.
 - `messages` RLS and Realtime subscriptions are correctly scoped per-group;
   no cross-user data leak found (message content, push tokens, reports).
-- Razorpay webhook signature verification is correct (HMAC, verify-before-parse).
+- PayU webhook signature verification is correct (HMAC, verify-before-parse).
 - Automated tests exist and run in CI for the two highest-risk flows:
-  `supabase/functions/razorpay-webhook/logic.test.ts` and
+  `supabase/functions/payu-webhook/logic.test.ts` and
   `supabase/tests/database/*.sql` (pgTAP, RLS/photo-privacy/confirm-group/
   reveal-gate/no-show-block).

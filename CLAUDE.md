@@ -18,6 +18,13 @@ before touching anything you're unsure about; don't guess at product rules.
   operational focus at launch.
 - **No location/venue field in the booking flow.** The founder assigns the
   venue after matching. Do not add an area/location picker to booking screens.
+- **No admin UI ever renders group chat message content.** Founder decision
+  (2026-08-26, see docs/ARCHITECTURE.md "Chat privacy"): this is a policy
+  commitment, not an RLS guarantee — `service_role` still bypasses RLS, so
+  it can't technically block the founder's own DB access. The Reports queue
+  shows reporter/reported/group/reason, never the messages. Do not add a
+  "view chat" admin feature, including for moderation/debugging, without
+  the founder explicitly reopening this.
 - **Personality quiz is fully data-driven.** Questions, options, and scoring
   weights live in `personality_questions` / `personality_question_options` /
   `personality_option_weights` / `personality_scale_mappings`. Never hardcode
@@ -41,7 +48,7 @@ before touching anything you're unsure about; don't guess at product rules.
   @dnd-kit/core (matching board drag-and-drop)
 - Backend: Supabase — Postgres + Auth + Storage + Realtime + Edge Functions
   (Deno runtime)
-- Payments: Razorpay — server-side order creation + webhook verification.
+- Payments: PayU — server-side order creation + webhook verification.
   Never trust a client-reported "payment succeeded" state alone.
 - Email OTP: Brevo (custom SMTP — do not rely on Supabase's default email
   sending in production), migrating to Zoho ZeptoMail (10,000 free

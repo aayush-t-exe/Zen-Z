@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Platform, Alert, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
+
+const ANDROID_PACKAGE = 'com.campussocial.app';
+const INSTAGRAM_HANDLE = 'zen_z.app';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -16,6 +20,7 @@ export default function ProfileScreen() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoLoading, setPhotoLoading] = useState(true);
   const [isDialing, setIsDialing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const loadPhoto = async () => {
@@ -70,6 +75,68 @@ export default function ProfileScreen() {
     }
   };
 
+  const handleRateApp = async () => {
+    // [ASSUMPTION] Not yet listed on either store (per Milestone 20 — no
+    // store enrollment until fully tested), so Android opens the Play
+    // Store's listing page for our package (works pre-launch too, just
+    // shows a "not found" page until the app is published) and iOS — where
+    // we don't have an App Store ID yet — tells the student it's on the way
+    // rather than opening a broken/unrelated link.
+    if (Platform.OS === 'android') {
+      const marketUrl = `market://details?id=${ANDROID_PACKAGE}`;
+      const webUrl = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
+      const canOpenMarket = await Linking.canOpenURL(marketUrl);
+      await Linking.openURL(canOpenMarket ? marketUrl : webUrl);
+      return;
+    }
+    Alert.alert('Coming soon', "We're not on the App Store just yet — hang tight.");
+  };
+
+  const handleDeleteAccount = () => {
+    if (isDeleting) return;
+
+    Alert.alert(
+      'Delete your account?',
+      "This permanently removes your profile info and photo. It can't be undone.",
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            const { error } = await supabase.rpc('delete_own_account');
+            setIsDeleting(false);
+
+            if (error) {
+              if (error.message === 'ACTIVE_BOOKING') {
+                Alert.alert(
+                  'Not just yet',
+                  "You've got a paid booking that's still pending or matched. Cancel it or message us first, then come back to delete your account."
+                );
+                return;
+              }
+              Alert.alert('Could not delete account', error.message);
+              return;
+            }
+
+            await supabase.auth.signOut();
+            setSession(null);
+            setUser(null);
+            router.replace('/(auth)/onboarding');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleFollowInstagram = async () => {
+    const appUrl = `instagram://user?username=${INSTAGRAM_HANDLE}`;
+    const webUrl = `https://www.instagram.com/${INSTAGRAM_HANDLE}`;
+    const canOpenApp = await Linking.canOpenURL(appUrl);
+    await Linking.openURL(canOpenApp ? appUrl : webUrl);
+  };
+
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -112,9 +179,33 @@ export default function ProfileScreen() {
           >
             <Text style={styles.actionLabel}>Need help now (backup)</Text>
           </Pressable>
+        </View>
 
+        <View style={{ marginTop: 24, gap: 10 }}>
+          <Text style={styles.sectionLabel}>Zen-Z</Text>
+
+          <Pressable onPress={handleRateApp} style={styles.actionCard}>
+            <Text style={styles.actionLabel}>Rate the app</Text>
+          </Pressable>
+
+          <Pressable onPress={handleFollowInstagram} style={styles.actionCard}>
+            <Text style={styles.actionLabel}>Follow us on Instagram</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ marginTop: 24, gap: 10 }}>
           <Pressable onPress={handleSignOut} style={[styles.actionCard, styles.signOutCard]}>
             <Text style={[styles.actionLabel, styles.signOutLabel]}>Sign Out</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={handleDeleteAccount}
+            disabled={isDeleting}
+            style={[styles.actionCard, styles.signOutCard, isDeleting && { opacity: 0.6 }]}
+          >
+            <Text style={[styles.actionLabel, styles.signOutLabel]}>
+              {isDeleting ? 'Deleting…' : 'Delete Account'}
+            </Text>
           </Pressable>
         </View>
 
@@ -138,6 +229,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     marginBottom: 24,
   },
   photo: {
@@ -160,15 +252,18 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
   },
   fieldValue: {
     color: Palette.muted,
     fontSize: 14,
+    fontFamily: FontFamily.body.regular,
   },
   sectionLabel: {
     color: Palette.muted,
     fontSize: 12,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -183,6 +278,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 15,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
     textAlign: 'center',
   },
   signOutCard: {
@@ -194,6 +290,7 @@ const styles = StyleSheet.create({
   versionText: {
     color: Palette.muted,
     fontSize: 12,
+    fontFamily: FontFamily.body.regular,
     marginTop: 32,
   },
 });

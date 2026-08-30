@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Pressable, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 
 /**
  * The primary button used across every pre-login screen: a slate ring, a dark
@@ -85,6 +86,7 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 20,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
     textAlign: 'center',
     letterSpacing: -0.3,
   },

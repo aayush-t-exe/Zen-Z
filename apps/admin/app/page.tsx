@@ -57,17 +57,23 @@ export default function Dashboard() {
             )
           `)
           .gte('created_at', weekStart.toISOString())
-          .lte('created_at', today.toISOString());
+          .lte('created_at', today.toISOString())
+          .eq('payment_status', 'paid');
 
         const { data: groups } = await supabase
           .from('groups')
           .select('id')
           .eq('status', 'confirmed');
 
+        // Mirrors the matching queue's own pool query (matching/page.tsx,
+        // MatchingBoard.tsx) — an unpaid pending_match booking can't
+        // actually be matched (confirm_group() requires payment_status =
+        // 'paid'), so counting it here as "needs action" is misleading.
         const { data: unmatched } = await supabase
           .from('bookings')
           .select('id')
-          .eq('status', 'pending_match');
+          .eq('status', 'pending_match')
+          .eq('payment_status', 'paid');
 
         const { data: reports } = await supabase
           .from('reports')
@@ -119,6 +125,10 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">Campus Social</h1>
           <div className="text-right">
             <p className="text-sm text-gray-600">Founder: {founder}</p>
+            <Link href="/students" className="text-sm text-blue-600 hover:text-blue-800">
+              Students
+            </Link>
+            {' · '}
             <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
               View groups
             </Link>

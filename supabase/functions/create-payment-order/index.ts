@@ -1,12 +1,28 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { computeOrderAmountPaise, isTestModeKey, makePaymentLinkReferenceId } from './logic.ts';
+import {
+  computeOrderAmountRupees,
+  isTestModeEnvironment,
+  makeInvoiceNumber,
+  canCreatePaymentLink,
+  shouldReuseExistingLink,
+} from './logic.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// A real sandbox spike (2026-08-29) confirmed PayU's Payment Links
+// product never actually calls successUrl/failureUrl — a live ₹1 test
+// payment stayed on PayU's own hosted "Payment Completed" page with no
+// redirect and no "Continue" button. We still pass a value (harmless,
+// and the marketing bridge below is DB-driven rather than trusting
+// anything echoed back), but the mobile app's poll-after-browser-closes
+// fallback (payment.tsx) is the real, only path back into the app — not
+// a fallback for an edge case, the normal case.
+const PAYMENT_REDIRECT_URL = 'https://zen-z.site/payment-redirect';
 
 serve(async (req) => {
   // Handle CORS
@@ -15,7 +31,7 @@ serve(async (req) => {
   }
 
   try {
-    const { bookingId, redirectUrl } = await req.json();
+    const { bookingId } = await req.json();
 
     if (!bookingId) {
       return new Response(
@@ -62,6 +78,8 @@ serve(async (req) => {
         user_id,
         slot_id,
         status,
+        payment_status,
+        payment_id,
         slots:slot_id (
           activity_type_id,
           activity_types:activity_type_id (
@@ -87,76 +105,170 @@ serve(async (req) => {
       );
     }
 
+    if (!canCreatePaymentLink(booking.status, booking.payment_status)) {
+      return new Response(
+        JSON.stringify({
+          error:
+            booking.status === 'cancelled'
+              ? 'This booking has been cancelled.'
+              : 'This booking has already been paid for.',
+        }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const slot = booking.slots as any;
     const activity = slot?.activity_types as any;
-    const amount = computeOrderAmountPaise(activity?.convenience_fee); // paise
+    const amountRupees = computeOrderAmountRupees(activity?.convenience_fee);
 
-    const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID');
-    const razorpayKeySecret = Deno.env.get('RAZORPAY_KEY_SECRET');
+    // PayU's hosted checkout is a full payment page (unlike Razorpay
+    // Payment Links, which needs no cardholder details up front), so it
+    // requires the payer's name/email/phone on the create-request itself.
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, phone')
+      .eq('id', booking.user_id)
+      .single();
+    const customerName = profile?.full_name || 'Student';
+    const email = callerData.user.email;
+    // profiles.phone is a WhatsApp contact number, not an auth identity
+    // (see CLAUDE.md's auth rule) — it's collected at profile creation
+    // but PayU requires *some* value in customer.phone regardless, so
+    // fall back to a placeholder rather than blocking payment over a
+    // field the checkout page itself doesn't strictly need filled in.
+    const customerPhone = profile?.phone || '9999999999';
 
-    if (!razorpayKeyId || !razorpayKeySecret) {
+    if (!email) {
       return new Response(
-        JSON.stringify({ error: 'Payments are not configured yet (missing Razorpay credentials)' }),
+        JSON.stringify({ error: 'Your account has no email on file' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const payuClientId = Deno.env.get('PAYU_CLIENT_ID');
+    const payuClientSecret = Deno.env.get('PAYU_CLIENT_SECRET');
+    const payuMerchantId = Deno.env.get('PAYU_MERCHANT_ID');
+    const payuOauthTokenUrl = Deno.env.get('PAYU_OAUTH_TOKEN_URL');
+    const payuApiBaseUrl = Deno.env.get('PAYU_API_BASE_URL');
+
+    if (!payuClientId || !payuClientSecret || !payuMerchantId || !payuOauthTokenUrl || !payuApiBaseUrl) {
+      return new Response(
+        JSON.stringify({ error: 'Payments are not configured yet (missing PayU credentials)' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const isTestMode = isTestModeKey(razorpayKeyId);
+    const isTestMode = isTestModeEnvironment(payuApiBaseUrl);
 
-    // Payment Links gives us a plain hosted-checkout URL we can open in
-    // an in-app browser — no native Razorpay SDK / custom dev client
-    // needed, unlike the Orders API + Checkout.js this replaced.
-    const linkResponse = await fetch('https://api.razorpay.com/v1/payment_links', {
+    // Payment Links uses OAuth2 client-credentials auth (confirmed live)
+    // — not the classic merchant key+salt hash create-payment-order used
+    // to sign requests with. Nothing in the create-request itself is
+    // hash-signed; the bearer token is the only proof of identity PayU
+    // wants here.
+    const tokenResponse = await fetch(payuOauthTokenUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Basic ${btoa(`${razorpayKeyId}:${razorpayKeySecret}`)}`,
-      },
-      body: JSON.stringify({
-        amount,
-        currency: 'INR',
-        reference_id: makePaymentLinkReferenceId(crypto.randomUUID()),
-        description: `${activity?.name || 'Activity'} — unlock your invitation`,
-        notes: {
-          booking_id: bookingId,
-        },
-        // Razorpay rejects callback_url unless it's a real https:// URL
-        // — it will not accept the app's own `mobile://`/`exp://` deep
-        // link directly. Route through the marketing site's
-        // /payment-redirect page, an https bridge that hands off to the
-        // real deep link. This used to be a Supabase Edge Function, but
-        // the shared *.supabase.co domain silently rewrites text/html
-        // responses to text/plain (a documented platform limitation),
-        // so the "Return to app" link never rendered as a clickable
-        // element — see apps/marketing/app/payment-redirect/page.tsx.
-        ...(redirectUrl
-          ? {
-              callback_url: `https://zen-z.site/payment-redirect?to=${encodeURIComponent(redirectUrl)}`,
-              callback_method: 'get',
-            }
-          : {}),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: payuClientId,
+        client_secret: payuClientSecret,
+        grant_type: 'client_credentials',
+        scope: 'create_payment_links',
       }),
     });
 
-    if (!linkResponse.ok) {
-      const errorData = await linkResponse.json().catch(() => ({}));
-      console.error('Razorpay error:', errorData);
+    if (!tokenResponse.ok) {
+      console.error('PayU OAuth token error:', await tokenResponse.text().catch(() => ''));
       return new Response(
-        JSON.stringify({
-          error: errorData?.error?.description || 'Failed to create payment link',
-        }),
+        JSON.stringify({ error: 'Failed to authenticate with PayU' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const paymentLink = await linkResponse.json();
+    const { access_token: accessToken } = await tokenResponse.json();
+    const payuHeaders = {
+      merchantId: payuMerchantId,
+      Authorization: `Bearer ${accessToken}`,
+    };
+
+    // Reuse the booking's last payment link if it's still live, instead of
+    // unconditionally minting a new one — see shouldReuseExistingLink's
+    // note on why unchecked creation eventually exhausts a provider
+    // account-wide cap on live links. [UNVERIFIED, see shouldReuseExistingLink's
+    // doc comment] the GET-by-invoiceNumber shape below is not confirmed
+    // against a live response.
+    if (booking.payment_id) {
+      const existingLinkResponse = await fetch(
+        `${payuApiBaseUrl}/payment-links/${booking.payment_id}`,
+        { headers: payuHeaders }
+      );
+
+      if (existingLinkResponse.ok) {
+        const existingLink = await existingLinkResponse.json();
+        const existingResult = existingLink?.result;
+        if (existingResult && shouldReuseExistingLink(existingResult.status)) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              payment_link_url: existingResult.paymentLink,
+              amount: amountRupees,
+              booking_id: bookingId,
+              is_test_mode: isTestMode,
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
+    const invoiceNumber = makeInvoiceNumber(crypto.randomUUID());
+    const description = `${activity?.name || 'Activity'} — unlock your invitation`;
+
+    // Confirmed live (2026-08-29): amount goes in `subAmount` with
+    // `isAmountFilledByCustomer: false` (not a plain `amount` field), and
+    // the correlation value we control is `udf.udf1` — PayU's own
+    // `invoiceNumber` echo and its own separately-minted `txnid` are not
+    // reliably linkable back to this request from the webhook side (see
+    // payu-webhook/logic.ts).
+    const linkResponse = await fetch(`${payuApiBaseUrl}/payment-links/`, {
+      method: 'POST',
+      headers: { ...payuHeaders, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        subAmount: amountRupees,
+        isAmountFilledByCustomer: false,
+        currency: 'INR',
+        description,
+        source: 'API',
+        customer: {
+          name: customerName,
+          email,
+          phone: customerPhone,
+        },
+        udf: { udf1: bookingId },
+        invoiceNumber,
+        successUrl: PAYMENT_REDIRECT_URL,
+        failureUrl: PAYMENT_REDIRECT_URL,
+      }),
+    });
+
+    const linkBody = await linkResponse.json().catch(() => ({}));
+
+    if (!linkResponse.ok || linkBody.status !== 0) {
+      console.error('PayU error:', linkBody);
+      return new Response(
+        JSON.stringify({ error: linkBody?.message || 'Failed to create payment link' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // payment_status is intentionally never set here — only the
-    // razorpay-webhook function, once Razorpay actually confirms the
-    // payment, is allowed to mark a booking paid.
+    // payu-webhook function, once PayU actually confirms the payment, is
+    // allowed to mark a booking paid. payment_id holds our own
+    // invoiceNumber for now (needed for the reuse-check above);
+    // payu-webhook overwrites it with PayU's real, permanent mihpayid
+    // once the payment actually succeeds.
     const { error: updateError } = await supabase
       .from('bookings')
-      .update({ payment_id: paymentLink.id })
+      .update({ payment_id: invoiceNumber })
       .eq('id', bookingId);
 
     if (updateError) {
@@ -170,9 +282,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        payment_link_url: paymentLink.short_url,
-        amount: amount / 100,
-        amount_paise: amount,
+        payment_link_url: linkBody.result.paymentLink,
+        amount: amountRupees,
         booking_id: bookingId,
         is_test_mode: isTestMode,
       }),

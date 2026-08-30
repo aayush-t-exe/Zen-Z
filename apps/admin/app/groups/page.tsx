@@ -89,8 +89,10 @@ export default function GroupsPage() {
 
       setGroups(mapped);
 
-      const allPhotoPaths = mapped.flatMap((g) => g.members.map((m) => m.photo_url));
-      getSignedPhotoUrls(allPhotoPaths).then(setPhotoUrls);
+      const members = mapped.flatMap((g) =>
+        g.members.map((m) => ({ id: m.id, hasPhoto: !!m.photo_url }))
+      );
+      getSignedPhotoUrls(members).then(setPhotoUrls);
 
       setLoading(false);
     };
@@ -165,9 +167,9 @@ export default function GroupsPage() {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {group.members.map((member) => (
                       <div key={member.id} className="flex items-center gap-3 border rounded-lg p-3">
-                        {member.photo_url && photoUrls[member.photo_url] ? (
+                        {photoUrls[member.id] ? (
                           <img
-                            src={photoUrls[member.photo_url]}
+                            src={photoUrls[member.id]}
                             alt={member.full_name}
                             className="w-10 h-10 rounded-lg object-cover bg-gray-200"
                           />

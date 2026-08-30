@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
+import { AuthButton } from '@/components/auth-button';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { fetchMyBookings, fetchMyGroups, MyBooking, MyGroupDetails } from '@/lib/groups';
@@ -83,11 +85,18 @@ export default function BookingsScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, bookings.length === 0 && styles.scrollEmpty]}
+        showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Your Events</Text>
 
         {bookings.length === 0 ? (
-          <Text style={styles.emptyText}>No upcoming events yet. Book one to unlock your next adventure.</Text>
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, styles.emptyTextCentered]}>
+              No upcoming events yet. Book one to unlock your next adventure.
+            </Text>
+            <AuthButton label="Back to home  →" onPress={() => router.push('/(home)')} />
+          </View>
         ) : (
           <View style={{ gap: 14 }}>
             {bookings.map((booking) => {
@@ -100,7 +109,7 @@ export default function BookingsScreen() {
                     <Pressable
                       onPress={() =>
                         router.push({
-                          pathname: '/(home)/payment',
+                          pathname: '/(flow)/payment',
                           params: { slotId: booking.slot_id },
                         })
                       }
@@ -132,7 +141,7 @@ export default function BookingsScreen() {
                     <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
                     <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
                     <Text style={styles.cardSubtitle}>
-                      {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime)}
+                      {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
                     </Text>
                   </View>
                 );
@@ -144,15 +153,23 @@ export default function BookingsScreen() {
                     key={booking.id}
                     onPress={() =>
                       router.push({
-                        pathname: '/(home)/group/[groupId]',
+                        pathname: '/(flow)/booking-details',
                         params: { groupId: group.group_id },
                       })
                     }
                     style={styles.card}
                   >
-                    <Text style={styles.cardEmoji}>🎭</Text>
+                    {/* activity_emoji/activity_name — with two matched
+                        bookings (e.g. Cafés + Dinners) this card used to
+                        show the same generic 🎭 + "The story begins here."
+                        for both, with nothing distinguishing which slot
+                        was which. */}
+                    <Text style={styles.cardEmoji}>{group.activity_emoji}</Text>
                     <Text style={styles.cardTitle}>The story begins here.</Text>
-                    <Text style={styles.cardSubtitle}>Tap to meet your group →</Text>
+                    <Text style={styles.cardSubtitle}>
+                      {group.activity_name} ·{' '}
+                      {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
+                    </Text>
                   </Pressable>
                 );
               }
@@ -176,16 +193,30 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 40,
   },
+  scrollEmpty: {
+    flexGrow: 1,
+  },
   pageTitle: {
     color: Palette.text,
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     marginBottom: 20,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  emptyTextCentered: {
+    textAlign: 'center',
   },
   emptyText: {
     color: Palette.muted,
     fontSize: 15,
     lineHeight: 21,
+    fontFamily: FontFamily.body.regular,
   },
   card: {
     borderWidth: 2.5,
@@ -201,15 +232,18 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 17,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
   },
   cardSubtitle: {
     color: Palette.muted,
     fontSize: 14,
+    fontFamily: FontFamily.body.regular,
     marginTop: 4,
   },
   cancelText: {
     color: Palette.error,
     fontSize: 14,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
   },
 });

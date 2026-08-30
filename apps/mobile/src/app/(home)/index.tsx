@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
@@ -21,7 +22,7 @@ interface ActivityType {
   is_bookable: boolean;
 }
 
-const BANNER_RATIO = 730 / 1622;
+const BANNER_RATIO = 737 / 1625;
 const FRAME_RATIO = 1031 / 1195;
 
 const ICONS: Record<string, ImageSourcePropType> = {
@@ -132,6 +133,11 @@ export default function HomeScreen() {
           </View>
         )}
 
+        {/* Replaces the earlier banner, which had "Match of the Week!" baked
+            into the art — didn't fit a founder-matched-groups product. This
+            one's own baked-in "Ready to meet" headline already reads right,
+            so unlike the previous version there's no separate text overlay
+            here to keep in sync with the art. */}
         <Image
           source={require('@/assets/images/home-match-banner.png')}
           style={{ width: contentWidth, height: contentWidth * BANNER_RATIO }}
@@ -151,7 +157,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: 'space-evenly',
+    justifyContent: 'center',
+    gap: 36,
     paddingTop: 24,
     paddingBottom: 20,
   },
@@ -160,12 +167,14 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 34,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     letterSpacing: -0.6,
   },
   subtitle: {
     color: Palette.muted,
     fontSize: 15,
     lineHeight: 21,
+    fontFamily: FontFamily.body.regular,
   },
   loading: {
     height: 200,
@@ -187,11 +196,13 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 19,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
     textAlign: 'center',
   },
   cardTagline: {
     color: Palette.muted,
     fontSize: 14,
+    fontFamily: FontFamily.body.regular,
     textAlign: 'center',
   },
 });

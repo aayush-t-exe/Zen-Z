@@ -60,7 +60,7 @@ Anything that sounds like a delivery-app notification or an event-ticketing plat
 
 ## Business model basics
 
-- Students pay a small fee to unlock/confirm each booking (via Razorpay).
+- Students pay a small fee to unlock/confirm each booking (via PayU).
 - There's a referral program: invite a friend, get your next adventure free once they take their first step in.
 
 ## Where the build actually stands today

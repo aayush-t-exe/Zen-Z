@@ -13,12 +13,19 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { getAuthErrorMessage } from '@/lib/authErrors';
 
 const HEADER_RATIO = 389 / 814;
 const FIELD_RATIO = 658 / 1386;
+
+// Deliberately permissive (matches Supabase Auth's own leniency) — this
+// only needs to catch obviously-malformed input before spending an OTP
+// send, not fully validate RFC 5322 email syntax.
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function EmailInputScreen() {
   const router = useRouter();
@@ -61,8 +68,15 @@ export default function EmailInputScreen() {
   }, [showFakeCaret, caretOpacity]);
 
   const handleContinue = async () => {
-    if (!email.trim()) {
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail) {
       setError('Please enter your email');
+      return;
+    }
+
+    if (!EMAIL_PATTERN.test(trimmedEmail)) {
+      setError("That doesn't look like a valid email");
       return;
     }
 
@@ -71,25 +85,27 @@ export default function EmailInputScreen() {
 
     try {
       const { error: otpError } = await supabase.auth.signInWithOtp({
-        email: email.trim(),
+        email: trimmedEmail,
         options: {
           shouldCreateUser: true,
         },
       });
 
       if (otpError) {
-        setError(otpError.message);
-        setAuthError(otpError.message);
+        const message = getAuthErrorMessage(otpError);
+        setError(message);
+        setAuthError(message);
         return;
       }
 
       router.push({
         pathname: '/(auth)/otp-verification',
-        params: { email: email.trim() },
+        params: { email: trimmedEmail },
       });
     } catch (err: any) {
-      setError(err.message || 'Failed to proceed');
-      setAuthError(err.message);
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      setAuthError(message);
     } finally {
       setIsLoading(false);
     }
@@ -204,6 +220,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     lineHeight: 45,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     textAlign: 'center',
     letterSpacing: -0.9,
     marginTop: 32,
@@ -214,6 +231,7 @@ const styles = StyleSheet.create({
     color: Palette.fieldInk,
     fontSize: 19,
     fontWeight: '500',
+    fontFamily: FontFamily.body.medium,
     textAlign: 'center',
     textAlignVertical: 'center',
     padding: 0,
@@ -228,6 +246,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 8,

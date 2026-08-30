@@ -39,5 +39,14 @@ yarn-error.log*
 !.vscode/extensions.json
 Thumbs.db
 
+# Claude Code local workspace scaffolding (skills, agent config/cache) —
+# not part of the app; .agents/skills and agent/skills contain symlinks
+# that break tools expecting a plain file tree (e.g. EAS Build on Windows).
+.claude/
+.agents/
+agent/
+.impeccable/
+skills-lock.json
+
 # TypeScript
 *.tsbuildinfo

@@ -1,29 +1,52 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applyOptionWeights, applyScaleMapping, buildScoreRows, type DimensionTotals } from "./logic.ts";
 
 Deno.serve(async (req) => {
   try {
-    const { user_id } = await req.json();
-
-    if (!user_id) {
-      return new Response(JSON.stringify({ error: "user_id is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-
-    // Initialize Supabase client with service role (bypasses RLS)
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!supabaseUrl || !supabaseKey) {
+    if (!supabaseUrl || !anonKey || !serviceKey) {
       return new Response(
         JSON.stringify({ error: "Missing Supabase credentials" }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Missing Authorization header" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Identify the caller from their own JWT — never trust a user_id
+    // supplied in the request body, or any authenticated student could
+    // request (and force a recompute of) any other student's scores.
+    const callerClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const {
+      data: { user: caller },
+      error: callerError,
+    } = await callerClient.auth.getUser();
+
+    if (callerError || !caller) {
+      return new Response(JSON.stringify({ error: "Invalid or expired session" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    const user_id = caller.id;
+
+    // Service role for the actual read/write work — RLS on
+    // personality_answers/scores already scopes a student to their own
+    // rows, but the scoring math needs personality_option_weights and
+    // personality_scale_mappings too, and user_id is now trustworthy.
+    const supabase = createClient(supabaseUrl, serviceKey);
 
     // Fetch all personality answers for this user
     const { data: answers, error: answersError } = await supabase
@@ -52,19 +75,40 @@ Deno.serve(async (req) => {
     for (const answer of answers) {
       // Handle multi-select / single-select answers
       if (answer.selected_option_ids && answer.selected_option_ids.length > 0) {
-        // Fetch weights for these options
-        const { data: weights, error: weightsError } = await supabase
-          .from("personality_option_weights")
-          .select("dimension_id, weight")
-          .in("option_id", answer.selected_option_ids);
+        // RLS lets a student insert/update their own personality_answers
+        // rows directly (needed for the app's own upsert), so a
+        // hand-crafted request could set selected_option_ids to option ids
+        // belonging to a *different* question to pull in unrelated
+        // dimension weights. Only score option ids that actually belong to
+        // this answer's question_id.
+        const { data: validOptions, error: validOptionsError } = await supabase
+          .from("personality_question_options")
+          .select("id")
+          .eq("question_id", answer.question_id)
+          .in("id", answer.selected_option_ids);
 
-        if (weightsError) {
-          console.error(`Failed to fetch weights: ${weightsError.message}`);
+        if (validOptionsError) {
+          console.error(`Failed to validate option ids: ${validOptionsError.message}`);
           continue;
         }
 
-        if (weights) {
-          applyOptionWeights(dimensionTotals, weights);
+        const validOptionIds = (validOptions ?? []).map((o) => o.id);
+
+        if (validOptionIds.length > 0) {
+          // Fetch weights for these options
+          const { data: weights, error: weightsError } = await supabase
+            .from("personality_option_weights")
+            .select("dimension_id, weight")
+            .in("option_id", validOptionIds);
+
+          if (weightsError) {
+            console.error(`Failed to fetch weights: ${weightsError.message}`);
+            continue;
+          }
+
+          if (weights) {
+            applyOptionWeights(dimensionTotals, weights);
+          }
         }
       }
 

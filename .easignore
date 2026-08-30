@@ -1,0 +1,10 @@
+# Claude Code's own local workspace scaffolding — not part of the app,
+# never checked into git. .agents/skills and agent/skills contain symlinks
+# into .claude/skills that EAS's Windows-based project archiving step can't
+# recreate (EPERM: operation not permitted, symlink ...), which fails the
+# "Compressing project files" step before a build ever starts.
+.claude/
+.agents/
+agent/
+.impeccable/
+skills-lock.json

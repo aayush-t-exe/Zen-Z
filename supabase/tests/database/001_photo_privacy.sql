@@ -58,7 +58,7 @@ insert into group_members (group_id, booking_id) values
   ('d0000000-0000-0000-0000-000000000001', 'e0000000-0000-0000-0000-000000000002');
 
 -- ---- schema-level check: no session needed ----
-insert into pgtap_output select columns_are('public', 'group_member_public', array['id', 'full_name', 'year_of_study']);
+insert into pgtap_output select columns_are('public', 'group_member_public', array['id', 'first_name', 'year_of_study']);
 
 -- ---- simulate Student A's session ----
 select set_config('request.jwt.claims', json_build_object('sub', 'a0000000-0000-0000-0000-000000000001', 'role', 'authenticated')::text, true);
@@ -77,8 +77,8 @@ insert into pgtap_output select is(
 );
 
 insert into pgtap_output select is(
-  (select full_name from group_member_public where id = 'a0000000-0000-0000-0000-000000000002'),
-  'Student B',
+  (select first_name from group_member_public where id = 'a0000000-0000-0000-0000-000000000002'),
+  'Student',
   'student CAN read a groupmate''s public info via group_member_public'
 );
 

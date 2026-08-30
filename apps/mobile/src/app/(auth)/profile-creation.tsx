@@ -1,9 +1,23 @@
 import { useState } from 'react';
-import { View, TextInput, Pressable, ActivityIndicator, ScrollView, Alert } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  Image,
+  Platform,
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { decode } from 'base64-arraybuffer';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
+import { AuthButton } from '@/components/auth-button';
+import { OptionPill } from '@/components/option-pill';
+import { QuizProgressBar } from '@/components/quiz-progress-bar';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
@@ -16,19 +30,60 @@ const YEARS: { label: string; value: number }[] = [
 ];
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
+const STEP_COUNT = 6;
+const MIN_AGE_YEARS = 16;
+
+// Exactly 10 digits, no spaces/dashes/parens/+ — a WhatsApp contact
+// number, not an auth identity, but standardized on a plain Indian mobile
+// number (no country code) per founder direction.
+const PHONE_PATTERN = /^\d{10}$/;
+
+function isValidPhone(value: string): boolean {
+  return PHONE_PATTERN.test(value);
+}
+
+function isValidName(value: string): boolean {
+  const trimmed = value.trim();
+  return trimmed.length > 0 && !/\d/.test(trimmed);
+}
+
+function defaultDob() {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 18);
+  return date;
+}
+
+function formatDob(date: Date) {
+  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
 export default function ProfileCreationScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const setAuthError = useAuthStore((state) => state.setError);
 
+  const [step, setStep] = useState(0);
   const [fullName, setFullName] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
   const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  // Lazy initializer so `Date.now()` runs once on mount, not on every render.
+  const [maxDobDate] = useState(() => new Date(Date.now() - MIN_AGE_YEARS * 365.25 * 24 * 60 * 60 * 1000));
 
-  const setAuthError = useAuthStore((state) => state.setError);
+  const canAdvance = [
+    isValidName(fullName),
+    dateOfBirth !== null,
+    yearOfStudy !== null,
+    gender !== '',
+    isValidPhone(phone.trim()),
+    true, // step 5's own check below handles the photo, so the student sees a real message instead of a silently-disabled button
+  ][step];
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -42,15 +97,76 @@ export default function ProfileCreationScreen() {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
+      base64: true,
     });
 
     if (!result.canceled) {
+      // fetch(uri).blob() doesn't reliably read a picked photo's actual bytes
+      // on native (it was silently uploading a ~14-byte placeholder instead
+      // of the real JPEG) — asking the picker for base64 directly and
+      // decoding it below is the platform-recommended path for Supabase
+      // Storage uploads from Expo.
       setPhotoUri(result.assets[0].uri);
+      setPhotoBase64(result.assets[0].base64 ?? null);
+      setError('');
     }
   };
 
+  const handleDateValueChange = (_event: any, selected: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    setDateOfBirth(selected);
+    setError('');
+  };
+
+  const handleDateDismiss = () => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+  };
+
+  const handleBack = () => {
+    if (step === 0) {
+      router.back();
+      return;
+    }
+    setStep(step - 1);
+  };
+
+  const handleNext = () => {
+    if (!canAdvance) return;
+
+    if (step === 0 && !isValidName(fullName)) {
+      setError('Enter your full name without any numbers.');
+      return;
+    }
+
+    // maximumDate on the native picker (below) is the first line of
+    // defense, but Android's date-picker widget doesn't consistently
+    // enforce it across every OEM skin — so a too-young date can still
+    // reach state here and needs its own check before advancing, with a
+    // real message instead of a silently-disabled Continue button.
+    if (step === 1 && dateOfBirth && dateOfBirth > maxDobDate) {
+      setError(`You need to be at least ${MIN_AGE_YEARS} to use Zen-Z.`);
+      return;
+    }
+
+    if (step === 4 && !isValidPhone(phone.trim())) {
+      setError('Enter a valid WhatsApp number.');
+      return;
+    }
+
+    if (step === 5 && !photoUri) {
+      setError('Add a photo before continuing.');
+      return;
+    }
+
+    if (step < STEP_COUNT - 1) {
+      setStep(step + 1);
+      return;
+    }
+    handleCreateProfile();
+  };
+
   const handleCreateProfile = async () => {
-    if (!fullName.trim() || yearOfStudy === null || !gender || !phone.trim()) {
+    if (!isValidName(fullName) || !dateOfBirth || yearOfStudy === null || !gender || !isValidPhone(phone.trim())) {
       setError('Please fill in all fields');
       return;
     }
@@ -65,14 +181,32 @@ export default function ProfileCreationScreen() {
       }
 
       const currentUser = user;
+      const dobIso = dateOfBirth.toISOString().slice(0, 10);
 
-      // Update profile in database
+      // Almost always a no-op — handle_new_user() already created this row
+      // at signup. Only matters for an account whose profiles row is
+      // missing for some other reason (found live: a handful of accounts
+      // with a real auth.users row but no matching profile), where the
+      // plain .update() below would otherwise silently match zero rows and
+      // report success without ever actually creating the profile.
+      const { error: ensureError } = await supabase.rpc('ensure_own_profile');
+      if (ensureError) {
+        setError(ensureError.message);
+        setAuthError(ensureError.message);
+        return;
+      }
+
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: fullName.trim(),
+          date_of_birth: dobIso,
           year_of_study: yearOfStudy,
-          gender: gender.toLowerCase(),
+          // profiles_gender_check (0001_init.sql) requires snake_case
+          // ('prefer_not_to_say'), but GENDERS holds display labels with
+          // spaces ('Prefer not to say') — toLowerCase() alone left the
+          // space in, tripping the check constraint on submit.
+          gender: gender.toLowerCase().replace(/\s+/g, '_'),
           phone: phone.trim(),
         })
         .eq('id', currentUser.id);
@@ -83,19 +217,18 @@ export default function ProfileCreationScreen() {
         return;
       }
 
-      // Upload photo if selected
-      if (photoUri) {
+      if (photoUri && photoBase64) {
         const fileName = `${currentUser.id}/profile.jpg`;
 
-        // Fetch photo as blob for React Native compatibility
-        const response = await fetch(photoUri);
-        const blob = await response.blob();
-
+        // upsert: true — without it, re-running onboarding on a test account
+        // that already has a profile.jpg silently keeps the *old* file
+        // (upload() refuses to overwrite by default), which is exactly how a
+        // stale/corrupt earlier upload could survive a later, correct retry.
         const { error: uploadError } = await supabase.storage
           .from('profile-photos')
-          .upload(fileName, blob, { contentType: 'image/jpeg' });
+          .upload(fileName, decode(photoBase64), { contentType: 'image/jpeg', upsert: true });
 
-        if (uploadError && !uploadError.message.includes('already exists')) {
+        if (uploadError) {
           setError('Failed to upload photo');
           return;
         }
@@ -103,14 +236,13 @@ export default function ProfileCreationScreen() {
         // Store the storage path, not a public URL — the bucket is private,
         // and the admin dashboard resolves this path to a signed URL via
         // get_student_photo_url() (see supabase/migrations/0004_storage_helpers.sql).
-        await supabase
-          .from('profiles')
-          .update({ photo_url: fileName })
-          .eq('id', currentUser.id);
+        await supabase.from('profiles').update({ photo_url: fileName }).eq('id', currentUser.id);
       }
 
-      // Navigate to personality quiz (bypasses type checking for new routes)
-      (router.push as any)('/(auth)/personality-quiz');
+      (router.push as any)({
+        pathname: '/(auth)/personality-quiz',
+        params: { name: fullName.trim() },
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to create profile');
       setAuthError(err.message);
@@ -120,138 +252,261 @@ export default function ProfileCreationScreen() {
   };
 
   return (
-    <ThemedView className="flex-1">
-      <ScrollView className="flex-1 px-6 py-8">
-        <ThemedText type="title" className="mb-6 text-xl">
-          A few details before we begin
-        </ThemedText>
-
-        {/* Full Name */}
-        <View className="mb-4 gap-2">
-          <ThemedText type="default" className="font-semibold">
-            First name
-          </ThemedText>
-          <TextInput
-            placeholder="Your name"
-            placeholderTextColor="#999"
-            value={fullName}
-            onChangeText={setFullName}
-            editable={!isLoading}
-            style={{ color: '#000', backgroundColor: '#fff', borderColor: '#d1d5db', borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, fontSize: 16 }}
-          />
+    <View style={styles.root}>
+      <View style={styles.header}>
+        <Pressable onPress={handleBack} hitSlop={12} accessibilityLabel="Back" accessibilityRole="button">
+          <Text style={styles.back}>{'←'}</Text>
+        </Pressable>
+        <View style={{ flex: 1, marginLeft: 16 }}>
+          <QuizProgressBar step={step} total={STEP_COUNT} />
         </View>
+      </View>
 
-        {/* Year of Study */}
-        <View className="mb-4 gap-2">
-          <ThemedText type="default" className="font-semibold">
-            Year of study
-          </ThemedText>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
-            {YEARS.map((year) => (
-              <Pressable
-                key={year.value}
-                onPress={() => setYearOfStudy(year.value)}
-                className={`rounded-lg px-4 py-2 ${
-                  yearOfStudy === year.value
-                    ? 'bg-white'
-                    : 'border border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <ThemedText
-                  themeColor={yearOfStudy === year.value ? 'onLight' : undefined}
-                  className={yearOfStudy === year.value ? 'font-semibold' : ''}
-                >
-                  {year.label}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-
-        {/* Gender */}
-        <View className="mb-4 gap-2">
-          <ThemedText type="default" className="font-semibold">
-            Gender
-          </ThemedText>
-          <View className="gap-2">
-            {GENDERS.map((g) => (
-              <Pressable
-                key={g}
-                onPress={() => setGender(g)}
-                className={`rounded-lg px-4 py-2 ${
-                  gender === g ? 'bg-white' : 'border border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <ThemedText
-                  themeColor={gender === g ? 'onLight' : undefined}
-                  className={gender === g ? 'font-semibold' : ''}
-                >
-                  ○ {g}
-                </ThemedText>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Phone for Founder Contact */}
-        <View className="mb-4 gap-2">
-          <ThemedText type="default" className="font-semibold">
-            WhatsApp number (for event updates)
-          </ThemedText>
-          <TextInput
-            placeholder="+91 9XXXXXXXXX"
-            placeholderTextColor="#999"
-            value={phone}
-            onChangeText={setPhone}
-            editable={!isLoading}
-            keyboardType="phone-pad"
-            style={{ color: '#000', backgroundColor: '#fff', borderColor: '#d1d5db', borderWidth: 1, borderRadius: 8, paddingHorizontal: 16, paddingVertical: 8, fontSize: 16 }}
-          />
-          <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-            We&apos;ll use this to contact you about event details and changes
-          </ThemedText>
-        </View>
-
-        {/* Photo Upload */}
-        <View className="mb-6 gap-2">
-          <ThemedText type="default" className="font-semibold">
-            Add a photo
-          </ThemedText>
-          <Pressable
-            onPress={handlePickImage}
-            disabled={isLoading}
-            className="rounded-lg border-2 border-dashed border-gray-300 px-4 py-8 dark:border-gray-600"
-          >
-            <ThemedText className="text-center font-semibold">
-              {photoUri ? 'Photo selected ✓' : 'Upload'}
-            </ThemedText>
-          </Pressable>
-          <ThemedText type="default" themeColor="textSecondary" className="text-xs">
-            This photo is seen only by our team, to help us craft the right group for you —
-            never by other members.
-          </ThemedText>
-        </View>
-
-        {error && (
-          <ThemedText type="default" themeColor="error" className="mb-4">
-            {error}
-          </ThemedText>
+      <View style={styles.body}>
+        {step === 0 && (
+          <StepShell title="What's your name?">
+            <TextInput
+              placeholder="Your full name"
+              placeholderTextColor={Palette.placeholder}
+              value={fullName}
+              onChangeText={setFullName}
+              editable={!isLoading}
+              autoFocus
+              style={styles.textInput}
+            />
+          </StepShell>
         )}
 
-        <Pressable
-          onPress={handleCreateProfile}
-          disabled={isLoading || !fullName.trim() || yearOfStudy === null || !gender || !phone.trim()}
-          className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Continue →
-            </ThemedText>
-          )}
-        </Pressable>
-      </ScrollView>
-    </ThemedView>
+        {step === 1 && (
+          <StepShell title="When's your birthday?" subtitle="We'll never show this to anyone else.">
+            {Platform.OS === 'android' && !showDatePicker && (
+              <Pressable onPress={() => setShowDatePicker(true)}>
+                <View style={styles.dateField}>
+                  <Text style={styles.dateFieldText}>
+                    {dateOfBirth ? formatDob(dateOfBirth) : 'Choose your date of birth'}
+                  </Text>
+                </View>
+              </Pressable>
+            )}
+            {showDatePicker && (
+              <DateTimePicker
+                value={dateOfBirth ?? defaultDob()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={maxDobDate}
+                onValueChange={handleDateValueChange}
+                onDismiss={handleDateDismiss}
+                themeVariant="dark"
+              />
+            )}
+          </StepShell>
+        )}
+
+        {step === 2 && (
+          <StepShell title="Which year are you in?">
+            <View style={{ gap: 12 }}>
+              {YEARS.map((year) => (
+                <OptionPill
+                  key={year.value}
+                  label={year.label}
+                  selected={yearOfStudy === year.value}
+                  dimmed={yearOfStudy !== null && yearOfStudy !== year.value}
+                  onPress={() => setYearOfStudy(year.value)}
+                />
+              ))}
+            </View>
+          </StepShell>
+        )}
+
+        {step === 3 && (
+          <StepShell title="How do you define yourself?">
+            <View style={{ gap: 12 }}>
+              {GENDERS.map((g) => (
+                <OptionPill
+                  key={g}
+                  label={g}
+                  selected={gender === g}
+                  dimmed={gender !== '' && gender !== g}
+                  onPress={() => setGender(g)}
+                />
+              ))}
+            </View>
+          </StepShell>
+        )}
+
+        {step === 4 && (
+          <StepShell title="What's your WhatsApp number?" subtitle="We'll use this to reach you about event details.">
+            <TextInput
+              placeholder="9XXXXXXXXX"
+              placeholderTextColor={Palette.placeholder}
+              value={phone}
+              onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
+              editable={!isLoading}
+              keyboardType="number-pad"
+              maxLength={10}
+              autoFocus
+              style={styles.textInput}
+            />
+          </StepShell>
+        )}
+
+        {step === 5 && (
+          <StepShell title="Add a photo">
+            <Pressable onPress={handlePickImage} disabled={isLoading}>
+              <View style={styles.photoPicker}>
+                {photoUri ? (
+                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
+                ) : (
+                  <Text style={styles.photoPickerText}>{'Upload'}</Text>
+                )}
+              </View>
+            </Pressable>
+            <Text style={styles.privacyLine}>
+              This photo is seen only by our team, to help us craft the right group for you —
+              never by other members.
+            </Text>
+          </StepShell>
+        )}
+
+        {error ? (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
+            {error}
+          </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.footer}>
+        <AuthButton
+          label={isLoading ? 'Continue' : step === STEP_COUNT - 1 ? 'Continue  →' : 'Continue  →'}
+          onPress={handleNext}
+          loading={isLoading}
+          disabled={!canAdvance}
+        />
+      </View>
+    </View>
   );
 }
+
+function StepShell({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={{ gap: 24 }}>
+      <View style={{ gap: 6 }}>
+        <Text style={styles.title}>{title}</Text>
+        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      </View>
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+    paddingTop: 56,
+    paddingHorizontal: 20,
+    paddingBottom: 28,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 36,
+  },
+  back: {
+    color: Palette.text,
+    fontSize: 22,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
+  },
+  body: {
+    flex: 1,
+  },
+  footer: {
+    paddingTop: 12,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 26,
+    lineHeight: 33,
+    fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    color: Palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: FontFamily.body.regular,
+  },
+  textInput: {
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    borderRadius: 28,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    fontSize: 16,
+    fontWeight: '500',
+    fontFamily: FontFamily.body.medium,
+    color: Palette.text,
+    backgroundColor: Palette.canvas,
+  },
+  dateField: {
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    borderRadius: 28,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+  },
+  dateFieldText: {
+    color: Palette.text,
+    fontSize: 16,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
+  },
+  photoPicker: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 2.5,
+    borderColor: Palette.ring,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    overflow: 'hidden',
+  },
+  photoPreview: {
+    width: '100%',
+    height: '100%',
+  },
+  photoPickerText: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
+  },
+  privacyLine: {
+    color: Palette.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    fontFamily: FontFamily.body.regular,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  error: {
+    color: Palette.error,
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
+    textAlign: 'center',
+    marginTop: 16,
+  },
+});

@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
+import { AuthButton } from '@/components/auth-button';
 import { fetchMyGroups, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
 
@@ -40,11 +42,18 @@ export default function ChatsScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, groups.length === 0 && styles.scrollEmpty]}
+        showsVerticalScrollIndicator={false}>
         <Text style={styles.pageTitle}>Group Chats</Text>
 
         {groups.length === 0 ? (
-          <Text style={styles.emptyText}>Once your group is matched, you&apos;ll chat here.</Text>
+          <View style={styles.emptyState}>
+            <Text style={[styles.emptyText, styles.emptyTextCentered]}>
+              Once your group is matched, you&apos;ll chat here.
+            </Text>
+            <AuthButton label="Back to home  →" onPress={() => router.push('/(home)')} />
+          </View>
         ) : (
           <View style={{ gap: 14 }}>
             {groups.map((group) => (
@@ -52,7 +61,7 @@ export default function ChatsScreen() {
                 key={group.group_id}
                 onPress={() =>
                   router.push({
-                    pathname: '/(home)/group/[groupId]',
+                    pathname: '/(flow)/group/[groupId]',
                     params: { groupId: group.group_id },
                   })
                 }
@@ -65,7 +74,7 @@ export default function ChatsScreen() {
                     </Text>
                     <Text style={styles.cardSubtitle}>
                       {group.is_revealed
-                        ? group.venue_name ?? formatSlotDateTime(group.slot_datetime)
+                        ? group.venue_name ?? formatSlotDateTime(group.slot_datetime, group.activity_name)
                         : `Unlocks ${formatSlotDateTime(group.reveal_venue_at)}`}
                     </Text>
                   </View>
@@ -90,16 +99,30 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 40,
   },
+  scrollEmpty: {
+    flexGrow: 1,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 24,
+  },
+  emptyTextCentered: {
+    textAlign: 'center',
+  },
   pageTitle: {
     color: Palette.text,
     fontSize: 22,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     marginBottom: 20,
   },
   emptyText: {
     color: Palette.muted,
     fontSize: 15,
     lineHeight: 21,
+    fontFamily: FontFamily.body.regular,
   },
   card: {
     borderWidth: 2.5,
@@ -111,10 +134,12 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 16,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
   },
   cardSubtitle: {
     color: Palette.muted,
     fontSize: 14,
+    fontFamily: FontFamily.body.regular,
     marginTop: 4,
   },
 });

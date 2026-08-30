@@ -1,4 +1,4 @@
-import { getOrdinalSuffix, formatSlotDateTime } from './format';
+import { getOrdinalSuffix, formatSlotDateTime, formatEventTime } from './format';
 
 describe('getOrdinalSuffix', () => {
   it('uses "st" for 1', () => {
@@ -43,14 +43,14 @@ describe('formatSlotDateTime', () => {
     expect(result).toMatch(/^Tue, 11th · /);
   });
 
-  it('shows "Evening" instead of a clock time for Cafés', () => {
+  it('shows the exact clock time for Cafés', () => {
     const result = formatSlotDateTime('2026-08-09T19:30:00', 'Cafés');
-    expect(result).toBe('Sun, 9th · Evening');
+    expect(result).toMatch(/^Sun, 9th · /);
   });
 
-  it('shows "Evening" instead of a clock time for Dinners', () => {
+  it('shows the exact clock time for Dinners', () => {
     const result = formatSlotDateTime('2026-08-11T17:00:00', 'Dinners');
-    expect(result).toBe('Tue, 11th · Evening');
+    expect(result).toMatch(/^Tue, 11th · /);
   });
 
   it('drops the time entirely for Movies, leaving just the day', () => {
@@ -61,5 +61,25 @@ describe('formatSlotDateTime', () => {
   it('keeps the exact clock time for activities without a special case (e.g. Sports)', () => {
     const result = formatSlotDateTime('2026-08-09T19:30:00', 'Football');
     expect(result).toMatch(/^Sun, 9th · /);
+  });
+});
+
+describe('formatEventTime', () => {
+  it('always returns a clock time, regardless of activity', () => {
+    // Movies' own formatSlotDateTime hides the time entirely — this is the
+    // post-reveal escape hatch that shows it anyway, since the mystery's
+    // over by then and a matched student needs to know when to show up.
+    // en-IN's exact rendering (zero-padding, upper/lowercase am/pm) varies
+    // by ICU environment (Jest/Node vs. on-device Hermes), so match loosely
+    // on the meaningful parts rather than the exact string.
+    const result = formatEventTime('2026-08-09T19:30:00');
+    expect(result).toMatch(/7:30/);
+    expect(result.toLowerCase()).toContain('pm');
+  });
+
+  it('formats a morning time correctly', () => {
+    const result = formatEventTime('2026-08-11T09:05:00');
+    expect(result).toMatch(/9:05/);
+    expect(result.toLowerCase()).toContain('am');
   });
 });

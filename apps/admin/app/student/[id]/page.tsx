@@ -48,6 +48,7 @@ export default function StudentProfilePage() {
   const [dimensions, setDimensions] = useState<PersonalityDimension[]>([]);
   const [scores, setScores] = useState<PersonalityScore[]>([]);
   const [answers, setAnswers] = useState<PersonalityAnswer[]>([]);
+  const [optionLabels, setOptionLabels] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -71,7 +72,7 @@ export default function StudentProfilePage() {
         }
 
         setProfile(profileData);
-        getSignedPhotoUrl(profileData.photo_url).then(setPhotoUrl);
+        getSignedPhotoUrl(studentId, !!profileData.photo_url).then(setPhotoUrl);
 
         // Fetch dimensions
         const { data: dimensionsData } = await supabase
@@ -109,6 +110,25 @@ export default function StudentProfilePage() {
 
         if (answersData) {
           setAnswers(answersData as any);
+        }
+
+        // selected_option_ids is a plain int[] column, not a foreign key —
+        // PostgREST can't embed the option labels via the nested-select
+        // above the way it does for `question:question_id`, so the actual
+        // option text has to be resolved separately. The option set is
+        // small (a few dozen across the whole quiz), so fetching all of it
+        // once and looking answers up client-side is simpler than a
+        // per-answer query.
+        const { data: optionsData } = await supabase
+          .from('personality_question_options')
+          .select('id, label');
+
+        if (optionsData) {
+          const labelMap: Record<number, string> = {};
+          optionsData.forEach((o: any) => {
+            labelMap[o.id] = o.label;
+          });
+          setOptionLabels(labelMap);
         }
       } catch (err) {
         console.error('Error fetching profile:', err);
@@ -233,8 +253,10 @@ export default function StudentProfilePage() {
                   <p className="text-sm text-gray-600">
                     {answer.scale_value !== null
                       ? `Selected: ${answer.scale_value}`
-                      : answer.selected_option_ids
-                      ? `Selected ${answer.selected_option_ids.length} option(s)`
+                      : answer.selected_option_ids && answer.selected_option_ids.length > 0
+                      ? answer.selected_option_ids
+                          .map((id) => optionLabels[id] ?? `Option #${id}`)
+                          .join(', ')
                       : 'No response'}
                   </p>
                 </div>

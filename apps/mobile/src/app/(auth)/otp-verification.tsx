@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getPostAuthRoute } from '@/lib/authRouting';
+import { getAuthErrorMessage } from '@/lib/authErrors';
 
 const HEADER_RATIO = 389 / 814;
 
@@ -30,6 +32,14 @@ export default function OTPVerificationScreen() {
   const [resendTimer, setResendTimer] = useState(60);
   const canResend = resendTimer <= 0;
   const inputRef = useRef<TextInput>(null);
+  // `isLoading` alone isn't a tight enough guard: it's a state update, so a
+  // second tap landing before that update has re-rendered (and disabled the
+  // button) still gets through. Found live — verifying once was creating
+  // *two* auth sessions per code entry (confirmed via auth.sessions,
+  // ~16-30s apart), which then left the app juggling two valid-looking
+  // sessions and unpredictable about which one it actually used for
+  // subsequent calls. A synchronous ref closes that window outright.
+  const isVerifyingRef = useRef(false);
 
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
@@ -52,6 +62,9 @@ export default function OTPVerificationScreen() {
       return;
     }
 
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
+
     setIsLoading(true);
     setError('');
 
@@ -63,8 +76,9 @@ export default function OTPVerificationScreen() {
       });
 
       if (verifyError) {
-        setError(verifyError.message);
-        setAuthError(verifyError.message);
+        const message = getAuthErrorMessage(verifyError);
+        setError(message);
+        setAuthError(message);
         return;
       }
 
@@ -75,9 +89,11 @@ export default function OTPVerificationScreen() {
         router.replace(nextRoute);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to verify OTP');
-      setAuthError(err.message);
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      setAuthError(message);
     } finally {
+      isVerifyingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -95,10 +111,10 @@ export default function OTPVerificationScreen() {
       });
 
       if (resendError) {
-        setError(resendError.message);
+        setError(getAuthErrorMessage(resendError));
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP');
+      setError(getAuthErrorMessage(err));
     }
   };
 
@@ -216,6 +232,7 @@ const styles = StyleSheet.create({
     fontSize: 34,
     lineHeight: 42,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     textAlign: 'center',
     letterSpacing: -0.8,
     marginTop: 30,
@@ -225,6 +242,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     lineHeight: 25,
     fontWeight: '400',
+    fontFamily: FontFamily.body.regular,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 28,
@@ -248,6 +266,7 @@ const styles = StyleSheet.create({
     color: Palette.line,
     fontSize: 24,
     fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
   },
   // Off-screen field that actually holds the code; the boxes above are a
   // display of its value.
@@ -262,6 +281,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
     marginTop: 16,
     paddingHorizontal: 8,
@@ -270,6 +290,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
     marginTop: 22,
   },

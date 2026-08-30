@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { AuthButton } from '@/components/auth-button';
 
 const MARK_RATIO = 211 / 301;
@@ -237,6 +238,7 @@ const styles = StyleSheet.create({
     fontSize: 19.5,
     lineHeight: 29,
     fontWeight: '600',
+    fontFamily: FontFamily.display.semiBold,
     textAlign: 'center',
     letterSpacing: -0.2,
     paddingHorizontal: 18,
@@ -247,6 +249,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     lineHeight: 36,
     fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
     textAlign: 'center',
     letterSpacing: -0.6,
     paddingHorizontal: 14,
@@ -257,6 +260,7 @@ const styles = StyleSheet.create({
     fontSize: 19,
     lineHeight: 27,
     fontWeight: '400',
+    fontFamily: FontFamily.display.regular,
     textAlign: 'center',
     paddingHorizontal: 14,
     marginTop: 2,
@@ -278,6 +282,7 @@ const styles = StyleSheet.create({
     color: Palette.text,
     fontSize: 15,
     fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
     textAlign: 'center',
   },
   dots: {
