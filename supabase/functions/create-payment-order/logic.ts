@@ -5,9 +5,21 @@
 // 2100) — confirmed against a real ₹1 live test transaction on
 // 2026-08-29 (subAmount: 1 was accepted and echoed back as 1.0), unlike
 // Razorpay's paise convention this replaced.
-export function computeOrderAmountRupees(convenienceFee: number | null | undefined, plusOne = false): number {
+// referralDiscountRupees comes from bookings.referral_discount_amount
+// (0075_referral_partial_credits.sql) — never client-supplied, always
+// read fresh from the booking row itself, since redeem_referral_credit()
+// is the only writer of that column. Clamped to 0 defensively; in
+// practice redeem_referral_credit never lets a discount reach or exceed
+// the fee (that case marks the booking paid outright and this function is
+// never called for it at all).
+export function computeOrderAmountRupees(
+  convenienceFee: number | null | undefined,
+  plusOne = false,
+  referralDiscountRupees = 0
+): number {
   const base = convenienceFee || 21;
-  return plusOne ? base * 2 : base;
+  const total = plusOne ? base * 2 : base;
+  return Math.max(total - (referralDiscountRupees || 0), 0);
 }
 
 // The other half of the cancel/payment race guard (see payu-webhook/

@@ -69,6 +69,7 @@ export default function ProfileCreationScreen() {
   const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -208,12 +209,25 @@ export default function ProfileCreationScreen() {
           // space in, tripping the check constraint on submit.
           gender: gender.toLowerCase().replace(/\s+/g, '_'),
           phone: phone.trim(),
+          // The server (enforce_referred_by_code_immutable) normalizes and
+          // validates this too — uppercasing here just avoids a round-trip
+          // failure for the common case of a lowercase-typed code.
+          ...(referralCode.trim() ? { referred_by_code: referralCode.trim().toUpperCase() } : {}),
         })
         .eq('id', currentUser.id);
 
       if (profileError) {
-        setError(profileError.message);
-        setAuthError(profileError.message);
+        // A nonexistent code trips the referred_by_code FK; the Postgres
+        // message for that ("...violates foreign key constraint
+        // profiles_referred_by_code_fkey...") isn't something a student
+        // should ever see. The self-referral case already raises a
+        // readable message from enforce_referred_by_code_immutable, so
+        // it passes through as-is.
+        const message = profileError.message.includes('profiles_referred_by_code_fkey')
+          ? "That invite code doesn't look right."
+          : profileError.message;
+        setError(message);
+        setAuthError(message);
         return;
       }
 
@@ -274,6 +288,18 @@ export default function ProfileCreationScreen() {
               autoFocus
               style={styles.textInput}
             />
+            <View style={{ marginTop: 20, gap: 6 }}>
+              <Text style={styles.referralLabel}>Have an invite code?</Text>
+              <TextInput
+                placeholder="Optional"
+                placeholderTextColor={Palette.placeholder}
+                value={referralCode}
+                onChangeText={(text) => setReferralCode(text.toUpperCase())}
+                editable={!isLoading}
+                autoCapitalize="characters"
+                style={styles.textInput}
+              />
+            </View>
           </StepShell>
         )}
 
@@ -445,6 +471,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontFamily: FontFamily.body.regular,
+  },
+  referralLabel: {
+    color: Palette.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
   },
   textInput: {
     borderWidth: 2.5,

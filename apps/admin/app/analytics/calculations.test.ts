@@ -71,6 +71,7 @@ function booking(overrides: Partial<BookingRow>): BookingRow {
     activity_name: 'Cafés',
     convenience_fee: 21,
     profit_amount: 21,
+    referral_discount_amount: 0,
     ...overrides,
   };
 }
@@ -104,6 +105,29 @@ describe('computeWeeklyBookings', () => {
     const thisWeek = buckets[buckets.length - 1];
     expect(thisWeek.total).toBe(0);
     expect(thisWeek['Cafés']).toBe(0);
+  });
+
+  it('counts a fully-credited booking toward the total but not the revenue bucket', () => {
+    const buckets = computeWeeklyBookings(
+      [booking({ referral_discount_amount: 21 })],
+      ACTIVITY_ORDER,
+      8,
+      REFERENCE
+    );
+    const thisWeek = buckets[buckets.length - 1];
+    expect(thisWeek.total).toBe(1);
+    expect(thisWeek['Cafés']).toBe(1);
+    expect(thisWeek.revenue).toBe(0);
+  });
+
+  it('subtracts only the discounted amount from revenue on a pricier, partially-credited booking', () => {
+    const buckets = computeWeeklyBookings(
+      [booking({ activity_name: 'Football', convenience_fee: 221, profit_amount: 21, referral_discount_amount: 21 })],
+      ACTIVITY_ORDER,
+      8,
+      REFERENCE
+    );
+    expect(buckets[buckets.length - 1].revenue).toBe(200);
   });
 
   it('files an unrecognized activity name under "Other"', () => {
@@ -198,6 +222,18 @@ describe('computeDailyBookings', () => {
     expect(today['Cafés']).toBe(0);
   });
 
+  it('counts a fully-credited booking toward the total but not the revenue bucket', () => {
+    const buckets = computeDailyBookings(
+      [booking({ referral_discount_amount: 21 })],
+      ACTIVITY_ORDER,
+      14,
+      REFERENCE
+    );
+    const today = buckets[buckets.length - 1];
+    expect(today.total).toBe(1);
+    expect(today.revenue).toBe(0);
+  });
+
   it('drops a booking made outside the requested day window instead of throwing', () => {
     const old = new Date(REFERENCE);
     old.setDate(old.getDate() - 90);
@@ -281,6 +317,24 @@ describe('computeTotals', () => {
     ]);
     expect(totals.profit).toBe(26);
     expect(totals.revenue).toBe(126);
+  });
+
+  it('counts a fully-credited booking as paid volume but excludes it from revenue and profit', () => {
+    const totals = computeTotals([
+      booking({ payment_status: 'paid', convenience_fee: 21, profit_amount: 21, referral_discount_amount: 21 }),
+      booking({ payment_status: 'paid', convenience_fee: 21, profit_amount: 21 }),
+    ]);
+    expect(totals.paid).toBe(2);
+    expect(totals.revenue).toBe(21);
+    expect(totals.profit).toBe(21);
+  });
+
+  it('subtracts a partial referral discount from both revenue and profit, floored by neither', () => {
+    const totals = computeTotals([
+      booking({ payment_status: 'paid', convenience_fee: 221, profit_amount: 21, referral_discount_amount: 21 }),
+    ]);
+    expect(totals.revenue).toBe(200);
+    expect(totals.profit).toBe(0);
   });
 
   it('computes the repeat-booker rate from per-user booking counts', () => {

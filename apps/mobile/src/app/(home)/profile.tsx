@@ -184,6 +184,10 @@ export default function ProfileScreen() {
         <View style={{ marginTop: 24, gap: 10 }}>
           <Text style={styles.sectionLabel}>Zen-Z</Text>
 
+          <Pressable onPress={() => router.push('/(flow)/invite')} style={styles.actionCard}>
+            <Text style={styles.actionLabel}>Invite a friend</Text>
+          </Pressable>
+
           <Pressable onPress={handleRateApp} style={styles.actionCard}>
             <Text style={styles.actionLabel}>Rate the app</Text>
           </Pressable>

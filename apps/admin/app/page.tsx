@@ -141,6 +141,10 @@ export default function Dashboard() {
               Reports
             </Link>
             {' · '}
+            <Link href="/referrals" className="text-sm text-blue-600 hover:text-blue-800">
+              Referrals
+            </Link>
+            {' · '}
             <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
               Analytics
             </Link>

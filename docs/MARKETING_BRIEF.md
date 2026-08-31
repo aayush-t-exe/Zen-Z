@@ -61,7 +61,7 @@ Anything that sounds like a delivery-app notification or an event-ticketing plat
 ## Business model basics
 
 - Students pay a small fee to unlock/confirm each booking (via PayU).
-- There's a referral program: invite a friend, get your next adventure free once they take their first step in.
+- There's a referral program: invite a friend, earn a ₹21 credit once they take their first step in (their first booking gets paid). That fully covers a Café or Dinner; on a pricier activity (Movies, Sports) it's ₹21 off, not the whole thing — capped deliberately so a cheaply-earned credit can't fully waive an expensive booking. Unlimited invites, one credit per friend who books.
 
 ## Where the build actually stands today
 
