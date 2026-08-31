@@ -111,6 +111,11 @@ export default function PersonalityQuizScreen() {
   };
 
   useEffect(() => {
+    // fetchQuestions synchronously sets isLoading/error at its top so the
+    // same function also works as the Retry button's onPress (line below) —
+    // that's not the cascading-render pattern this rule guards against,
+    // just a one-shot fetch-on-mount reusing its own reset logic.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchQuestions();
   }, []);
 

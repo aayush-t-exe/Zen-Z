@@ -30,8 +30,16 @@ describe('handleNotificationResponse', () => {
     });
   });
 
-  it('routes a groupId-bearing notification (e.g. group matched) to the group screen', () => {
+  it('routes a groupId-bearing notification (e.g. group matched) to Booking Details', () => {
     handleNotificationResponse(responseWithData({ type: 'group_matched', groupId: 'group-1' }));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/(flow)/booking-details',
+      params: { groupId: 'group-1' },
+    });
+  });
+
+  it('routes a new_message notification straight into the group chat, not Booking Details', () => {
+    handleNotificationResponse(responseWithData({ type: 'new_message', groupId: 'group-1' }));
     expect(mockPush).toHaveBeenCalledWith({
       pathname: '/(flow)/group/[groupId]',
       params: { groupId: 'group-1' },
