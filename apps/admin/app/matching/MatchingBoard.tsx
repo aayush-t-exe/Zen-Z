@@ -118,6 +118,7 @@ export default function MatchingBoard({
   const [placements, setPlacements] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [confirmingGroupId, setConfirmingGroupId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [boardError, setBoardError] = useState('');
   const groupCounter = useRef(0);
@@ -324,6 +325,34 @@ export default function MatchingBoard({
     }
   };
 
+  // A booking here is always still pending_match (this board only ever
+  // loads that pool) whether it's sitting in the unmatched pool or placed
+  // in an in-memory draft group — confirm_group() hasn't run yet, so
+  // admin_cancel_booking() (0070) never finds a real group_members row to
+  // clean up for anything cancelled from this screen.
+  const handleCancelBooking = async (booking: Booking) => {
+    if (!window.confirm(`Cancel ${booking.profile.full_name}'s booking? This can't be undone.`)) return;
+
+    setCancellingId(booking.id);
+    setBoardError('');
+    try {
+      const { error } = await supabase.rpc('admin_cancel_booking', { p_booking_id: booking.id });
+      if (error) throw error;
+
+      setUnmatched((prev) => prev.filter((b) => b.id !== booking.id));
+      setPlacements((prev) => {
+        const next = { ...prev };
+        delete next[booking.id];
+        return next;
+      });
+    } catch (err: any) {
+      console.error('Error cancelling booking:', err);
+      setBoardError(err?.message || 'Failed to cancel this booking. Please try again.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const activeBooking = activeId ? unmatched.find((b) => b.id === activeId) ?? null : null;
 
   if (loading) {
@@ -359,6 +388,8 @@ export default function MatchingBoard({
                       photoUrl={photoFor(booking)}
                       compatibilityBadge={fit}
                       hasOpenReport={openReportedUserIds.has(booking.user_id)}
+                      onCancel={() => handleCancelBooking(booking)}
+                      cancelling={cancellingId === booking.id}
                     />
                   </DraggableCard>
                 );
@@ -430,6 +461,8 @@ export default function MatchingBoard({
                               booking={booking}
                               photoUrl={photoFor(booking)}
                               compact
+                              onCancel={() => handleCancelBooking(booking)}
+                              cancelling={cancellingId === booking.id}
                             />
                           </DraggableCard>
                         ))
@@ -527,6 +560,8 @@ function StudentCard({
   dragging = false,
   compatibilityBadge = null,
   hasOpenReport = false,
+  onCancel,
+  cancelling = false,
 }: {
   booking: Booking;
   photoUrl?: string;
@@ -534,6 +569,8 @@ function StudentCard({
   dragging?: boolean;
   compatibilityBadge?: { groupNumber: number; score: number } | null;
   hasOpenReport?: boolean;
+  onCancel?: () => void;
+  cancelling?: boolean;
 }) {
   const profile = booking.profile;
 
@@ -572,15 +609,28 @@ function StudentCard({
             </p>
           )}
         </div>
-        <a
-          href={`/student/${profile.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onPointerDown={(e) => e.stopPropagation()}
-          className="text-xs text-blue-600 hover:text-blue-800 shrink-0"
-        >
-          View
-        </a>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <a
+            href={`/student/${profile.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onPointerDown={(e) => e.stopPropagation()}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            View
+          </a>
+          {onCancel && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onCancel}
+              disabled={cancelling}
+              className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50"
+            >
+              {cancelling ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
+        </div>
       </div>
       {compatibilityBadge && !compact && (
         <p className="text-xs text-gray-500 mt-2">

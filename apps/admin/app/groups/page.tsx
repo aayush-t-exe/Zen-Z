@@ -9,6 +9,7 @@ import Link from 'next/link';
 
 interface Member {
   id: string;
+  booking_id: string;
   full_name: string;
   gender: string | null;
   year_of_study: number;
@@ -34,6 +35,7 @@ export default function GroupsPage() {
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status !== 'authorized') return;
@@ -50,7 +52,7 @@ export default function GroupsPage() {
            venues:venue_id ( name ),
            group_members (
              bookings:booking_id (
-               budget_band, group_preference,
+               id, budget_band, group_preference,
                profile:user_id ( id, full_name, gender, year_of_study, photo_url )
              )
            )`
@@ -78,6 +80,7 @@ export default function GroupsPage() {
           .filter(Boolean)
           .map((b: any) => ({
             id: b.profile.id,
+            booking_id: b.id,
             full_name: b.profile.full_name,
             gender: b.profile.gender,
             year_of_study: b.profile.year_of_study,
@@ -99,6 +102,37 @@ export default function GroupsPage() {
 
     loadGroups();
   }, [status]);
+
+  // admin_cancel_booking() (0070) deletes the group_members row outright
+  // (not a left_at-archive like the student's own self-service leave
+  // flow) and queues a group_member_left notification for whoever's left
+  // — so removing this member from local state here just mirrors what
+  // already happened server-side, not a separate optimistic guess.
+  const handleCancelMember = async (groupId: string, member: Member) => {
+    if (!window.confirm(`Cancel ${member.full_name}'s booking and remove them from this group? This can't be undone.`)) {
+      return;
+    }
+
+    setCancellingId(member.booking_id);
+    setError('');
+    try {
+      const { error: cancelError } = await supabase.rpc('admin_cancel_booking', {
+        p_booking_id: member.booking_id,
+      });
+      if (cancelError) throw cancelError;
+
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === groupId ? { ...g, members: g.members.filter((m) => m.booking_id !== member.booking_id) } : g
+        )
+      );
+    } catch (err: any) {
+      console.error('Error cancelling booking:', err);
+      setError(err?.message || 'Failed to cancel this booking. Please try again.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   if (status === 'checking') {
     return <AdminAuthLoading />;
@@ -178,13 +212,21 @@ export default function GroupsPage() {
                             📷
                           </div>
                         )}
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="font-medium text-gray-900 text-sm truncate">{member.full_name}</p>
                           <p className="text-xs text-gray-500">
                             {member.gender ? member.gender.charAt(0).toUpperCase() : '—'} ·{' '}
                             {member.year_of_study}yr · {formatBudget(member.budget_band)}
                           </p>
                         </div>
+                        <button
+                          type="button"
+                          onClick={() => handleCancelMember(group.id, member)}
+                          disabled={cancellingId === member.booking_id}
+                          className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50 shrink-0"
+                        >
+                          {cancellingId === member.booking_id ? 'Cancelling…' : 'Cancel'}
+                        </button>
                       </div>
                     ))}
                   </div>
