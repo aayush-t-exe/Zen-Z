@@ -23,6 +23,11 @@ export interface BookingRow {
   activity_name: string;
   convenience_fee: number;
   profit_amount: number;
+  // A referral credit is capped at ₹21 (0075_referral_partial_credits.sql)
+  // — it fully waives a cheap booking but only discounts a pricier one, so
+  // this is a rupee amount to subtract from revenue/profit, not a
+  // boolean "was this comped" flag.
+  referral_discount_amount: number;
 }
 
 export interface WeekBucket {
@@ -86,7 +91,9 @@ export function computeWeeklyBookings(
     bucket.total = (bucket.total as number) + 1;
     const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
     bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
-    bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
+    // Real usage counts above regardless; a referral discount reduces
+    // real money collected, so it comes off revenue here.
+    bucket.revenue = (bucket.revenue as number) + b.convenience_fee - (b.referral_discount_amount || 0);
   });
 
   return Object.values(buckets).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
@@ -157,7 +164,7 @@ export function computeDailyBookings(
     bucket.total = (bucket.total as number) + 1;
     const activity = activityOrder.includes(b.activity_name) ? b.activity_name : 'Other';
     bucket[activity] = ((bucket[activity] as number) ?? 0) + 1;
-    bucket.revenue = (bucket.revenue as number) + b.convenience_fee;
+    bucket.revenue = (bucket.revenue as number) + b.convenience_fee - (b.referral_discount_amount || 0);
   });
 
   return Object.values(buckets).sort((a, b) => a.dayStart.localeCompare(b.dayStart));
@@ -250,14 +257,26 @@ export function computeTotals(bookings: BookingRow[]): Totals {
   const paid = bookings.filter((b) => b.payment_status === 'paid').length;
   const matched = bookings.filter((b) => b.status === 'matched').length;
   const paidBookings = bookings.filter((b) => b.payment_status === 'paid');
-  const revenue = paidBookings.reduce((sum, b) => sum + b.convenience_fee, 0);
+  // A referral-credit discount counts toward `paid` above (real usage,
+  // real seat) but comes off revenue here — up to ₹21 of it wasn't real
+  // money (0075_referral_partial_credits.sql caps a credit at ₹21;
+  // anything above that on a pricier activity was still collected via
+  // PayU as normal).
+  const revenue = paidBookings.reduce(
+    (sum, b) => sum + b.convenience_fee - (b.referral_discount_amount || 0),
+    0
+  );
   // Revenue is what the student is charged (convenience_fee); profit is
   // what's actually left after per-activity costs (venue/equipment/movie
   // tickets etc.) — founder-supplied flat amount per activity
   // (activity_types.profit_amount, 0061_activity_profit_amount.sql), not
   // derivable from convenience_fee alone since the gap varies a lot per
-  // activity (e.g. Movies charges ₹126 but nets ₹26).
-  const profit = paidBookings.reduce((sum, b) => sum + b.profit_amount, 0);
+  // activity (e.g. Movies charges ₹126 but nets ₹26). A referral discount
+  // comes out of margin first, same as revenue above.
+  const profit = paidBookings.reduce(
+    (sum, b) => sum + b.profit_amount - (b.referral_discount_amount || 0),
+    0
+  );
 
   const byUser: Record<string, number> = {};
   bookings.forEach((b) => {

@@ -17,6 +17,7 @@ export default function FlowLayout() {
       <Stack.Screen name="booking-details" />
       <Stack.Screen name="no-show" />
       <Stack.Screen name="group/[groupId]" />
+      <Stack.Screen name="invite" />
     </Stack>
   );
 }

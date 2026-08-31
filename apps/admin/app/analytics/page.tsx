@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
           supabase
             .from('bookings')
             .select(
-              `id, user_id, status, payment_status, created_at,
+              `id, user_id, status, payment_status, created_at, referral_discount_amount,
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee, profit_amount ) )`
             )
             // A cancelled booking isn't an active reservation — counting
@@ -164,6 +164,7 @@ export default function AnalyticsPage() {
           // at this scale; would need a booking-level price snapshot to fix.
           convenience_fee: b.slots?.activity_types?.convenience_fee ?? 0,
           profit_amount: b.slots?.activity_types?.profit_amount ?? 0,
+          referral_discount_amount: b.referral_discount_amount ?? 0,
         }))
       );
       setNoShowDates((noShows ?? []).map((n: any) => n.created_at));

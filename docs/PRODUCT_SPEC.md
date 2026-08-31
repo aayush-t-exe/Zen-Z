@@ -284,13 +284,21 @@ Step 5 — Confirm:
 ┌─────────────────────────────┐
 │   Invite someone into the        │
 │   story                           │
-│   Your next adventure is free     │
-│   when a friend takes their       │
-│   first step in.                  │
+│   Your next Café or Dinner is     │
+│   on us when a friend takes       │
+│   their first step in. Bigger     │
+│   adventures get ₹21 off.         │
 │   Your code: RAVI2K25              │
 │   [ Share via WhatsApp ]           │
 └─────────────────────────────┘
 ```
+Built 2026-08-31 (see docs/MILESTONES.md). Mechanics: unlimited invites off
+one permanent code; a credit is earned the moment a referred friend's
+*first* booking is paid (not at signup); each credit is capped at ₹21 —
+fully covers Café/Dinner/Sports-tier bookings, discounts (doesn't fully
+waive) anything pricier; auto-applied to the referrer's next unpaid
+booking, no manual redemption step. Cap chosen so a cheaply-earned credit
+can never fully waive an expensive activity's real venue/equipment cost.
 
 ---
 

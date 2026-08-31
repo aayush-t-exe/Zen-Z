@@ -35,6 +35,22 @@ describe('computeOrderAmountRupees', () => {
   it('leaves the fee unchanged when plusOne is false', () => {
     expect(computeOrderAmountRupees(126, false)).toBe(126);
   });
+
+  it('subtracts a referral discount from the fee', () => {
+    expect(computeOrderAmountRupees(221, false, 21)).toBe(200);
+  });
+
+  it('subtracts a referral discount after doubling for plusOne', () => {
+    expect(computeOrderAmountRupees(21, true, 21)).toBe(21);
+  });
+
+  it('never goes below zero even if the discount exceeds the fee', () => {
+    expect(computeOrderAmountRupees(21, false, 999)).toBe(0);
+  });
+
+  it('defaults the discount to zero when omitted', () => {
+    expect(computeOrderAmountRupees(21)).toBe(21);
+  });
 });
 
 describe('isTestModeEnvironment', () => {

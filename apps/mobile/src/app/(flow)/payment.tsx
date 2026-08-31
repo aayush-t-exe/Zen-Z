@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { View, Text, ScrollView, Pressable, Image, ActivityIndicator, StyleSheet } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
@@ -14,6 +14,8 @@ interface BookingDetails {
   status: string;
   payment_status: string;
   payment_id: string | null;
+  paid_via_referral_credit: boolean;
+  referral_discount_amount: number;
   plus_one: boolean;
   plus_one_name: string | null;
   slots: any;
@@ -62,6 +64,17 @@ export default function PaymentScreen() {
   // here.
   const hasAttemptedPayment = booking?.payment_id != null;
 
+  // Guards the auto-redeem attempt below to exactly once per slotId this
+  // screen instance sees — useFocusEffect can refetch repeatedly (e.g.
+  // backgrounding and returning to the app), and redeem_referral_credit
+  // is already server-side idempotent (a second call just finds no
+  // available credit or a booking that's no longer unpaid and returns
+  // false), but there's no reason to round-trip it more than once. Keyed
+  // on slotId itself (rather than a boolean reset during render, which
+  // React disallows mutating a ref in) so it naturally re-arms when this
+  // mounted instance gets reused for a different slotId.
+  const redeemAttemptedForSlotRef = useRef<string | undefined>(undefined);
+
   // Expo Router can reuse this screen's mounted instance when navigating
   // here again for a different slotId instead of remounting it — reset
   // the rest of the per-attempt UI state during render (same pattern as
@@ -86,6 +99,8 @@ export default function PaymentScreen() {
           status,
           payment_status,
           payment_id,
+          paid_via_referral_credit,
+          referral_discount_amount,
           plus_one,
           plus_one_name,
           slots:slot_id (
@@ -110,6 +125,39 @@ export default function PaymentScreen() {
       }
 
       setBooking(data);
+
+      // A fresh, never-attempted booking (no PayU link created yet) is
+      // exactly the moment redeem_referral_credit should get a shot at
+      // it — the reward is "auto-applied to your next booking," not
+      // something the student asks for. A credit is capped at ₹21
+      // (0075_referral_partial_credits.sql) — it fully covers a
+      // Café/Dinner/Sports-tier booking, but only discounts a pricier
+      // one, so `applied` and `fullyCovered` are tracked separately: the
+      // student may still owe a discounted remainder through the normal
+      // Pay flow below.
+      if (
+        data.payment_status === 'unpaid' &&
+        data.payment_id === null &&
+        redeemAttemptedForSlotRef.current !== slotId
+      ) {
+        redeemAttemptedForSlotRef.current = slotId;
+        const { data: redeemResult } = await supabase.rpc('redeem_referral_credit', {
+          p_booking_id: data.id,
+        });
+        if (redeemResult?.applied) {
+          // Known outcome of a successful redeem — no need for a second
+          // round trip just to read back what we already caused.
+          const updated = {
+            ...data,
+            payment_status: redeemResult.fullyCovered ? 'paid' : data.payment_status,
+            paid_via_referral_credit: true,
+            referral_discount_amount: redeemResult.discount,
+          };
+          setBooking(updated);
+          return updated as BookingDetails;
+        }
+      }
+
       return data as BookingDetails;
     } catch (err) {
       console.error('Error fetching booking:', err);
@@ -246,16 +294,30 @@ export default function PaymentScreen() {
 
   const activity = booking.slots?.activity_types;
   const baseFee = activity?.convenience_fee || 21;
-  const fee = booking.plus_one ? baseFee * 2 : baseFee;
+  const stickerFee = booking.plus_one ? baseFee * 2 : baseFee;
+  const discount = booking.referral_discount_amount || 0;
+  // A credit is capped at ₹21 (0075_referral_partial_credits.sql) — it
+  // only fully covers the sticker price on a Café/Dinner/Sports-tier
+  // booking. Anything pricier still owes the discounted remainder, so
+  // "on the house" is only true when the discount actually cleared the
+  // whole fee, not just whenever a credit touched this booking at all.
+  const fullyCoveredByCredit = discount > 0 && discount >= stickerFee;
+  const fee = Math.max(stickerFee - discount, 0);
 
   if (booking.payment_status === 'paid') {
     return (
       <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
         <View style={{ alignItems: 'center', gap: 14 }}>
           <Text style={{ fontSize: 44 }}>🔒</Text>
-          <Text style={[styles.title, { textAlign: 'center' }]}>Your invitation is sealed</Text>
+          <Text style={[styles.title, { textAlign: 'center' }]}>
+            {fullyCoveredByCredit ? 'Your invitation is sealed — on the house' : 'Your invitation is sealed'}
+          </Text>
           <Text style={[styles.subtitle, { textAlign: 'center' }]}>
-            We&apos;ll let you know once your table is set.
+            {fullyCoveredByCredit
+              ? "A friend's invite made this one free. We'll let you know once your table is set."
+              : discount > 0
+                ? `A friend's invite covered ₹${discount} of this one. We'll let you know once your table is set.`
+                : "We'll let you know once your table is set."}
           </Text>
           <AuthButton label="Continue  →" onPress={() => router.push('/(home)')} style={{ marginTop: 8 }} />
         </View>
@@ -285,6 +347,11 @@ export default function PaymentScreen() {
           <View style={[styles.cardSection, { alignItems: 'center' }]}>
             <Text style={styles.cardLabel}>Convenience fee</Text>
             <Text style={styles.feeValue}>₹{fee}</Text>
+            {discount > 0 && (
+              <Text style={styles.discountLine}>
+                ₹{stickerFee} − ₹{discount} referral credit
+              </Text>
+            )}
           </View>
 
           <View style={styles.cardSection}>
@@ -400,6 +467,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontWeight: '800',
     fontFamily: FontFamily.body.bold,
+  },
+  discountLine: {
+    color: Palette.muted,
+    fontSize: 12,
+    fontFamily: FontFamily.body.regular,
+    marginTop: 2,
   },
   includesTitle: {
     color: Palette.text,

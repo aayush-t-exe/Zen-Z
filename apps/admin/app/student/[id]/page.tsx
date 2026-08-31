@@ -51,6 +51,9 @@ export default function StudentProfilePage() {
   const [optionLabels, setOptionLabels] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleted, setDeleted] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
     if (status !== 'authorized') return;
@@ -163,9 +166,72 @@ export default function StudentProfilePage() {
     );
   }
 
+  if (deleted) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Account deleted</h1>
+          <p className="text-gray-600 mb-6">Their profile info is scrubbed and they can no longer sign in.</p>
+          <Link href="/students" className="text-blue-600 hover:text-blue-800">
+            ← Back to students
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const getScoreForDimension = (dimensionId: number): number => {
     const score = scores.find(s => s.dimension_id === dimensionId);
     return score ? score.score : 0;
+  };
+
+  const handleDeleteAccount = async () => {
+    if (isDeleting) return;
+
+    // Two separate, differently-worded confirms rather than one — this
+    // scrubs the student's profile and permanently bans their login, so
+    // it deserves more friction than the single window.confirm() this
+    // app uses for reversible-in-spirit actions elsewhere (cancelling a
+    // booking, deleting a venue).
+    if (!window.confirm(`Delete ${profile!.full_name}'s account? This scrubs their profile info, removes their photo, and blocks them from ever signing back in.`)) {
+      return;
+    }
+    if (!window.confirm('Are you absolutely sure? This cannot be undone.')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError('');
+
+    const { error: functionError } = await supabase.functions.invoke('delete-account', {
+      body: { userId: studentId },
+    });
+    setIsDeleting(false);
+
+    if (functionError) {
+      // supabase-js only gives a generic "non-2xx status" message by
+      // default — the actual reason is in the response body, on
+      // FunctionsHttpError's `context` (the raw Response).
+      let message = functionError.message || 'Failed to delete account';
+      const context = (functionError as any).context;
+      if (context && typeof context.json === 'function') {
+        try {
+          const body = await context.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // Body wasn't JSON — fall back to the generic message.
+        }
+      }
+
+      if (message === 'ACTIVE_BOOKING') {
+        setDeleteError("This student has a paid booking that's still pending or matched — cancel it first, then delete the account.");
+        return;
+      }
+      setDeleteError(message);
+      return;
+    }
+
+    setDeleted(true);
   };
 
   return (
@@ -263,6 +329,28 @@ export default function StudentProfilePage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Danger zone */}
+        <div className="bg-white rounded-lg border border-red-200 p-8 mt-8">
+          <h2 className="text-lg font-bold text-red-700 mb-1">Danger zone</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Scrubs their profile info and photo, and permanently blocks them from signing back in.
+            Booking/payment/report history is kept for audit. Refused if they have a paid booking
+            still pending or matched.
+          </p>
+          {deleteError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 text-sm">
+              {deleteError}
+            </div>
+          )}
+          <button
+            onClick={handleDeleteAccount}
+            disabled={isDeleting}
+            className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-medium disabled:opacity-50 hover:bg-red-700"
+          >
+            {isDeleting ? 'Deleting…' : 'Delete account'}
+          </button>
         </div>
       </main>
     </div>

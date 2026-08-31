@@ -105,18 +105,38 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             setIsDeleting(true);
-            const { error } = await supabase.rpc('delete_own_account');
+            // Goes through the delete-account Edge Function rather than
+            // calling the delete_own_account RPC directly — the photo
+            // cleanup step now has to happen as a real Storage API call
+            // (Supabase blocks a raw SQL delete on storage.objects), and
+            // this function is what sequences "scrub the account first,
+            // then best-effort clean up the photo" correctly.
+            const { error: functionError } = await supabase.functions.invoke('delete-account');
             setIsDeleting(false);
 
-            if (error) {
-              if (error.message === 'ACTIVE_BOOKING') {
+            if (functionError) {
+              // supabase-js only gives a generic "non-2xx status" message
+              // by default — the actual reason is in the response body,
+              // on FunctionsHttpError's `context` (the raw Response).
+              let message = functionError.message || 'Failed to delete account';
+              const context = (functionError as any).context;
+              if (context && typeof context.json === 'function') {
+                try {
+                  const body = await context.json();
+                  if (body?.error) message = body.error;
+                } catch {
+                  // Body wasn't JSON — fall back to the generic message.
+                }
+              }
+
+              if (message === 'ACTIVE_BOOKING') {
                 Alert.alert(
                   'Not just yet',
                   "You've got a paid booking that's still pending or matched. Cancel it or message us first, then come back to delete your account."
                 );
                 return;
               }
-              Alert.alert('Could not delete account', error.message);
+              Alert.alert('Could not delete account', message);
               return;
             }
 
@@ -183,6 +203,10 @@ export default function ProfileScreen() {
 
         <View style={{ marginTop: 24, gap: 10 }}>
           <Text style={styles.sectionLabel}>Zen-Z</Text>
+
+          <Pressable onPress={() => router.push('/(flow)/invite')} style={styles.actionCard}>
+            <Text style={styles.actionLabel}>Invite a friend</Text>
+          </Pressable>
 
           <Pressable onPress={handleRateApp} style={styles.actionCard}>
             <Text style={styles.actionLabel}>Rate the app</Text>
