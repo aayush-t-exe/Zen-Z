@@ -11,6 +11,8 @@ function makeBooking(
     user_id: 'user-1',
     budget_band: 'mid',
     group_preference: 'mixed',
+    plus_one: false,
+    plus_one_name: null,
     ...rest,
     profile: { ...defaultProfile, ...profile },
   };

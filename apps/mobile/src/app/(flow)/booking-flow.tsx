@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
+  TextInput,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -176,6 +177,8 @@ export default function BookingFlowScreen() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string | null>(null);
+  const [plusOne, setPlusOne] = useState(false);
+  const [friendName, setFriendName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
@@ -205,6 +208,8 @@ export default function BookingFlowScreen() {
     setSelectedSlot(null);
     setSelectedBudget(null);
     setSelectedPreference(null);
+    setPlusOne(false);
+    setFriendName('');
     setError('');
   }
 
@@ -324,6 +329,11 @@ export default function BookingFlowScreen() {
       return;
     }
 
+    if (plusOne && !friendName.trim()) {
+      setError("Who are you bringing? Add their name, or turn off Bring a +1.");
+      return;
+    }
+
     setIsLoading(true);
     setError('');
 
@@ -334,6 +344,8 @@ export default function BookingFlowScreen() {
         budget_band: budgetRequired ? selectedBudget : null,
         group_preference: preferenceRequired ? selectedPreference : 'mixed',
         status: 'pending_match',
+        plus_one: plusOne,
+        plus_one_name: plusOne ? friendName.trim() : null,
       });
 
       if (bookingError) {
@@ -588,14 +600,39 @@ export default function BookingFlowScreen() {
                 {/* Duration & price (fixed-price activities, e.g. Sports) */}
                 {activity.duration_minutes != null && (
                   <View style={styles.priceBox}>
-                    <Text style={styles.priceValue}>₹{activity.convenience_fee}</Text>
+                    <Text style={styles.priceValue}>
+                      ₹{plusOne ? activity.convenience_fee * 2 : activity.convenience_fee}
+                    </Text>
                     <Text style={styles.priceCaption}>
-                      for {formatDuration(activity.duration_minutes)}? Steal.
+                      for {formatDuration(activity.duration_minutes)}
+                      {plusOne ? ', plus your +1' : ''}? Steal.
                     </Text>
                   </View>
                 )}
               </View>
             </View>
+
+            <OptionCard
+              label="Bring a +1"
+              selected={plusOne}
+              onPress={() => {
+                setPlusOne(!plusOne);
+                if (plusOne) setFriendName('');
+              }}
+              width={contentWidth}
+            />
+            {plusOne && (
+              <TextInput
+                value={friendName}
+                onChangeText={(text) => {
+                  setFriendName(text);
+                  setError('');
+                }}
+                placeholder="Their name"
+                placeholderTextColor={Palette.muted}
+                style={styles.friendInput}
+              />
+            )}
           </View>
         )}
 
@@ -741,6 +778,16 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     fontFamily: FontFamily.body.semiBold,
+  },
+  friendInput: {
+    borderWidth: 2,
+    borderColor: Palette.ring,
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    color: Palette.text,
+    fontSize: 16,
+    fontFamily: FontFamily.body.regular,
   },
   error: {
     color: Palette.error,

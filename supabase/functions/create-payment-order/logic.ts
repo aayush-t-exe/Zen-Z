@@ -5,8 +5,9 @@
 // 2100) — confirmed against a real ₹1 live test transaction on
 // 2026-08-29 (subAmount: 1 was accepted and echoed back as 1.0), unlike
 // Razorpay's paise convention this replaced.
-export function computeOrderAmountRupees(convenienceFee: number | null | undefined): number {
-  return convenienceFee || 21;
+export function computeOrderAmountRupees(convenienceFee: number | null | undefined, plusOne = false): number {
+  const base = convenienceFee || 21;
+  return plusOne ? base * 2 : base;
 }
 
 // The other half of the cancel/payment race guard (see payu-webhook/

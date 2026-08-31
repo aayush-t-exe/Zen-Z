@@ -14,6 +14,8 @@ interface BookingDetails {
   status: string;
   payment_status: string;
   payment_id: string | null;
+  plus_one: boolean;
+  plus_one_name: string | null;
   slots: any;
 }
 
@@ -84,6 +86,8 @@ export default function PaymentScreen() {
           status,
           payment_status,
           payment_id,
+          plus_one,
+          plus_one_name,
           slots:slot_id (
             activity_type_id,
             activity_types:activity_type_id (
@@ -241,7 +245,8 @@ export default function PaymentScreen() {
   }
 
   const activity = booking.slots?.activity_types;
-  const fee = activity?.convenience_fee || 21;
+  const baseFee = activity?.convenience_fee || 21;
+  const fee = booking.plus_one ? baseFee * 2 : baseFee;
 
   if (booking.payment_status === 'paid') {
     return (
@@ -290,6 +295,9 @@ export default function PaymentScreen() {
               </Text>
               <Text style={styles.includesItem}>✓ Matched with compatible group</Text>
               <Text style={styles.includesItem}>✓ Venue revealed before event</Text>
+              {booking.plus_one && (
+                <Text style={styles.includesItem}>✓ Bringing a +1: {booking.plus_one_name}</Text>
+              )}
             </View>
           </View>
         </View>

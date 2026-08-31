@@ -16,6 +16,8 @@ interface Member {
   photo_url: string | null;
   budget_band: string;
   group_preference: string;
+  plus_one: boolean;
+  plus_one_name: string | null;
 }
 
 interface Group {
@@ -40,6 +42,8 @@ interface Candidate {
   photo_url: string | null;
   budget_band: string;
   group_preference: string;
+  plus_one: boolean;
+  plus_one_name: string | null;
   profile_id: string;
 }
 
@@ -70,7 +74,7 @@ export default function GroupsPage() {
              venues:venue_id ( name ),
              group_members (
                bookings:booking_id (
-                 id, budget_band, group_preference,
+                 id, budget_band, group_preference, plus_one, plus_one_name,
                  profile:user_id ( id, full_name, gender, year_of_study, photo_url )
                )
              )`
@@ -83,7 +87,7 @@ export default function GroupsPage() {
         supabase
           .from('bookings')
           .select(
-            `id, slot_id, budget_band, group_preference,
+            `id, slot_id, budget_band, group_preference, plus_one, plus_one_name,
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
           )
           .eq('status', 'pending_match')
@@ -119,6 +123,8 @@ export default function GroupsPage() {
             photo_url: b.profile.photo_url,
             budget_band: b.budget_band,
             group_preference: b.group_preference,
+            plus_one: b.plus_one,
+            plus_one_name: b.plus_one_name,
           })),
       }));
 
@@ -133,6 +139,8 @@ export default function GroupsPage() {
         photo_url: b.profile.photo_url,
         budget_band: b.budget_band,
         group_preference: b.group_preference,
+        plus_one: b.plus_one,
+        plus_one_name: b.plus_one_name,
         profile_id: b.profile.id,
       }));
       setCandidates(candidateList);
@@ -215,6 +223,8 @@ export default function GroupsPage() {
                     photo_url: candidate.photo_url,
                     budget_band: candidate.budget_band,
                     group_preference: candidate.group_preference,
+                    plus_one: candidate.plus_one,
+                    plus_one_name: candidate.plus_one_name,
                   },
                 ],
               }
@@ -319,6 +329,11 @@ export default function GroupsPage() {
                             {member.gender ? member.gender.charAt(0).toUpperCase() : '—'} ·{' '}
                             {member.year_of_study}yr · {formatBudget(member.budget_band)}
                           </p>
+                          {member.plus_one && (
+                            <p className="text-xs font-medium text-gray-700">
+                              +1 · {member.plus_one_name}
+                            </p>
+                          )}
                         </div>
                         <button
                           type="button"
@@ -334,7 +349,8 @@ export default function GroupsPage() {
 
                   {(() => {
                     const slotCandidates = candidates.filter((c) => c.slot_id === group.slot_id);
-                    const isFull = group.members.length >= group.max_group_size;
+                    const seats = group.members.reduce((sum, m) => sum + (m.plus_one ? 2 : 1), 0);
+                    const isFull = seats >= group.max_group_size;
 
                     if (isFull) {
                       return <p className="text-xs text-gray-400 mt-4">Group is at max size.</p>;
@@ -356,6 +372,7 @@ export default function GroupsPage() {
                           {slotCandidates.map((c) => (
                             <option key={c.booking_id} value={c.booking_id}>
                               {c.full_name}
+                              {c.plus_one ? ` (+1: ${c.plus_one_name})` : ''}
                             </option>
                           ))}
                         </select>

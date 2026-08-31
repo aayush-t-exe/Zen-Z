@@ -80,6 +80,7 @@ serve(async (req) => {
         status,
         payment_status,
         payment_id,
+        plus_one,
         slots:slot_id (
           activity_type_id,
           activity_types:activity_type_id (
@@ -119,7 +120,7 @@ serve(async (req) => {
 
     const slot = booking.slots as any;
     const activity = slot?.activity_types as any;
-    const amountRupees = computeOrderAmountRupees(activity?.convenience_fee);
+    const amountRupees = computeOrderAmountRupees(activity?.convenience_fee, booking.plus_one);
 
     // PayU's hosted checkout is a full payment page (unlike Razorpay
     // Payment Links, which needs no cardholder details up front), so it

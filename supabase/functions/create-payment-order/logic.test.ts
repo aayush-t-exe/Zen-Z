@@ -23,6 +23,18 @@ describe('computeOrderAmountRupees', () => {
   it('falls back to ₹21 when the fee is zero (falsy)', () => {
     expect(computeOrderAmountRupees(0)).toBe(21);
   });
+
+  it('doubles the fee when plusOne is true', () => {
+    expect(computeOrderAmountRupees(21, true)).toBe(42);
+  });
+
+  it('doubles the ₹21 fallback when plusOne is true and the fee is null', () => {
+    expect(computeOrderAmountRupees(null, true)).toBe(42);
+  });
+
+  it('leaves the fee unchanged when plusOne is false', () => {
+    expect(computeOrderAmountRupees(126, false)).toBe(126);
+  });
 });
 
 describe('isTestModeEnvironment', () => {
