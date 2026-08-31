@@ -61,7 +61,7 @@ Group Chat → Event Day → Feedback
 ┌─────────────────────────────┐
 │   A few details before we     │
 │   begin                       │
-│   First name: [______]        │
+│   Full name: [______]         │
 │   Year of study: [Dropdown]   │
 │   Gender: [___]                │
 │   WhatsApp number: [______]    │
@@ -77,7 +77,7 @@ Group Chat → Event Day → Feedback
 └─────────────────────────────┘
 ```
 - **[NEW DETAIL]** The privacy line ("seen only by our team... never by other members") is shown directly on the upload screen, not buried in a settings page — this is a trust-critical disclosure given the new no-verification model and must be explicit at the point of capture, not just in a privacy policy.
-- **[ASSUMPTION]** A WhatsApp number field is collected here, separate from the auth method (email or phone OTP). This is for founder-to-group event-day logistics (venue changes, reminders) and is not an identity check — it doesn't gate anything, isn't used for OTP, and has no verification step. Stored in `profiles.phone`, the same column the phone-OTP auth path uses; email-OTP users simply populate it here instead of at sign-in.
+- **[ASSUMPTION]** A WhatsApp number field is collected here, separate from the auth method (email OTP — phone OTP was scoped but dropped before launch, see docs/ARCHITECTURE.md "Auth architecture"). This is for founder-to-group event-day logistics (venue changes, reminders) and is not an identity check — it doesn't gate anything, isn't used for OTP, and has no verification step. Stored in `profiles.phone`, which exists solely for this contact field now.
 
 ### 1.4 Modular Personality Quiz (Frontend Rendering)
 ```
@@ -115,6 +115,41 @@ Group Chat → Event Day → Feedback
 ```
 - All three tappable and fully live from day one, per the new constraint — no locked/greyed states anywhere in this screen.
 
+### 1.5a Sports (added post-launch, founder request 2026-08-19)
+A fourth home-screen card, 🏆 Sports, sits alongside Cafés/Dinners/Movies. Unlike
+the other three, tapping it doesn't open the booking flow directly — it opens a
+sub-menu of four games, each with its own fixed price, headcount range, and
+duration (no location field either, per the same constraint as 1.6):
+
+| Game | Players | Duration | Price |
+|---|---|---|---|
+| 🏏 Box Cricket | 10–14 | 2 hrs | ₹221 |
+| ⚽ Football | 8–14 | 1 hr | ₹221 |
+| 🎱 8-Ball Pool | 4 | 1 hr | ₹70 |
+| 🏓 Pickleball | 4 | 1 hr | ₹129 |
+
+Picking a game drops straight into the same booking flow (1.6) used by the
+other activities — each game is its own `activity_types` row under a
+non-bookable `Sports` parent row, so the existing payment and matching-board
+logic (already generic over `min_group_size`/`max_group_size`/
+`convenience_fee`) needed no changes.
+
+**[ASSUMPTION]** Because the price is fixed and shown up front, the Budget
+step (1.6, Step 3) is skipped for Sports games — asking "what's your range?"
+doesn't make sense when there's only one price. The Day & Time and Group
+Preference steps are unchanged.
+
+Sports originally launched as a one-off trial for a single upcoming
+Saturday 6:00 PM slot per game, with no automatic re-seeding (0032). Per
+founder decision (2026-08-25), Sports now rolls over the same way
+Cafés/Dinners/Movies do — the `slot-rollover` pg_cron job (§1.6, added in
+0039) also covers all four games at their shared Saturday 6:00 PM IST slot,
+see `supabase/migrations/0041_sports_slot_rollover.sql`.
+
+Per the same founder request, Cafés/Dinners/Movies were also trimmed to show
+only their single nearest upcoming occurrence rather than several
+pre-seeded weeks — see `supabase/migrations/0033_trim_future_slots_to_one_week.sql`.
+
 ### 1.6 Booking Flow (No Location Field)
 ```
 Step 1 — Activity: [Dinners] (selected)
@@ -147,6 +182,8 @@ Step 5 — Confirm:
 ```
 - **[NEW DETAIL]** No area/venue/location field anywhere in the flow, per constraint — venue is decided entirely by the founder post-booking (Module 2) and revealed only at Match Reveal.
 - **[NEW DETAIL]** A student with an active no-show block (see §1.10 No-Show Policy) cannot start this flow at all — they see a paused-invitations message in place of Step 1 instead.
+- **Booking cutoff (founder decision, 2026-08-25; revised twice same day):** a slot stops being bookable at midnight IST, 2 days before its date — the same calendar rule for every activity ("book by end of day, 2 days ahead"), chosen over a flat hour count so it's something a student can actually reason about. (0039 originally set this to a flat 24h before `slot_datetime`, which left a window where a student could book *after* that slot's reveal moment — `reveal_venue_at` (§1.8) — had already passed, making the group's venue/chat unlock all at once instead of via the intended slow reveal; 0043 tightened that to a flat 48h, matching `reveal_venue_at` exactly but landing at a different odd clock time per activity; 0044 replaced the flat-hour rule with this calendar rule, which still always lands safely before `reveal_venue_at` for every activity — by 17-20 hours' margin, since every activity's slot time is a PM hour and this cutoff is always midnight the same day.) Enforced on the `bookings` insert RLS policy (the only server-side checkpoint, since bookings are inserted directly from the mobile client) and mirrored client-side so a slot inside the window is never offered in Step 2 in the first place. See `supabase/migrations/0044_midnight_ist_booking_cutoff.sql`.
+- **Slot rollover:** Cafés/Dinners/Movies/Sports each keep exactly one upcoming slot (§1.5a). An hourly pg_cron job (`slot-rollover`, same pattern as the Module notifications cron) inserts the next weekly occurrence once the current one has no future slot left — this used to require a hand-written migration (0011, 0014) every time, and originally excluded Sports (0032) until the founder reversed that call (0041) so all four activities roll over the same way.
 
 ### 1.7 Waiting Experience (Tone-Redesigned)
 ```
@@ -327,14 +364,14 @@ Step 5 — Confirm:
 - Unchanged from v1 structurally, but now operationally more central: since the mobile app collects **no location preference at all**, the founder has full discretion and must actively select a venue for every confirmed group (not just confirm a student-suggested area). Add a required field to the group-confirmation step: `venue_id` must be set before "Book Venue" can be clicked — this is now a hard gate, not optional, because there is no fallback location signal from the user side.
 
 ### 2.6 Payments, Reports, Moderation, Analytics
-- Structurally unchanged from v1 (Sections 2.5–2.8 there). **Moderation policy (founder decision, 2026-08-14):** a report does **not** automatically pause the reported student's matching — the founder reviews open reports in the admin Reports queue (flagged there and with a warning badge in the matching board) and decides manually after watching the student, rather than a system-wide auto-pause on first report. The one part of a report that *is* a hard, permanent gate: a reporter and the student they reported can never be placed in the same confirmed group again, regardless of how the report is resolved (see §3.6, "existing reports/blocklist").
+- Structurally unchanged from v1 (Sections 2.5–2.8 there). **Moderation policy (founder decision, 2026-08-14):** a report does **not** automatically pause the reported student's matching — the founder reviews open reports in the admin Reports queue (flagged there and with a warning badge in the matching board) and decides manually after watching the student, rather than a system-wide auto-pause on first report. The one part of a report that *is* a hard, permanent gate: a reporter and the student they reported can never be placed in the same confirmed group again, regardless of how the report is resolved (see §3.6, "existing reports/blocklist"). **Chat privacy (founder decision, 2026-08-26):** the Reports queue never surfaces group chat content — only reporter, reported student, group, and free-text reason. No admin feature reads `messages`; see docs/ARCHITECTURE.md "Chat privacy" for the full rationale and its limits.
 
 ---
 
 # MODULE 3 — Technical Architecture
 
 ### 3.1 Stack (Unchanged)
-React Native + Expo · Next.js (admin) · Supabase (Postgres/Auth/Storage/Realtime/Edge Functions) · Razorpay/Cashfree · GitHub · Cursor + Claude Code.
+React Native + Expo · Next.js (admin) · Supabase (Postgres/Auth/Storage/Realtime/Edge Functions) · PayU · GitHub · Cursor + Claude Code.
 
 ### 3.2 Complete Production SQL
 
@@ -763,7 +800,7 @@ function compatibilityScore(userA_scores, userB_scores) {
 - Founder-facing badge (2.4) shows this as a 0–1 similarity score; hard filters (group_preference, existing reports/blocklist) are still applied before this score is ever computed, unchanged from v1's design principle of hard constraints first, soft scoring second.
 
 ### 3.7 Notifications, Payments, Realtime
-- Unchanged from v1's Section 4.7–4.8 mechanically (Expo Push, Razorpay/Cashfree, Supabase Realtime for live matching-board and waiting-experience updates) — only the **copy templates** change (Section 1.10 table above), and the payment/auth flow no longer references phone number anywhere.
+- Unchanged from v1's Section 4.7–4.8 mechanically (Expo Push, PayU, Supabase Realtime for live matching-board and waiting-experience updates) — only the **copy templates** change (Section 1.10 table above), and the payment/auth flow no longer references phone number anywhere.
 
 ---
 

@@ -32,12 +32,16 @@ export default function StudentsPage() {
       setLoading(true);
       setError('');
 
-      // admin_student_profiles (0004_storage_helpers.sql) — every student,
-      // independent of whether they've ever booked anything, unlike the
-      // matching/groups pages which only ever surface students who show up
-      // in a booking. photo_path (not photo_url) so the actual signed-URL
-      // request below always derives the storage path from the student's
-      // own id, never the client-writable profiles.photo_url column.
+      // admin_student_profiles (0004_storage_helpers.sql, filtered to
+      // finished-onboarding accounts by 0064) — every student who actually
+      // completed signup (profile + personality quiz), independent of
+      // whether they've ever booked anything, unlike the matching/groups
+      // pages which only ever surface students who show up in a booking.
+      // Someone who abandoned onboarding mid-flow never became a student,
+      // so the view excludes them rather than this page filtering client-
+      // side. photo_path (not photo_url) so the actual signed-URL request
+      // below always derives the storage path from the student's own id,
+      // never the client-writable profiles.photo_url column.
       const { data, error: fetchError } = await supabase
         .from('admin_student_profiles')
         .select('*')
@@ -112,7 +116,7 @@ export default function StudentsPage() {
 
         <p className="text-sm text-gray-500 mb-4">
           {filtered.length.toLocaleString('en-IN')} of {students.length.toLocaleString('en-IN')} student
-          {students.length === 1 ? '' : 's'} — every signed-up profile, whether or not they&apos;ve booked yet.
+          {students.length === 1 ? '' : 's'} — everyone who finished signing up, whether or not they&apos;ve booked yet.
         </p>
 
         {filtered.length === 0 ? (

@@ -14,14 +14,21 @@ export const REPORT_REASONS = [
 export type ReportReason = (typeof REPORT_REASONS)[number];
 
 export async function submitReport(params: {
+  reporterId: string;
   reportedUserId: string;
   groupId: string;
   reason: string;
+  messageId?: string;
 }): Promise<void> {
+  // "users create reports" (0001_init.sql) requires auth.uid() = reporter_id
+  // — this was previously omitted from the insert entirely, so every report
+  // silently failed RLS ("new row violates row-level security policy").
   const { error } = await supabase.from('reports').insert({
+    reporter_id: params.reporterId,
     reported_user_id: params.reportedUserId,
     group_id: params.groupId,
     reason: params.reason,
+    message_id: params.messageId ?? null,
   });
 
   if (error) throw error;

@@ -3,7 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
 import { ThemedView } from '@/components/themed-view';
 
-// openAuthSessionAsync (payment.tsx) normally intercepts Razorpay's
+// openAuthSessionAsync (payment.tsx) normally intercepts PayU's
 // redirect before it ever reaches here, closing the in-app browser and
 // resuming the still-mounted payment screen directly. This route only
 // exists as the fallback for when that interception doesn't happen —

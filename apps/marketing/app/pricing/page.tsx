@@ -18,7 +18,7 @@ const rows: [string, string, string][] = [
 
 export default function PricingPage() {
   return (
-    <LegalLayout title="Pricing" updated="August 26, 2026">
+    <LegalLayout title="Pricing" updated="August 28, 2026">
       <p>
         Zen-Z charges one flat per-person amount for each activity. The price
         shown in the app at checkout is the final amount you pay — Zen-Z
@@ -80,7 +80,7 @@ export default function PricingPage() {
           pending payment does not reserve the slot.
         </p>
         <p>
-          Payments are processed through Razorpay. Zen-Z does not store card
+          Payments are processed through PayU. Zen-Z does not store card
           numbers, CVV, UPI credentials, or bank-account credentials in its own
           database.
         </p>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Terms & Conditions" updated="August 26, 2026">
+    <LegalLayout title="Terms & Conditions" updated="August 28, 2026">
       <p>
         These Terms &amp; Conditions govern your use of the Zen-Z mobile
         application and related services. Zen-Z is operated by Dhruv Goyal,
@@ -270,7 +270,7 @@ export default function TermsPage() {
           Zen-Z uses third-party service providers necessary to operate the
           platform, including Supabase for backend/data storage, Brevo for
           email OTP verification, Expo Notifications for push notifications,
-          and Razorpay for payment processing. Their services are governed by
+          and PayU for payment processing. Their services are governed by
           their own terms and privacy policies.
         </p>
       </div>

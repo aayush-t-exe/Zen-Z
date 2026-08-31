@@ -1,6 +1,6 @@
 export function formatBudget(band: string): string {
   const budgets: Record<string, string> = {
-    // Current bands (apps/mobile/src/app/(home)/booking-flow.tsx).
+    // Current bands (apps/mobile/src/app/(flow)/booking-flow.tsx).
     under_200: 'Under ₹200',
     '200_400': '₹200–400',
     '400_plus': '₹400+',

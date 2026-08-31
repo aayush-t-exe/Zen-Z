@@ -32,8 +32,17 @@ export function applyScaleMapping(
   scaleValue: number,
   mappings: { dimension_id: number; multiplier: number }[]
 ): void {
+  // Scale questions always resolve to one of exactly 3 tiers — 0, 5, or 10
+  // (see ZONE_SCALE_VALUE in personality-quiz.tsx and the tier CHECK
+  // (0,1,2) constraint on personality_scale_labels). Option-weight
+  // contributions are hand-picked in roughly [-0.9, 0.9], so summing a raw
+  // 5 or 10 in alongside them saturates clampScore's [0,1] ceiling — a
+  // dimension whose only contributor is this question scores the middle
+  // tier (5) and the top tier (10) identically. Normalize into the same
+  // ~[-1, 1] range first, with 5 (the neutral middle tier) mapping to 0.
+  const normalized = (scaleValue - 5) / 5;
   for (const m of mappings) {
-    addToDimension(totals, m.dimension_id, scaleValue * m.multiplier);
+    addToDimension(totals, m.dimension_id, normalized * m.multiplier);
   }
 }
 

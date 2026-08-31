@@ -46,7 +46,7 @@ point from planning to building.
 ## Before Milestone 2 really gets moving, start these in parallel — they have real lead time
 
 - DLT SMS registration with MSG91 (1-2 weeks)
-- Razorpay business KYC
+- PayU business KYC
 - Apple Developer Program enrollment
 - Google Play Console account
 - Resend account + domain verification

@@ -85,7 +85,7 @@ export default function NoShowScreen() {
 
       {missed && (
         <ThemedText type="default" themeColor="textSecondary" className="mt-2 text-center text-sm">
-          {missed.activity_emoji} {missed.activity_name}, {formatSlotDateTime(missed.slot_datetime)}
+          {missed.activity_emoji} {missed.activity_name}, {formatSlotDateTime(missed.slot_datetime, missed.activity_name)}
         </ThemedText>
       )}
 

@@ -14,7 +14,15 @@ export async function getPostAuthRoute(userId: string): Promise<PostAuthRoute> {
     .eq('id', userId)
     .single();
 
-  const profileComplete = !!profile?.full_name && !!profile?.gender && profile?.year_of_study != null;
+  // handle_new_user() seeds full_name with the literal 'New user' sentinel
+  // when signup doesn't supply one (always true for this app's OTP-only
+  // signup), so a plain truthiness check here would treat every fresh
+  // signup as having a real name.
+  const profileComplete =
+    !!profile?.full_name &&
+    profile.full_name !== 'New user' &&
+    !!profile?.gender &&
+    profile?.year_of_study != null;
   if (!profileComplete) {
     return '/(auth)/profile-creation';
   }

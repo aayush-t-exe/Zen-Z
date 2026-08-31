@@ -111,12 +111,24 @@ export function handleNotificationResponse(
   const data = response.notification.request.content.data as Record<string, unknown>;
 
   if (data?.type === 'no_show' && typeof data?.bookingId === 'string') {
-    router.push({ pathname: '/(home)/no-show', params: { bookingId: data.bookingId } });
+    router.push({ pathname: '/(flow)/no-show', params: { bookingId: data.bookingId } });
     return;
   }
 
+  // A new-message tap should open the actual conversation, not the
+  // Booking Details detour every other groupId-carrying type uses below —
+  // reading the message IS the point of tapping this one.
+  if (data?.type === 'new_message' && typeof data?.groupId === 'string') {
+    router.push({ pathname: '/(flow)/group/[groupId]', params: { groupId: data.groupId } });
+    return;
+  }
+
+  // group_matched/venue_reveal both land on Booking Details — the same
+  // entry point the Bookings tab's matched-booking card now uses, one tap
+  // away from the chat thread via its "Open group chat" button, rather
+  // than dropping straight into chat.
   if (typeof data?.groupId === 'string') {
-    router.push({ pathname: '/(home)/group/[groupId]', params: { groupId: data.groupId } });
+    router.push({ pathname: '/(flow)/booking-details', params: { groupId: data.groupId } });
     return;
   }
 

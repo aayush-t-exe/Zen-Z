@@ -1,25 +1,54 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, TextInput, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  TextInput,
+  Pressable,
+  Text,
+  Image,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
+import { AuthButton } from '@/components/auth-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getPostAuthRoute } from '@/lib/authRouting';
+import { getAuthErrorMessage } from '@/lib/authErrors';
+
+const HEADER_RATIO = 389 / 814;
 
 export default function OTPVerificationScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email: string }>();
+  const { width: screenWidth } = useWindowDimensions();
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
   const canResend = resendTimer <= 0;
   const inputRef = useRef<TextInput>(null);
+  // `isLoading` alone isn't a tight enough guard: it's a state update, so a
+  // second tap landing before that update has re-rendered (and disabled the
+  // button) still gets through. Found live — verifying once was creating
+  // *two* auth sessions per code entry (confirmed via auth.sessions,
+  // ~16-30s apart), which then left the app juggling two valid-looking
+  // sessions and unpredictable about which one it actually used for
+  // subsequent calls. A synchronous ref closes that window outright.
+  const isVerifyingRef = useRef(false);
 
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
   const setAuthError = useAuthStore((state) => state.setError);
+
+  const headerWidth = Math.min(360, screenWidth - 40);
+  const contentWidth = Math.min(358, screenWidth - 30);
+  const boxGap = 9;
+  const boxWidth = (contentWidth - boxGap * 5) / 6;
 
   useEffect(() => {
     if (resendTimer <= 0) return;
@@ -33,6 +62,9 @@ export default function OTPVerificationScreen() {
       return;
     }
 
+    if (isVerifyingRef.current) return;
+    isVerifyingRef.current = true;
+
     setIsLoading(true);
     setError('');
 
@@ -44,8 +76,9 @@ export default function OTPVerificationScreen() {
       });
 
       if (verifyError) {
-        setError(verifyError.message);
-        setAuthError(verifyError.message);
+        const message = getAuthErrorMessage(verifyError);
+        setError(message);
+        setAuthError(message);
         return;
       }
 
@@ -56,9 +89,11 @@ export default function OTPVerificationScreen() {
         router.replace(nextRoute);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to verify OTP');
-      setAuthError(err.message);
+      const message = getAuthErrorMessage(err);
+      setError(message);
+      setAuthError(message);
     } finally {
+      isVerifyingRef.current = false;
       setIsLoading(false);
     }
   };
@@ -76,51 +111,61 @@ export default function OTPVerificationScreen() {
       });
 
       if (resendError) {
-        setError(resendError.message);
+        setError(getAuthErrorMessage(resendError));
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to resend OTP');
+      setError(getAuthErrorMessage(err));
     }
   };
 
+  const focusCode = () => {
+    // Android's hardware back button dismisses the keyboard without blurring
+    // the TextInput, so it still thinks it's focused and a plain .focus() is a
+    // no-op — force blur first so focus() isn't ignored. requestAnimationFrame
+    // isn't a long enough gap for Android's InputMethodManager to actually
+    // release focus before the re-focus call lands, so use a short real delay.
+    inputRef.current?.blur();
+    setTimeout(() => inputRef.current?.focus(), 100);
+  };
+
   return (
-    <ThemedView className="flex-1 items-center justify-center px-6">
-      <View className="w-full gap-6">
-        <View className="gap-2">
-          <ThemedText type="title" className="text-xl">
-            Check your inbox
-          </ThemedText>
-          <ThemedText type="default" themeColor="textSecondary">
-            Enter the 6-digit code sent to {email}
-          </ThemedText>
-        </View>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
+        <Image
+          source={require('@/assets/images/auth-header.png')}
+          style={{ width: headerWidth, height: headerWidth * HEADER_RATIO }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+
+        <Text style={styles.title}>Check your inbox</Text>
+        <Text style={styles.subtitle}>
+          Enter the 6-digit code sent to{'\n'}
+          {email}
+        </Text>
 
         <Pressable
-          onPress={() => {
-            // Android's hardware back button dismisses the keyboard without
-            // blurring the TextInput, so it still thinks it's focused and a
-            // plain .focus() is a no-op — force blur first so focus() isn't
-            // ignored. requestAnimationFrame isn't a long enough gap for
-            // Android's InputMethodManager to actually release focus before
-            // the re-focus call lands, so use a short real delay instead.
-            inputRef.current?.blur();
-            setTimeout(() => inputRef.current?.focus(), 100);
-          }}
-          className="flex-row gap-2"
-        >
+          onPress={focusCode}
+          accessibilityRole="button"
+          accessibilityLabel="Enter the 6-digit code"
+          style={[styles.boxes, { width: contentWidth, gap: boxGap }]}>
           {Array.from({ length: 6 }).map((_, i) => {
             const digit = otp[i];
             const isActive = i === otp.length && otp.length < 6 && !isLoading;
             return (
               <View
                 key={i}
-                className={`h-14 flex-1 items-center justify-center rounded-lg border ${
-                  isActive
-                    ? 'border-2 border-blue-500'
-                    : 'border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                <ThemedText className="text-2xl font-bold">{digit ?? ''}</ThemedText>
+                style={[
+                  styles.box,
+                  { width: boxWidth, height: boxWidth * 1.18 },
+                  isActive && styles.boxActive,
+                ]}>
+                <Text style={styles.digit}>{digit ?? ''}</Text>
               </View>
             );
           })}
@@ -137,43 +182,119 @@ export default function OTPVerificationScreen() {
           keyboardType="number-pad"
           maxLength={6}
           autoFocus
-          style={{ position: 'absolute', opacity: 0, height: 1, width: 1 }}
+          style={styles.hiddenInput}
         />
 
-        {error && (
-          <ThemedText type="default" themeColor="error">
+        {error ? (
+          <Text style={styles.error} accessibilityLiveRegion="polite">
             {error}
-          </ThemedText>
-        )}
+          </Text>
+        ) : null}
 
-        <Pressable
+        <AuthButton
+          label="Verify  →"
           onPress={handleVerifyOTP}
-          disabled={isLoading || otp.length !== 6}
-          className="rounded-lg bg-white py-3 px-4 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#000" />
-          ) : (
-            <ThemedText themeColor="onLight" className="text-center font-semibold">
-              Verify →
-            </ThemedText>
-          )}
-        </Pressable>
+          loading={isLoading}
+          style={{ width: contentWidth, marginTop: 40 }}
+        />
 
         <Pressable
           onPress={handleResendOTP}
           disabled={!canResend || isLoading}
-          className="disabled:opacity-50"
-        >
-          <ThemedText
-            type="default"
-            themeColor="textSecondary"
-            className="text-center"
-          >
-            {canResend ? 'Didn\'t get it? Resend' : `Resend in ${resendTimer}s`}
-          </ThemedText>
+          hitSlop={12}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canResend || isLoading }}>
+          {({ pressed }) => (
+            <Text style={[styles.resend, pressed && styles.pressedText]}>
+              {canResend ? "Didn't get it? Resend" : `Resend in ${resendTimer}s`}
+            </Text>
+          )}
         </Pressable>
-      </View>
-    </ThemedView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+  },
+  scroll: {
+    flexGrow: 1,
+    alignItems: 'center',
+    paddingTop: 56,
+    paddingBottom: 40,
+    paddingHorizontal: 16,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 34,
+    lineHeight: 42,
+    fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
+    textAlign: 'center',
+    letterSpacing: -0.8,
+    marginTop: 30,
+  },
+  subtitle: {
+    color: Palette.text,
+    fontSize: 17,
+    lineHeight: 25,
+    fontWeight: '400',
+    fontFamily: FontFamily.body.regular,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 28,
+  },
+  boxes: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  box: {
+    backgroundColor: Palette.paper,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  boxActive: {
+    borderColor: Palette.ring,
+  },
+  digit: {
+    color: Palette.line,
+    fontSize: 24,
+    fontWeight: '700',
+    fontFamily: FontFamily.body.bold,
+  },
+  // Off-screen field that actually holds the code; the boxes above are a
+  // display of its value.
+  hiddenInput: {
+    position: 'absolute',
+    opacity: 0,
+    height: 1,
+    width: 1,
+  },
+  error: {
+    color: Palette.error,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
+    textAlign: 'center',
+    marginTop: 16,
+    paddingHorizontal: 8,
+  },
+  resend: {
+    color: Palette.text,
+    fontSize: 15,
+    fontWeight: '600',
+    fontFamily: FontFamily.body.semiBold,
+    textAlign: 'center',
+    marginTop: 22,
+  },
+  pressedText: {
+    opacity: 0.6,
+  },
+});

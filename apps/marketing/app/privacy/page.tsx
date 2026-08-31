@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" updated="August 26, 2026">
+    <LegalLayout title="Privacy Policy" updated="August 28, 2026">
       <p>
         This Privacy Policy explains how Zen-Z, operated by Dhruv Goyal,
         collects, uses, stores, and protects information when you use the
@@ -43,7 +43,7 @@ export default function PrivacyPage() {
         <p>
           Zen-Z does not store card numbers, CVV, UPI credentials, or
           bank-account credentials in its own database. Zen-Z stores
-          transaction information needed to manage bookings, such as Razorpay
+          transaction information needed to manage bookings, such as PayU
           payment/order identifiers, payment status, and related transaction
           references.
         </p>
@@ -108,7 +108,7 @@ export default function PrivacyPage() {
         <p>Zen-Z uses service providers necessary to operate the application:</p>
         <ul>
           <li><strong>Supabase:</strong> backend services, application data, and profile-photo storage.</li>
-          <li><strong>Razorpay:</strong> payment processing and related payment services.</li>
+          <li><strong>PayU Payments Private Limited:</strong> payment processing and related payment services.</li>
           <li><strong>Brevo:</strong> email OTP verification.</li>
           <li><strong>Expo Notifications:</strong> push notifications.</li>
         </ul>

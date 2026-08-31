@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function RefundPage() {
   return (
-    <LegalLayout title="Cancellation & Refund Policy" updated="August 26, 2026">
+    <LegalLayout title="Cancellation & Refund Policy" updated="August 28, 2026">
       <p>
         This policy explains cancellation and refund rules for Zen-Z bookings
         and should be read together with the{' '}
@@ -138,10 +138,11 @@ export default function RefundPage() {
         <h2>12. How refunds are paid back</h2>
         <p>
           Approved refunds are issued to your original payment method through
-          Razorpay. Users cannot request a refund be sent to a different UPI
-          ID, bank account, wallet, or another person&apos;s account. Once a
-          refund is initiated, it typically reflects in your account within 5–7
-          business days, depending on your bank or payment provider.
+          PayU. Users cannot request a refund be sent to a different UPI ID,
+          bank account, wallet, or another person&apos;s account. Once a
+          refund is initiated, it typically reflects in your account within
+          5–21 business days, depending on your bank or payment method — net
+          banking refunds through certain banks may take longer.
         </p>
       </div>
 

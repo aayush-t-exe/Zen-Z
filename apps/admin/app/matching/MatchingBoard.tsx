@@ -26,6 +26,8 @@ export interface Booking {
   user_id: string;
   budget_band: string;
   group_preference: string;
+  plus_one: boolean;
+  plus_one_name: string | null;
   profile: {
     id: string;
     full_name: string;
@@ -44,6 +46,19 @@ export function requiredGenderForGroup(members: Booking[]): 'male' | 'female' | 
   if (members.some((m) => m.group_preference === 'women_only')) return 'female';
   if (members.some((m) => m.group_preference === 'men_only')) return 'male';
   return null;
+}
+
+// A +1 booking occupies 2 of the group's min/max seats, not 1 — this
+// mirrors the seat-sum confirm_group()/admin_add_group_member() now
+// enforce server-side (0072_booking_plus_one.sql), so the board's own
+// capacity guard rejects an overfull drop before the founder ever hits
+// that server-side error.
+function seatWeight(booking: Booking): number {
+  return booking.plus_one ? 2 : 1;
+}
+
+function seatCount(members: Booking[]): number {
+  return members.reduce((sum, m) => sum + seatWeight(m), 0);
 }
 
 // A pairwise key for the reporter/reported blocklist — order-independent
@@ -118,6 +133,7 @@ export default function MatchingBoard({
   const [placements, setPlacements] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
   const [confirmingGroupId, setConfirmingGroupId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [boardError, setBoardError] = useState('');
   const groupCounter = useRef(0);
@@ -138,7 +154,7 @@ export default function MatchingBoard({
           supabase
             .from('bookings')
             .select(
-              `id, user_id, budget_band, group_preference,
+              `id, user_id, budget_band, group_preference, plus_one, plus_one_name,
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
             )
             .eq('slot_id', slotId)
@@ -255,8 +271,12 @@ export default function MatchingBoard({
       const currentMembers = membersOf(groupLocalId).filter((b) => b.id !== bookingId);
       const candidate = unmatched.find((b) => b.id === bookingId);
 
-      if (currentMembers.length >= maxGroupSize) {
-        setBoardError(`That group is already at the max size of ${maxGroupSize}.`);
+      if (candidate && seatCount(currentMembers) + seatWeight(candidate) > maxGroupSize) {
+        setBoardError(
+          candidate.plus_one
+            ? `That group doesn't have room for a +1 — only ${maxGroupSize - seatCount(currentMembers)} seat(s) left.`
+            : `That group is already at the max size of ${maxGroupSize}.`
+        );
         return;
       }
 
@@ -324,6 +344,34 @@ export default function MatchingBoard({
     }
   };
 
+  // A booking here is always still pending_match (this board only ever
+  // loads that pool) whether it's sitting in the unmatched pool or placed
+  // in an in-memory draft group — confirm_group() hasn't run yet, so
+  // admin_cancel_booking() (0070) never finds a real group_members row to
+  // clean up for anything cancelled from this screen.
+  const handleCancelBooking = async (booking: Booking) => {
+    if (!window.confirm(`Cancel ${booking.profile.full_name}'s booking? This can't be undone.`)) return;
+
+    setCancellingId(booking.id);
+    setBoardError('');
+    try {
+      const { error } = await supabase.rpc('admin_cancel_booking', { p_booking_id: booking.id });
+      if (error) throw error;
+
+      setUnmatched((prev) => prev.filter((b) => b.id !== booking.id));
+      setPlacements((prev) => {
+        const next = { ...prev };
+        delete next[booking.id];
+        return next;
+      });
+    } catch (err: any) {
+      console.error('Error cancelling booking:', err);
+      setBoardError(err?.message || 'Failed to cancel this booking. Please try again.');
+    } finally {
+      setCancellingId(null);
+    }
+  };
+
   const activeBooking = activeId ? unmatched.find((b) => b.id === activeId) ?? null : null;
 
   if (loading) {
@@ -359,6 +407,8 @@ export default function MatchingBoard({
                       photoUrl={photoFor(booking)}
                       compatibilityBadge={fit}
                       hasOpenReport={openReportedUserIds.has(booking.user_id)}
+                      onCancel={() => handleCancelBooking(booking)}
+                      cancelling={cancellingId === booking.id}
                     />
                   </DraggableCard>
                 );
@@ -386,7 +436,8 @@ export default function MatchingBoard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {groups.map((group, idx) => {
                 const members = membersOf(group.localId);
-                const sizeOk = members.length >= minGroupSize && members.length <= maxGroupSize;
+                const seats = seatCount(members);
+                const sizeOk = seats >= minGroupSize && seats <= maxGroupSize;
                 const canBook = sizeOk && !!group.venueId && confirmingGroupId === null;
                 const score = groupScore(group.localId);
                 const genderConstraint = requiredGenderForGroup(members);
@@ -399,7 +450,7 @@ export default function MatchingBoard({
                   >
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="font-semibold flex items-center gap-2">
-                        Group {idx + 1} ({members.length}/{maxGroupSize})
+                        Group {idx + 1} ({seats}/{maxGroupSize})
                         {genderConstraint && (
                           <span className="text-xs font-normal px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                             {genderConstraint === 'female' ? 'Women only' : 'Men only'}
@@ -430,6 +481,8 @@ export default function MatchingBoard({
                               booking={booking}
                               photoUrl={photoFor(booking)}
                               compact
+                              onCancel={() => handleCancelBooking(booking)}
+                              cancelling={cancellingId === booking.id}
                             />
                           </DraggableCard>
                         ))
@@ -527,6 +580,8 @@ function StudentCard({
   dragging = false,
   compatibilityBadge = null,
   hasOpenReport = false,
+  onCancel,
+  cancelling = false,
 }: {
   booking: Booking;
   photoUrl?: string;
@@ -534,6 +589,8 @@ function StudentCard({
   dragging?: boolean;
   compatibilityBadge?: { groupNumber: number; score: number } | null;
   hasOpenReport?: boolean;
+  onCancel?: () => void;
+  cancelling?: boolean;
 }) {
   const profile = booking.profile;
 
@@ -571,16 +628,34 @@ function StudentCard({
               {booking.group_preference === 'women_only' ? 'Women only' : 'Men only'}
             </p>
           )}
+          {booking.plus_one && (
+            <p className="text-xs font-medium text-gray-700 mt-0.5">
+              +1 · {booking.plus_one_name}
+            </p>
+          )}
         </div>
-        <a
-          href={`/student/${profile.id}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onPointerDown={(e) => e.stopPropagation()}
-          className="text-xs text-blue-600 hover:text-blue-800 shrink-0"
-        >
-          View
-        </a>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          <a
+            href={`/student/${profile.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onPointerDown={(e) => e.stopPropagation()}
+            className="text-xs text-blue-600 hover:text-blue-800"
+          >
+            View
+          </a>
+          {onCancel && (
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={onCancel}
+              disabled={cancelling}
+              className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50"
+            >
+              {cancelling ? 'Cancelling…' : 'Cancel'}
+            </button>
+          )}
+        </div>
       </div>
       {compatibilityBadge && !compact && (
         <p className="text-xs text-gray-500 mt-2">
