@@ -11,31 +11,45 @@ export default function ChatsScreen() {
   const router = useRouter();
   const [groups, setGroups] = useState<MyGroupDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const result = await fetchMyGroups();
+
+    if (result.error) {
+      setLoadError(result.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setGroups(result.data);
+    setIsLoading(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      const load = async () => {
-        const data = await fetchMyGroups();
-        if (!cancelled) {
-          setGroups(data);
-          setIsLoading(false);
-        }
-      };
-
       load();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [])
+    }, [load])
   );
 
   if (isLoading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={Palette.text} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Couldn&apos;t load this.</Text>
+        <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
+          {loadError}
+        </Text>
+        <AuthButton label="Retry" onPress={load} />
       </View>
     );
   }

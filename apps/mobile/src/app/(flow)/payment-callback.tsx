@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator } from 'react-native';
-import { ThemedView } from '@/components/themed-view';
+import { View, ActivityIndicator } from 'react-native';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
 
 // openAuthSessionAsync (payment.tsx) normally intercepts PayU's
 // redirect before it ever reaches here, closing the in-app browser and
@@ -23,8 +23,8 @@ export default function PaymentCallbackScreen() {
   }, [router, slotId]);
 
   return (
-    <ThemedView className="flex-1 items-center justify-center">
-      <ActivityIndicator size="large" />
-    </ThemedView>
+    <View style={{ flex: 1, backgroundColor: Palette.canvas, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator size="large" color={Palette.text} />
+    </View>
   );
 }

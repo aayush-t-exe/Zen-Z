@@ -32,7 +32,8 @@ describe('fetchMyBookings', () => {
     mockFrom.mockReturnValue(queryReturning(rows));
 
     return fetchMyBookings('user-1').then((result) => {
-      expect(result.map((b) => b.id)).toEqual(['b-earliest', 'b-middle', 'b-later']);
+      expect(result.data.map((b) => b.id)).toEqual(['b-earliest', 'b-middle', 'b-later']);
+      expect(result.error).toBeNull();
     });
   });
 
@@ -42,16 +43,17 @@ describe('fetchMyBookings', () => {
     );
 
     const result = await fetchMyBookings('user-1');
-    expect(result[0].activity_name).toBe('Activity');
-    expect(result[0].activity_emoji).toBe('');
+    expect(result.data[0].activity_name).toBe('Activity');
+    expect(result.data[0].activity_emoji).toBe('');
   });
 
-  it('returns an empty array when the query errors', async () => {
+  it('returns an empty array and a user-safe error message when the query errors', async () => {
     mockFrom.mockReturnValue({
       select: () => ({ eq: () => ({ neq: () => Promise.resolve({ data: null, error: new Error('boom') }) }) }),
     });
 
     const result = await fetchMyBookings('user-1');
-    expect(result).toEqual([]);
+    expect(result.data).toEqual([]);
+    expect(result.error).toBe('boom');
   });
 });

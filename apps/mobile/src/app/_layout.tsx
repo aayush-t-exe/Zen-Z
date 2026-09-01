@@ -21,6 +21,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
+import { ErrorBoundary } from '@/components/error-boundary';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -132,10 +133,12 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <RootLayoutContent />
-        <NetworkStatusOverlay />
-      </QueryClientProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <RootLayoutContent />
+          <NetworkStatusOverlay />
+        </QueryClientProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }

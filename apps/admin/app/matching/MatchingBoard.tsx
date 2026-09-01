@@ -149,32 +149,48 @@ export default function MatchingBoard({
       setGroups([]);
       setPlacements({});
 
-      const [{ data: bookings }, { data: dims }, { data: venuesData }, { data: reportsData }] =
-        await Promise.all([
-          supabase
-            .from('bookings')
-            .select(
-              `id, user_id, budget_band, group_preference, plus_one, plus_one_name,
+      const [
+        { data: bookings, error: bookingsError },
+        { data: dims, error: dimsError },
+        { data: venuesData, error: venuesError },
+        { data: reportsData, error: reportsError },
+      ] = await Promise.all([
+        supabase
+          .from('bookings')
+          .select(
+            `id, user_id, budget_band, group_preference, plus_one, plus_one_name,
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
-            )
-            .eq('slot_id', slotId)
-            .eq('status', 'pending_match')
-            // confirm_group() (0017_require_payment_for_confirm_group.sql)
-            // rejects the whole booking unless it's also paid — matching
-            // that here means the pool only ever contains groupable
-            // bookings, instead of letting a founder drag an unpaid
-            // student in only to have the confirm call fail with no
-            // warning beforehand.
-            .eq('payment_status', 'paid'),
-          supabase.from('personality_dimensions').select('id'),
-          supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
-          // reported_user_id/status feeds the open-report warning badge
-          // (informational only — no auto-pause, founder decision
-          // 2026-08-14); reporter_id+reported_user_id feeds the
-          // permanent blocklist, which IS hard-gated the same way in
-          // confirm_group() (0021_reports_moderation.sql).
-          supabase.from('reports').select('reporter_id, reported_user_id, status'),
-        ]);
+          )
+          .eq('slot_id', slotId)
+          .eq('status', 'pending_match')
+          // confirm_group() (0017_require_payment_for_confirm_group.sql)
+          // rejects the whole booking unless it's also paid — matching
+          // that here means the pool only ever contains groupable
+          // bookings, instead of letting a founder drag an unpaid
+          // student in only to have the confirm call fail with no
+          // warning beforehand.
+          .eq('payment_status', 'paid'),
+        supabase.from('personality_dimensions').select('id'),
+        supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
+        // reported_user_id/status feeds the open-report warning badge
+        // (informational only — no auto-pause, founder decision
+        // 2026-08-14); reporter_id+reported_user_id feeds the
+        // permanent blocklist, which IS hard-gated the same way in
+        // confirm_group() (0021_reports_moderation.sql).
+        supabase.from('reports').select('reporter_id, reported_user_id, status'),
+      ]);
+
+      // A failed fetch here must never look like "nobody's waiting to be
+      // matched" — this board is how real, already-paid students actually
+      // get placed into groups. Silently defaulting to an empty pool could
+      // make the founder think a slot has no one left to match when the
+      // query just failed.
+      const loadError = bookingsError || dimsError || venuesError || reportsError;
+      if (loadError) {
+        setBoardError(`Failed to load the matching board: ${loadError.message}`);
+        setLoading(false);
+        return;
+      }
 
       const bookingsList = (bookings as any as Booking[]) ?? [];
       setUnmatched(bookingsList);

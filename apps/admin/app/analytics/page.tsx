@@ -114,9 +114,9 @@ export default function AnalyticsPage() {
 
       const [
         { data: bookingsData, error: bookingsError },
-        { data: noShows },
-        { data: reports },
-        { data: studentSignups },
+        { data: noShows, error: noShowsError },
+        { data: reports, error: reportsError },
+        { data: studentSignups, error: signupsError },
       ] = await Promise.all([
           supabase
             .from('bookings')
@@ -141,8 +141,12 @@ export default function AnalyticsPage() {
           supabase.rpc('student_signup_dates'),
         ]);
 
-      if (bookingsError) {
-        console.error('Error loading analytics:', bookingsError);
+      // A failed fetch on any of these must not present as "0 users, 0
+      // reports, no signups" — that reads as a genuinely quiet business
+      // rather than a fetch that just failed.
+      const loadError = bookingsError || noShowsError || reportsError || signupsError;
+      if (loadError) {
+        console.error('Error loading analytics:', loadError);
         setError('Failed to load analytics');
         setLoading(false);
         return;

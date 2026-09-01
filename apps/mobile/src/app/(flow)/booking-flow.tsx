@@ -597,18 +597,20 @@ export default function BookingFlowScreen() {
                   />
                 )}
 
-                {/* Duration & price (fixed-price activities, e.g. Sports) */}
-                {activity.duration_minutes != null && (
-                  <View style={styles.priceBox}>
-                    <Text style={styles.priceValue}>
-                      ₹{plusOne ? activity.convenience_fee * 2 : activity.convenience_fee}
-                    </Text>
-                    <Text style={styles.priceCaption}>
-                      for {formatDuration(activity.duration_minutes)}
-                      {plusOne ? ', plus your +1' : ''}? Steal.
-                    </Text>
-                  </View>
-                )}
+                {/* Price preview — every activity shows the convenience fee
+                    here (docs/PRODUCT_SPEC.md §1.6's own Step 5 mockup: "₹25
+                    to unlock this evening"), not just fixed-duration ones.
+                    Sports additionally has a known duration to caption. */}
+                <View style={styles.priceBox}>
+                  <Text style={styles.priceValue}>
+                    ₹{plusOne ? activity.convenience_fee * 2 : activity.convenience_fee}
+                  </Text>
+                  <Text style={styles.priceCaption}>
+                    {activity.duration_minutes != null
+                      ? `for ${formatDuration(activity.duration_minutes)}${plusOne ? ', plus your +1' : ''}? Steal.`
+                      : `to unlock your invitation${plusOne ? ', plus your +1' : ''}.`}
+                  </Text>
+                </View>
               </View>
             </View>
 

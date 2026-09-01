@@ -16,35 +16,42 @@ export default function BookingsScreen() {
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [groups, setGroups] = useState<MyGroupDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!user?.id) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setLoadError(null);
+
+    const [bookingsResult, groupsResult] = await Promise.all([
+      fetchMyBookings(user.id),
+      fetchMyGroups(),
+    ]);
+
+    // A failure here can't just fall back to an empty list — an already
+    // paid, already matched booking would silently vanish from this screen
+    // (the group lookup below returns null for it), indistinguishable from
+    // never having booked anything. Surface it instead.
+    if (bookingsResult.error || groupsResult.error) {
+      setLoadError(bookingsResult.error ?? groupsResult.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setBookings(bookingsResult.data);
+    setGroups(groupsResult.data);
+    setIsLoading(false);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      let cancelled = false;
-
-      const load = async () => {
-        const [bookingsData, groupsData] = await Promise.all([
-          fetchMyBookings(user.id),
-          fetchMyGroups(),
-        ]);
-        if (!cancelled) {
-          setBookings(bookingsData);
-          setGroups(groupsData);
-          setIsLoading(false);
-        }
-      };
-
       load();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [user])
+    }, [load])
   );
 
   const handleCancelBooking = (booking: MyBooking) => {
@@ -79,6 +86,18 @@ export default function BookingsScreen() {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
         <ActivityIndicator size="large" color={Palette.text} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Couldn&apos;t load this.</Text>
+        <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
+          {loadError}
+        </Text>
+        <AuthButton label="Retry" onPress={load} />
       </View>
     );
   }

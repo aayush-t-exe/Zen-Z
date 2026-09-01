@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
+import { AuthButton } from '@/components/auth-button';
 
 interface SportOption {
   id: number;
@@ -34,29 +35,37 @@ export default function SportsSelectScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const [options, setOptions] = useState<SportOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const contentWidth = Math.min(480, screenWidth - 12);
   const cardGap = 16;
   const cardWidth = (contentWidth - cardGap) / 2;
   const cardHeight = cardWidth * FRAME_RATIO * 1.2;
 
+  const loadOptions = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const { data, error } = await supabase
+      .from('activity_types')
+      .select('id, name, emoji')
+      .eq('parent_activity_id', parseInt(parentId || '0'))
+      .eq('is_live', true)
+      .order('id', { ascending: true });
+
+    if (error) {
+      setLoadError(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (data) setOptions(data);
+    setIsLoading(false);
+  }, [parentId]);
+
   useFocusEffect(
     useCallback(() => {
-      const loadOptions = async () => {
-        setIsLoading(true);
-        const { data } = await supabase
-          .from('activity_types')
-          .select('id, name, emoji')
-          .eq('parent_activity_id', parseInt(parentId || '0'))
-          .eq('is_live', true)
-          .order('id', { ascending: true });
-
-        if (data) setOptions(data);
-        setIsLoading(false);
-      };
-
       loadOptions();
-    }, [parentId])
+    }, [loadOptions])
   );
 
   const handleSelect = (optionId: number) => {
@@ -102,6 +111,11 @@ export default function SportsSelectScreen() {
                 </View>
               </Pressable>
             ))}
+          </View>
+        ) : loadError ? (
+          <View style={{ gap: 12 }}>
+            <Text style={styles.subtitle}>Couldn&apos;t load games. {loadError}</Text>
+            <AuthButton label="Retry" onPress={loadOptions} loading={isLoading} />
           </View>
         ) : (
           <Text style={styles.subtitle}>No games available at the moment.</Text>

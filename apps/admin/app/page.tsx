@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminAuth';
@@ -23,17 +23,18 @@ export default function Dashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [founder, setFounder] = useState<string>('');
+  const [metricsError, setMetricsError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (status !== 'authorized' || !userId) return;
-
-    const fetchMetrics = async () => {
+  const fetchMetrics = useCallback(async (uid: string) => {
       try {
+        setLoading(true);
+        setMetricsError(null);
+
         // Get founder name
         const { data: profile } = await supabase
           .from('profiles')
           .select('full_name')
-          .eq('id', userId)
+          .eq('id', uid)
           .single();
 
         if (profile) {
@@ -45,7 +46,7 @@ export default function Dashboard() {
         const weekStart = new Date(today);
         weekStart.setDate(today.getDate() - today.getDay());
 
-        const { data: bookings } = await supabase
+        const { data: bookings, error: bookingsError } = await supabase
           .from('bookings')
           .select(`
             id,
@@ -60,7 +61,7 @@ export default function Dashboard() {
           .lte('created_at', today.toISOString())
           .eq('payment_status', 'paid');
 
-        const { data: groups } = await supabase
+        const { data: groups, error: groupsError } = await supabase
           .from('groups')
           .select('id')
           .eq('status', 'confirmed');
@@ -69,16 +70,25 @@ export default function Dashboard() {
         // MatchingBoard.tsx) — an unpaid pending_match booking can't
         // actually be matched (confirm_group() requires payment_status =
         // 'paid'), so counting it here as "needs action" is misleading.
-        const { data: unmatched } = await supabase
+        const { data: unmatched, error: unmatchedError } = await supabase
           .from('bookings')
           .select('id')
           .eq('status', 'pending_match')
           .eq('payment_status', 'paid');
 
-        const { data: reports } = await supabase
+        const { data: reports, error: reportsError } = await supabase
           .from('reports')
           .select('id')
           .eq('status', 'open');
+
+        // A failed query here must not present as "0 unmatched, 0 pending
+        // reports" — that reads as "nothing needs your attention" when it
+        // actually means the dashboard couldn't check.
+        const metricsFetchError = bookingsError || groupsError || unmatchedError || reportsError;
+        if (metricsFetchError) {
+          setMetricsError(metricsFetchError.message);
+          return;
+        }
 
         let cafe = 0, dinner = 0, movie = 0, sports = 0;
         bookings?.forEach((b: any) => {
@@ -102,20 +112,40 @@ export default function Dashboard() {
         });
       } catch (error) {
         console.error('Error fetching metrics:', error);
+        setMetricsError(error instanceof Error ? error.message : 'Failed to load dashboard metrics');
       } finally {
         setLoading(false);
       }
-    };
+  }, []);
 
-    fetchMetrics();
-  }, [status, userId]);
+  useEffect(() => {
+    if (status !== 'authorized' || !userId) return;
+    fetchMetrics(userId);
+  }, [status, userId, fetchMetrics]);
 
   if (status === 'checking' || (status === 'authorized' && loading)) {
     return <AdminAuthLoading />;
   }
 
-  if (status === 'denied' || !metrics) {
+  if (status === 'denied') {
     return <AdminAccessDenied />;
+  }
+
+  if (metricsError || !metrics) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center max-w-md">
+          <h1 className="text-xl font-bold mb-2">Couldn&apos;t load the dashboard</h1>
+          <p className="text-gray-600 mb-4">{metricsError ?? 'Something went wrong.'}</p>
+          <button
+            onClick={() => userId && fetchMetrics(userId)}
+            className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

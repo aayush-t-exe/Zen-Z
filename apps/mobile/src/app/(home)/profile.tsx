@@ -56,12 +56,28 @@ export default function ProfileScreen() {
     if (isDialing) return;
     setIsDialing(true);
 
-    const phone = await fetchPhone();
-    if (phone) {
+    try {
+      const phone = await fetchPhone();
+      if (!phone) {
+        // A silent no-op here is not acceptable for an emergency button —
+        // someone tapping this needs to know right away to reach out
+        // another way, not wonder why nothing happened.
+        Alert.alert(
+          "Couldn't reach this number",
+          "We couldn't load the emergency contact right now. If this is urgent, please call local emergency services directly."
+        );
+        return;
+      }
       await Linking.openURL(`tel:${phone}`);
+    } catch (err) {
+      console.error('Failed to open dialer:', err);
+      Alert.alert(
+        "Couldn't open the dialer",
+        'If this is urgent, please call local emergency services directly.'
+      );
+    } finally {
+      setIsDialing(false);
     }
-
-    setIsDialing(false);
   };
 
   const handleSignOut = async () => {
@@ -214,6 +230,31 @@ export default function ProfileScreen() {
 
           <Pressable onPress={handleFollowInstagram} style={styles.actionCard}>
             <Text style={styles.actionLabel}>Follow us on Instagram</Text>
+          </Pressable>
+        </View>
+
+        <View style={{ marginTop: 24, gap: 10 }}>
+          <Text style={styles.sectionLabel}>Legal</Text>
+
+          <Pressable
+            onPress={() => Linking.openURL('https://zen-z.site/terms')}
+            style={styles.actionCard}
+          >
+            <Text style={styles.actionLabel}>Terms & Conditions</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => Linking.openURL('https://zen-z.site/privacy')}
+            style={styles.actionCard}
+          >
+            <Text style={styles.actionLabel}>Privacy Policy</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => Linking.openURL('https://zen-z.site/refund')}
+            style={styles.actionCard}
+          >
+            <Text style={styles.actionLabel}>Cancellation & Refund Policy</Text>
           </Pressable>
         </View>
 

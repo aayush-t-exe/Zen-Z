@@ -62,19 +62,20 @@ export default function VenuesPage() {
     setLoading(true);
     setError('');
 
-    const [{ data: activities }, { data: venuesData, error: venuesError }] = await Promise.all([
-      supabase.from('activity_types').select('id, name, emoji').eq('is_live', true).eq('is_bookable', true),
-      supabase
-        .from('venues')
-        .select('*, activity_types:activity_type_id ( name, emoji )')
-        .order('name'),
-    ]);
+    const [{ data: activities, error: activitiesError }, { data: venuesData, error: venuesError }] =
+      await Promise.all([
+        supabase.from('activity_types').select('id, name, emoji').eq('is_live', true).eq('is_bookable', true),
+        supabase
+          .from('venues')
+          .select('*, activity_types:activity_type_id ( name, emoji )')
+          .order('name'),
+      ]);
 
-    if (activities) setActivityTypes(activities);
-    if (venuesError) {
+    if (activitiesError || venuesError) {
       setError('Failed to load venues');
-    } else if (venuesData) {
-      setVenues(venuesData as any as Venue[]);
+    } else {
+      if (activities) setActivityTypes(activities);
+      if (venuesData) setVenues(venuesData as any as Venue[]);
     }
 
     setLoading(false);

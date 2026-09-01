@@ -36,11 +36,15 @@ export default function MatchingPage() {
     if (status !== 'authorized') return;
 
     const fetchActivities = async () => {
-      const { data } = await supabase
+      const { data, error: fetchError } = await supabase
         .from('activity_types')
         .select('*')
         .eq('is_live', true)
         .eq('is_bookable', true);
+      if (fetchError) {
+        setError(`Failed to load activities: ${fetchError.message}`);
+        return;
+      }
       if (data) {
         setActivities(data);
         if (data.length > 0) {
@@ -59,11 +63,18 @@ export default function MatchingPage() {
     if (status !== 'authorized') return;
 
     const fetchPendingCounts = async () => {
-      const { data: openSlots } = await supabase
+      const { data: openSlots, error: openSlotsError } = await supabase
         .from('slots')
         .select('id, activity_type_id')
         .eq('status', 'open')
         .gt('slot_datetime', new Date().toISOString());
+
+      // A failed fetch must not collapse into "no pending bookings" — this
+      // is the badge that tells the founder a slot needs attention at all.
+      if (openSlotsError) {
+        console.error('Failed to load open slots for pending counts:', openSlotsError);
+        return;
+      }
 
       if (!openSlots || openSlots.length === 0) {
         setPendingCountsBySlot({});
@@ -71,12 +82,17 @@ export default function MatchingPage() {
         return;
       }
 
-      const { data: pendingBookings } = await supabase
+      const { data: pendingBookings, error: pendingBookingsError } = await supabase
         .from('bookings')
         .select('slot_id')
         .eq('status', 'pending_match')
         .eq('payment_status', 'paid')
         .in('slot_id', openSlots.map((s) => s.id));
+
+      if (pendingBookingsError) {
+        console.error('Failed to load pending bookings for counts:', pendingBookingsError);
+        return;
+      }
 
       const activityBySlot = new Map(openSlots.map((s) => [s.id, s.activity_type_id]));
       const bySlot: Record<string, number> = {};
@@ -108,13 +124,18 @@ export default function MatchingPage() {
 
       try {
         // Fetch slots for this activity
-        const { data: slotData } = await supabase
+        const { data: slotData, error: slotError } = await supabase
           .from('slots')
           .select('*')
           .eq('activity_type_id', selectedActivityId)
           .eq('status', 'open')
           .gt('slot_datetime', new Date().toISOString())
           .order('slot_datetime', { ascending: true });
+
+        if (slotError) {
+          setError(`Failed to load slots: ${slotError.message}`);
+          return;
+        }
 
         if (slotData) {
           setSlots(slotData);

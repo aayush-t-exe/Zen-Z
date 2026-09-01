@@ -2,52 +2,18 @@
 
 Found during two audits on 2026-08-25 (a security-focused pass, then a
 broader correctness/UX/ops pass after being asked "is that really it").
-Nothing here is fixed yet — this is a deliberately parked list to work
-through once the app itself is feature-complete. Check them off as they're
-addressed; delete a line once it's actually fixed rather than leaving a
-stale checkbox.
+This is a deliberately parked list to work through once the app itself is
+feature-complete. Check them off as they're addressed; delete a line once
+it's actually fixed rather than leaving a stale checkbox.
 
-## High — real money exposure
-
-- [ ] **Cancel/payment race lets a cancelled booking still get marked paid.**
-      `create-payment-order` (`supabase/functions/create-payment-order/index.ts:58-88`)
-      only checks booking ownership, never status. `payu-webhook`
-      (`index.ts:44-47`) unconditionally sets `payment_status='paid'` by
-      booking id with no status guard. If a student cancels a booking after
-      opening PayU checkout but completes payment anyway (or the webhook
-      is delayed), the booking ends up `cancelled` **and** `paid` — money
-      captured, no refund triggered, invisible to `confirm_group` since that
-      requires `pending_match`.
-      **Fix:** guard both the order-creation call and the webhook's UPDATE
-      on the booking's current status.
-
-- [ ] **CI doesn't run `next build` for `apps/admin`.**
-      `.github/workflows/ci.yml` only runs lint + typecheck for admin — the
-      same failure class as the React 19 hoisting incident already written
-      up as a postmortem in `docs/ARCHITECTURE.md`. A change can pass CI and
-      still fail to build in production.
-      **Fix:** add a `next build` step to CI for `apps/admin`, gating merge.
-
-## Medium — real UX bugs
-
-- [ ] **No top-level React error boundary in the mobile app.** Any
-      render-time exception (null field, unexpected API shape) white-screens
-      the entire app with no recovery UI.
-
-- [ ] **Home screen and booking screen silently swallow fetch errors.**
-      `apps/mobile/src/app/(home)/index.tsx:50-76` and
-      `booking-flow.tsx:196-250` destructure only `{ data }` from Supabase
-      calls, never check `{ error }`. A failed query renders as an empty
-      state ("no activities/slots available") instead of an error + retry —
-      indistinguishable from a real empty state.
-      **Reference fix:** `payment.tsx` already does this correctly (checks
-      errors, has a working retry UI) — copy that pattern.
-
-- [ ] **Group chat messages can silently vanish on send failure.**
-      `apps/mobile/src/app/(flow)/group/[groupId].tsx:108-120` clears the
-      input before the insert resolves, no optimistic UI; a failed insert is
-      only `console.error`'d — the user sees their message disappear with no
-      indication it wasn't sent.
+Updated 2026-09-01 during a pre-Play-Store testing pass: this file had gone
+stale — the former "High — real money exposure" section (cancel/payment race,
+CI admin build gate) had already been fixed by `docs/TESTING_CHECKLIST.md`'s
+Area 5 audit and this same pass respectively, both now removed rather than
+left as stale checkboxes. The three former "Medium — real UX bugs" items (no
+error boundary, home/sports-select screens swallowing fetch errors, chat
+messages vanishing on send failure) were confirmed still open and fixed in
+this same pass — see git history around 2026-09-01 for the actual changes.
 
 ## Medium — ops/observability gaps
 

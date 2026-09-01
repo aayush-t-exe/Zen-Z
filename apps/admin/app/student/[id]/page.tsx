@@ -63,11 +63,20 @@ export default function StudentProfilePage() {
         setLoading(true);
 
         // Fetch profile
-        const { data: profileData } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', studentId)
           .single();
+
+        // A fetch failure must not read as "Student not found" — this page
+        // is where a founder investigating a report lands, and that
+        // message implies the account doesn't exist rather than that the
+        // query just failed.
+        if (profileError) {
+          setError(`Failed to load this student: ${profileError.message}`);
+          return;
+        }
 
         if (!profileData) {
           setError('Student not found');

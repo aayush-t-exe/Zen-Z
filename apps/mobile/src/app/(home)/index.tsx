@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import { AuthButton } from '@/components/auth-button';
 
 interface ActivityType {
   id: number;
@@ -42,24 +43,34 @@ export default function HomeScreen() {
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [firstName, setFirstName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const contentWidth = Math.min(480, screenWidth - 12);
   const cardGap = 16;
   const cardWidth = (contentWidth - cardGap) / 2;
 
-  useEffect(() => {
-    const loadActivities = async () => {
-      const { data } = await supabase
-        .from('activity_types')
-        .select('id, name, emoji, is_bookable')
-        .eq('is_live', true)
-        .is('parent_activity_id', null)
-        .order('id', { ascending: true });
+  const loadActivities = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
 
-      if (data) setActivities(data);
+    const { data, error } = await supabase
+      .from('activity_types')
+      .select('id, name, emoji, is_bookable')
+      .eq('is_live', true)
+      .is('parent_activity_id', null)
+      .order('id', { ascending: true });
+
+    if (error) {
+      setLoadError(error.message);
       setIsLoading(false);
-    };
+      return;
+    }
 
+    if (data) setActivities(data);
+    setIsLoading(false);
+  }, []);
+
+  useEffect(() => {
     const loadName = async () => {
       if (!user?.id) return;
       const { data } = await supabase
@@ -71,9 +82,15 @@ export default function HomeScreen() {
       if (data?.full_name) setFirstName(data.full_name.trim().split(' ')[0]);
     };
 
+    // loadActivities is a stable useCallback so this only ever runs
+    // once per user id, same as before it was hoisted out to also be
+    // reachable from the Retry button below — not the repeated-render
+    // loop this lint rule guards against (same reasoning as
+    // network-status-overlay.tsx's identical suppression).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadActivities();
     loadName();
-  }, [user?.id]);
+  }, [user?.id, loadActivities]);
 
   const handleActivityPress = (activity: ActivityType) => {
     if (!activity.is_bookable) {
@@ -101,6 +118,15 @@ export default function HomeScreen() {
         {isLoading ? (
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={Palette.text} />
+          </View>
+        ) : loadError ? (
+          <View style={styles.loading}>
+            <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+              Couldn&apos;t load activities. {loadError}
+            </Text>
+            <View style={{ marginTop: 16, width: contentWidth }}>
+              <AuthButton label="Retry" onPress={loadActivities} loading={isLoading} />
+            </View>
           </View>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap }}>

@@ -50,6 +50,8 @@ export default function GroupScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
@@ -67,14 +69,25 @@ export default function GroupScreen() {
       let cancelled = false;
 
       const load = async () => {
-        const [groups, memberList, reportedUserIds] = await Promise.all([
+        setIsLoading(true);
+        setLoadError(null);
+
+        const [groupsResult, memberList, reportedUserIds] = await Promise.all([
           fetchMyGroups(),
           fetchGroupMembers(groupId),
           fetchMyReportedUserIds(groupId),
         ]);
         if (cancelled) return;
 
-        const thisGroup = groups.find((g) => g.group_id === groupId) ?? null;
+        // A fetch failure must not render as "this group doesn't exist" —
+        // it's the same group the student is already in and paid for.
+        if (groupsResult.error) {
+          setLoadError(groupsResult.error);
+          setIsLoading(false);
+          return;
+        }
+
+        const thisGroup = groupsResult.data.find((g) => g.group_id === groupId) ?? null;
         setGroup(thisGroup);
         setMembers(memberList);
         setReportedIds(new Set(reportedUserIds));
@@ -102,7 +115,12 @@ export default function GroupScreen() {
       return () => {
         cancelled = true;
       };
-    }, [groupId, refreshUnreadCount])
+      // retryCount isn't read in the body above — it's a pure re-run
+      // trigger for the Retry button on a load failure, the same "bump a
+      // counter to force the effect to fire again" pattern useFocusEffect
+      // itself doesn't otherwise expose a manual re-invoke for.
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [groupId, refreshUnreadCount, retryCount])
   );
 
   useEffect(() => {
@@ -154,6 +172,11 @@ export default function GroupScreen() {
 
     if (error) {
       console.error('Failed to send message:', error);
+      // No optimistic insert happens above, so a failure here means the
+      // message never appeared anywhere — restore it to the input instead
+      // of letting it vanish silently (the old, since-fixed behavior).
+      setInput(content);
+      Alert.alert("Couldn't send", 'Your message wasn’t sent. Give it another try.');
     }
   };
 
@@ -273,6 +296,15 @@ export default function GroupScreen() {
     return (
       <View style={[styles.root, styles.centered]}>
         <ActivityIndicator size="large" color={Palette.text} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.root, styles.centered, { paddingHorizontal: 24, gap: 16 }]}>
+        <Text style={styles.subtitle}>Couldn&apos;t load this. {loadError}</Text>
+        <AuthButton label="Retry" onPress={() => setRetryCount((n) => n + 1)} />
       </View>
     );
   }

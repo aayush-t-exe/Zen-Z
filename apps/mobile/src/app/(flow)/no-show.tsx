@@ -1,8 +1,8 @@
 import { useCallback, useState } from 'react';
-import { ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { formatSlotDateTime } from '@/lib/format';
@@ -70,35 +70,60 @@ export default function NoShowScreen() {
 
   if (isLoading) {
     return (
-      <ThemedView className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" />
-      </ThemedView>
+      <View style={styles.root}>
+        <ActivityIndicator size="large" color={Palette.text} />
+      </View>
     );
   }
 
   return (
-    <ThemedView className="flex-1 items-center justify-center px-6">
-      <ThemedText className="mb-2 text-3xl">🕯️</ThemedText>
-      <ThemedText type="title" className="text-center text-lg">
-        Your seat sat empty tonight.
-      </ThemedText>
+    <View style={[styles.root, { paddingHorizontal: 24 }]}>
+      <Text style={styles.emoji}>🕯️</Text>
+      <Text style={styles.title}>Your seat sat empty tonight.</Text>
 
       {missed && (
-        <ThemedText type="default" themeColor="textSecondary" className="mt-2 text-center text-sm">
+        <Text style={[styles.subtitle, { marginTop: 8 }]}>
           {missed.activity_emoji} {missed.activity_name}, {formatSlotDateTime(missed.slot_datetime, missed.activity_name)}
-        </ThemedText>
+        </Text>
       )}
 
       {isBlocked ? (
-        <ThemedText type="default" themeColor="error" className="mt-6 text-center text-sm">
+        <Text style={[styles.subtitle, { marginTop: 24, color: Palette.error }]}>
           Three empty seats in a row. Your invitations are paused until{' '}
           {formatSlotDateTime(blockedUntil!)}.
-        </ThemedText>
+        </Text>
       ) : (
-        <ThemedText type="default" themeColor="textSecondary" className="mt-6 text-center text-sm">
+        <Text style={[styles.subtitle, { marginTop: 24 }]}>
           Strike {strikes} of 3. Three in a row pauses new invitations for a week.
-        </ThemedText>
+        </Text>
       )}
-    </ThemedView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: Palette.canvas,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emoji: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  title: {
+    color: Palette.text,
+    fontSize: 18,
+    fontWeight: '700',
+    fontFamily: FontFamily.display.bold,
+    textAlign: 'center',
+  },
+  subtitle: {
+    color: Palette.muted,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: FontFamily.body.regular,
+    textAlign: 'center',
+  },
+});

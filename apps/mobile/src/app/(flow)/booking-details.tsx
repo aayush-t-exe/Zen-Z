@@ -21,33 +21,48 @@ export default function BookingDetailsScreen() {
   const [group, setGroup] = useState<MyGroupDetails | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!groupId) return;
+    setIsLoading(true);
+    setLoadError(null);
+
+    const [groupsResult, memberList] = await Promise.all([fetchMyGroups(), fetchGroupMembers(groupId)]);
+
+    // A fetch failure here must not read as "this booking doesn't exist" —
+    // that's the same booking a paid, matched student just tapped in from
+    // the Bookings tab.
+    if (groupsResult.error) {
+      setLoadError(groupsResult.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setGroup(groupsResult.data.find((g) => g.group_id === groupId) ?? null);
+    setMembers(memberList);
+    setIsLoading(false);
+  }, [groupId]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!groupId) return;
-      let cancelled = false;
-
-      const load = async () => {
-        const [groups, memberList] = await Promise.all([fetchMyGroups(), fetchGroupMembers(groupId)]);
-        if (cancelled) return;
-
-        setGroup(groups.find((g) => g.group_id === groupId) ?? null);
-        setMembers(memberList);
-        setIsLoading(false);
-      };
-
       load();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [groupId])
+    }, [load])
   );
 
   if (isLoading) {
     return (
       <View style={[styles.root, styles.centered]}>
         <ActivityIndicator size="large" color={Palette.text} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.root, styles.centered, { paddingHorizontal: 24, gap: 16 }]}>
+        <Text style={styles.subtitle}>Couldn&apos;t load this. {loadError}</Text>
+        <AuthButton label="Retry" onPress={load} />
       </View>
     );
   }
