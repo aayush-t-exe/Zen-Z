@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <LegalLayout title="About Zen-Z" updated="August 26, 2026">
+    <LegalLayout title="About Zen-Z" updated="September 1, 2026">
       <p>
         Zen-Z is a campus-first social app. You take a quiz, pick a slot, and our
         team hand-matches you into a small group of strangers for a Café,
@@ -73,6 +73,17 @@ export default function AboutPage() {
           Group members see each other&apos;s name and year of study only.
           Phone numbers, profile photos, date of birth, gender, and personality
           results are never shown to other members, under any circumstance.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>Bringing a friend, and inviting more</h2>
+        <p>
+          Don&apos;t have the app yet but want to come along? A student can
+          add you as a &ldquo;+1&rdquo; on their own booking instead. And
+          every student can invite friends with their own referral code —
+          when an invited friend&apos;s first booking is paid, the inviter
+          earns a ₹21 credit toward their next one.
         </p>
       </div>
 

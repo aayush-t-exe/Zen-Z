@@ -31,7 +31,7 @@ const YEARS: { label: string; value: number }[] = [
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 const STEP_COUNT = 6;
-const MIN_AGE_YEARS = 16;
+const MIN_AGE_YEARS = 18;
 
 // Exactly 10 digits, no spaces/dashes/parens/+ — a WhatsApp contact
 // number, not an auth identity, but standardized on a plain Indian mobile

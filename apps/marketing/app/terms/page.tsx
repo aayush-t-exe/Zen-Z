@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Terms & Conditions" updated="August 28, 2026">
+    <LegalLayout title="Terms & Conditions" updated="September 1, 2026">
       <p>
         These Terms &amp; Conditions govern your use of the Zen-Z mobile
         application and related services. Zen-Z is operated by Dhruv Goyal,
@@ -33,9 +33,10 @@ export default function TermsPage() {
       <div className="legal-section">
         <h2>2. Eligibility</h2>
         <p>
-          You must be at least 16 years old to use Zen-Z. Zen-Z does not
-          currently have a parental or guardian consent flow for users aged
-          16&ndash;17. You must provide truthful and accurate information.
+          You must be at least 18 years old to use Zen-Z. Zen-Z does not have
+          any parental/guardian consent flow and does not knowingly allow
+          anyone under 18 to hold an account. You must provide truthful and
+          accurate information.
         </p>
       </div>
 
@@ -77,6 +78,11 @@ export default function TermsPage() {
           <li>8-Ball Pool and Pickleball: exactly 4 people.</li>
         </ul>
         <p>
+          A &ldquo;Bring a +1&rdquo; companion (Section 7) counts as one
+          additional seat toward these limits &mdash; for example, a Café
+          booking with a +1 fills 2 of the 4&ndash;5 seats.
+        </p>
+        <p>
           When a group reaches its activity-specific maximum, Zen-Z may form a
           separate group for the same activity/date/time.
         </p>
@@ -97,7 +103,8 @@ export default function TermsPage() {
         <p>
           Paid bookings are personal and cannot be transferred to another
           person. After payment, you cannot change the activity, date, or time
-          of a booking; a new booking must be made for a different slot.
+          of a booking, or add or remove a +1; a new booking must be made for a
+          different slot.
         </p>
         <p>
           Bookings for a slot close at midnight IST, two days before the slot
@@ -108,7 +115,46 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>7. Group and venue reveal</h2>
+        <h2>7. Bring a +1</h2>
+        <p>
+          For some activities, you may add one companion (&ldquo;+1&rdquo;) to
+          your own booking instead of them booking a separate slot. A +1 does
+          not create a Zen-Z account, does not take the personality quiz, and
+          does not provide a photo, gender, date of birth, or any other
+          information to Zen-Z &mdash; they are not independently verified in
+          any way.
+        </p>
+        <p>By adding a +1, you confirm that:</p>
+        <ul>
+          <li>
+            you have their permission to book on their behalf and to share
+            their first name with Zen-Z and the rest of the group for
+            coordination purposes;
+          </li>
+          <li>they are at least 18 years old; and</li>
+          <li>
+            you take responsibility for their conduct at the meetup, including
+            compliance with Section 11 (User conduct) and venue rules.
+          </li>
+        </ul>
+        <p>
+          The price for a booking with a +1 is automatically double the listed
+          per-person price for that activity, charged as a single payment.
+        </p>
+        <p>
+          Because a +1&apos;s gender is not collected, Zen-Z cannot verify that
+          a +1 matches a women-only or men-only group preference; placement in
+          that case is a manual judgment call by our team based on the
+          information you provide.
+        </p>
+        <p>
+          Zen-Z may refuse, restrict, or remove a +1 booking under the same
+          enforcement standards as Sections 12 and 13.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>8. Group and venue reveal</h2>
         <p>
           Your group is revealed once matching is finalized for your slot,
           which can happen well before the event. The exact venue name,
@@ -123,7 +169,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>8. Group chat</h2>
+        <h2>9. Group chat</h2>
         <p>
           Group chat is text-only. Zen-Z does not routinely read or monitor
           normal private group-chat messages. Users can report another
@@ -142,7 +188,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>9. Venue responsibilities</h2>
+        <h2>10. Venue responsibilities</h2>
         <p>
           Zen-Z coordinates bookings but does not operate the venue. Users are
           responsible for complying with venue rules and for their own conduct
@@ -156,7 +202,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>10. Personal expenses at the venue</h2>
+        <h2>11. Personal expenses at the venue</h2>
         <p>
           For Café and Dinner, each participant is individually responsible for
           their food, drinks, and other expenses at the venue.
@@ -173,7 +219,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>11. User conduct</h2>
+        <h2>12. User conduct</h2>
         <p>
           Users must respect other participants and venues. Prohibited conduct
           includes harassment, bullying, threats, violence, sexual harassment
@@ -185,12 +231,13 @@ export default function TermsPage() {
         </p>
         <p>
           Alcohol, smoking, tobacco/nicotine products, and drugs are prohibited
-          at Zen-Z meetups.
+          at Zen-Z meetups. If you bring a +1 (Section 7), this conduct
+          standard applies to them as well, and you are responsible for it.
         </p>
       </div>
 
       <div className="legal-section">
-        <h2>12. Reports and enforcement</h2>
+        <h2>13. Reports and enforcement</h2>
         <p>
           Users may report another participant at any time, including after an
           event. Zen-Z investigates reports and may warn, restrict, suspend,
@@ -206,7 +253,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>13. Account restrictions and deletion</h2>
+        <h2>14. Account restrictions and deletion</h2>
         <p>
           Zen-Z may reject profile information, restrict bookings, suspend an
           account, remove a user from a group, or permanently ban/delete an
@@ -214,15 +261,17 @@ export default function TermsPage() {
           or repeated policy violations.
         </p>
         <p>
-          Users may delete their account after all active/upcoming bookings
-          have been completed or cancelled. Account deletion removes personal
-          information and the profile photo; previously sent messages may
-          remain visible to other group members.
+          Users may delete their account, from within the app, after all
+          active/upcoming bookings have been completed or cancelled. Account
+          deletion removes personal information and the profile photo;
+          previously sent messages may remain visible to other group members.
+          Deleting your account forfeits any unused referral credits and your
+          referral code (Section 16).
         </p>
       </div>
 
       <div className="legal-section">
-        <h2>14. Booking and refund rules</h2>
+        <h2>15. Booking and refund rules</h2>
         <p>
           Cancellation and refund terms are set out in the{' '}
           <a href="/refund">Cancellation &amp; Refund Policy</a> and form part
@@ -232,7 +281,39 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>15. Safety and emergencies</h2>
+        <h2>16. Referral program</h2>
+        <p>
+          Every user can generate one permanent referral code from the Invite
+          screen and share it with any number of friends.
+        </p>
+        <p>
+          When someone enters your code and their first Zen-Z booking is
+          successfully paid, you earn one referral credit worth ₹21. A credit
+          is automatically applied to your next unpaid booking: it fully
+          covers Café, Dinner, Box Cricket, or Football (₹21 fee), and gives a
+          ₹21 discount on pricier activities (Movie, 8-Ball Pool, Pickleball),
+          with any remaining balance paid by you through PayU as normal. Only
+          one credit is applied per booking.
+        </p>
+        <p>
+          Referral credits have no cash value, cannot be exchanged for money,
+          and cannot be transferred to another person or account. You cannot
+          use your own referral code, and Zen-Z may withhold or reverse
+          credits obtained through fake accounts, self-referral, or other
+          fraudulent activity.
+        </p>
+        <p>
+          If a booking that used a referral credit is later cancelled under
+          the <a href="/refund">Cancellation &amp; Refund Policy</a>, the
+          credit is restored to your account for a future booking rather than
+          being lost. If a friend you referred later cancels or is refunded
+          for the booking that earned you a credit, a credit you have already
+          received and not yet spent is not taken back.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>17. Safety and emergencies</h2>
         <p>
           Zen-Z cannot supervise users&apos; physical behavior at a venue and
           cannot guarantee the conduct, identity, intentions, or safety of
@@ -243,7 +324,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>16. Intellectual property</h2>
+        <h2>18. Intellectual property</h2>
         <p>
           The Zen-Z name, branding, logo, app and website design, software,
           original text, graphics, and other original materials are owned by
@@ -254,7 +335,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>17. User content</h2>
+        <h2>19. User content</h2>
         <p>
           Zen-Z may store and process user-submitted information and content to
           operate the service, match users, communicate with you, moderate
@@ -265,7 +346,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>18. Third-party services</h2>
+        <h2>20. Third-party services</h2>
         <p>
           Zen-Z uses third-party service providers necessary to operate the
           platform, including Supabase for backend/data storage, Brevo for
@@ -276,7 +357,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>19. Changes to these Terms</h2>
+        <h2>21. Changes to these Terms</h2>
         <p>
           Zen-Z may update these Terms when necessary. The &ldquo;Last
           Updated&rdquo; date will change when the Terms are revised. Material
@@ -285,7 +366,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>20. Governing law</h2>
+        <h2>22. Governing law</h2>
         <p>
           These Terms are governed by the laws of India. Subject to applicable
           law, courts in Jaipur, Rajasthan have jurisdiction over disputes.
@@ -293,7 +374,7 @@ export default function TermsPage() {
       </div>
 
       <div className="legal-section">
-        <h2>21. Contact</h2>
+        <h2>23. Contact</h2>
         <p>
           For questions about these Terms, contact{' '}
           <a href="mailto:teamzenz003@gmail.com">teamzenz003@gmail.com</a>.
