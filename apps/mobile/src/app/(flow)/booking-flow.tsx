@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { AuthButton } from '@/components/auth-button';
@@ -100,12 +101,40 @@ const ACTIVITY_ICONS: Record<string, any> = {
 // max) — "Group of 4–4" reads as a typo, so collapse it to a single number.
 const formatGroupSize = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
 
-const PILL_RATIO = 420 / 2059;
 const CARD_SMALL_RATIO = 188 / 978;
 const CARD_LARGE_RATIO = 2500 / 1912;
-const TIME_ART_RATIO = 1086 / 1173;
 
-function OptionPill({
+/**
+ * Geometry for the redesigned "time" step, measured off the approved comp
+ * (Desktop/UI/UI PAGE 2). That file is 1170x2532 — a 390pt screen at @3x — so
+ * comp pixels divide by 3 for dp. This screen runs wider side margins (45dp)
+ * than Home's 21dp, giving a 300dp content column.
+ */
+const FLOW_SIDE_PADDING = 34;
+const SLOT_ROW_RATIO = 154 / 902; // row height / width
+// The row art keeps 100px of its outer glow on each side so the lit halo the
+// comp shows around the box survives. That glow is very diffuse — it never
+// reaches zero inside the source canvas — so the export also ramps its alpha
+// out over the outer edge; cropping it plain left a visible rectangle. The box
+// is only the middle of that image, so the art draws oversized and offset to
+// land the box exactly on the row's bounds, glow spilling outside.
+const SLOT_GLOW_W = 1102 / 902;
+const SLOT_GLOW_H = 354 / 154;
+const SLOT_GLOW_OFFSET_X = 100 / 902;
+const SLOT_GLOW_OFFSET_Y = 100 / 154;
+const NEXT_PILL_RATIO = 145 / 902; // button height / width
+const CHARACTERS_RATIO = 868 / 877; // illustration height / width
+// Founder asked for a larger row than the comp's — this scales its height past
+// the art's natural aspect, so the rounded corners stretch slightly.
+const SLOT_ROW_SCALE = 1.12;
+// Positions inside the slot row, as fractions of its width.
+const SLOT_STAR_W = 19.7 / 300.3;
+const SLOT_STAR_LEFT = 13.6 / 300.3;
+const SLOT_STAR_GAP = 17.6 / 300.3;
+const SLOT_CHECK_W = 15 / 300.3; // enlarged past the comp's 10dp on request
+const SLOT_CHECK_RIGHT = 38 / 300.3;
+
+function SlotRow({
   label,
   selected,
   onPress,
@@ -116,22 +145,89 @@ function OptionPill({
   onPress: () => void;
   width: number;
 }) {
-  const height = width * PILL_RATIO;
+  const height = width * SLOT_ROW_RATIO * SLOT_ROW_SCALE;
+  const starSize = width * SLOT_STAR_W;
+  const checkSize = width * SLOT_CHECK_W;
   return (
     <Pressable onPress={onPress} style={{ width, height }}>
       <Image
-        source={require('@/assets/images/bubble-pill.png')}
+        source={require('@/assets/images/booking-slot-row.png')}
+        style={{
+          position: 'absolute',
+          left: -width * SLOT_GLOW_OFFSET_X,
+          top: -height * SLOT_GLOW_OFFSET_Y,
+          width: width * SLOT_GLOW_W,
+          height: height * SLOT_GLOW_H,
+        }}
+        resizeMode="stretch"
+        accessibilityIgnoresInvertColors
+      />
+      <View
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingLeft: width * SLOT_STAR_LEFT,
+            paddingRight: width * SLOT_CHECK_RIGHT,
+          },
+        ]}>
+        <Image
+          source={require('@/assets/images/icon-star-outline.png')}
+          style={{ width: starSize, height: starSize * (171 / 180) }}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+        />
+        <Text style={[styles.slotLabel, { marginLeft: width * SLOT_STAR_GAP }]} numberOfLines={1}>
+          {label}
+        </Text>
+        {selected && (
+          <Image
+            source={require('@/assets/images/icon-check-filled.png')}
+            style={{ width: checkSize, height: checkSize * (116 / 120) }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+        )}
+      </View>
+    </Pressable>
+  );
+}
+
+/** The comp's white pill primary action, with the flow's loading/disabled states. */
+function PillButton({
+  label,
+  onPress,
+  width,
+  loading,
+  disabled,
+}: {
+  label: string;
+  onPress: () => void;
+  width: number;
+  loading?: boolean;
+  disabled?: boolean;
+}) {
+  const height = width * NEXT_PILL_RATIO;
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading }}
+      style={{ width, height, opacity: disabled ? 0.45 : 1 }}>
+      <Image
+        source={require('@/assets/images/booking-next-pill.png')}
         style={{ width, height }}
         resizeMode="stretch"
+        accessibilityIgnoresInvertColors
       />
-      <View style={[StyleSheet.absoluteFill, styles.pillContent]}>
-        <Image
-          source={require('@/assets/images/star-dark.png')}
-          style={styles.pillStar}
-          resizeMode="contain"
-        />
-        <Text style={styles.pillLabel}>{label}</Text>
-        {selected && <Text style={styles.pillCheck}>✓</Text>}
+      <View style={[StyleSheet.absoluteFill, styles.pillButtonContent]}>
+        {loading ? (
+          <ActivityIndicator color="#1D1D1B" />
+        ) : (
+          <Text style={styles.pillButtonLabel}>{label}</Text>
+        )}
       </View>
     </Pressable>
   );
@@ -169,7 +265,8 @@ export default function BookingFlowScreen() {
   const { activityId } = useLocalSearchParams<{ activityId: string }>();
   const user = useAuthStore((state) => state.user);
   const { width: screenWidth } = useWindowDimensions();
-  const contentWidth = Math.min(358, screenWidth - 30);
+  const insets = useSafeAreaInsets();
+  const contentWidth = Math.min(358, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -447,16 +544,17 @@ export default function BookingFlowScreen() {
 
         {/* Day & Time Selection */}
         {currentStep === 'time' && (
-          <View style={{ width: contentWidth, gap: 18 }}>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.title}>When do you want your story to begin?</Text>
-              <Text style={styles.subtitle}>Pick a fixed weekly slot</Text>
-            </View>
+          <View style={{ width: contentWidth }}>
+            {/* Break is explicit, not left to wrapping — the comp sets this
+                heading as "When do you want your / story to begin" and natural
+                wrapping would shift with device width or a font-scale setting. */}
+            <Text style={styles.flowTitle}>When do you want your{'\n'}story to begin?</Text>
+            <Text style={styles.flowSubtitle}>Pick a fixed weekly slot.</Text>
 
             {slots.length > 0 ? (
-              <View style={{ gap: 12 }}>
+              <View style={{ gap: 12, marginTop: 30 }}>
                 {slots.map((slot) => (
-                  <OptionPill
+                  <SlotRow
                     key={slot.id}
                     label={formatSlotDateTime(slot.slot_datetime, activity?.name)}
                     selected={selectedSlot === slot.id}
@@ -466,18 +564,23 @@ export default function BookingFlowScreen() {
                 ))}
               </View>
             ) : (
-              <Text style={styles.subtitle}>No available slots at the moment.</Text>
+              <Text style={[styles.flowSubtitle, { marginTop: 30 }]}>
+                No available slots at the moment.
+              </Text>
             )}
 
             <Image
-              source={require('@/assets/images/booking-time-art.png')}
+              source={require('@/assets/images/booking-time-characters.png')}
               style={{
-                width: contentWidth * 0.85,
-                height: contentWidth * 0.85 * TIME_ART_RATIO,
+                width: contentWidth * (291.7 / 300.3),
+                height: contentWidth * (291.7 / 300.3) * CHARACTERS_RATIO,
                 alignSelf: 'center',
-                marginTop: 64,
+                // Trimmed from the comp's 103dp to absorb the taller header,
+                // larger row and lifted footer.
+                marginTop: 76,
               }}
               resizeMode="contain"
+              accessibilityIgnoresInvertColors
             />
           </View>
         )}
@@ -641,19 +744,35 @@ export default function BookingFlowScreen() {
         {error && <Text style={styles.error}>{error}</Text>}
       </ScrollView>
 
-      {/* Navigation buttons */}
-      <View style={{ width: contentWidth, alignSelf: 'center', paddingBottom: 32, paddingTop: 12, gap: 14 }}>
-        <Pressable onPress={handleBack} hitSlop={8}>
-          <Text style={styles.backLabel}>← Back</Text>
+      {/* Navigation buttons, held clear of whatever safe area the device
+          reports so the spacing holds on both gesture and 3-button nav. Lifted
+          past the comp's own margin at the founder's request. */}
+      <View
+        style={{
+          width: contentWidth,
+          alignSelf: 'center',
+          paddingBottom: 64 + insets.bottom,
+          paddingTop: 12,
+        }}>
+        <Pressable onPress={handleBack} hitSlop={8} style={styles.backRow}>
+          <Image
+            source={require('@/assets/images/icon-arrow-left.png')}
+            style={styles.backArrow}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+          <Text style={styles.backLabel}>Back</Text>
         </Pressable>
 
-        <AuthButton
-          label={currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next  →'}
-          onPress={handleNext}
-          loading={isLoading}
-          disabled={!canProceedToNextStep()}
-          style={{ width: contentWidth }}
-        />
+        <View style={{ marginTop: 18 }}>
+          <PillButton
+            label={currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next  →'}
+            onPress={handleNext}
+            loading={isLoading}
+            disabled={!canProceedToNextStep()}
+            width={contentWidth}
+          />
+        </View>
       </View>
     </View>
   );
@@ -686,8 +805,57 @@ const styles = StyleSheet.create({
   },
   scroll: {
     alignItems: 'center',
-    paddingTop: 40,
+    // Comp seats the title's cap 66dp down the screen; pushed further at the
+    // founder's request so the header clears the status bar more comfortably.
+    paddingTop: 88,
     paddingHorizontal: 16,
+  },
+  // Comp's header pair: Inter Bold sized off its 16.7dp cap (22.5dp at Inter's
+  // 0.727 cap ratio) on near-solid leading, with tight tracking — the comp's
+  // "When do you want your" runs 243dp where untracked Inter Bold runs 262dp.
+  // Subtitle is SF Pro Display Thin, sized off its own 7.3dp cap.
+  // Sizes are the comp's measured values scaled up ~1.2x at the founder's
+  // request — the comp's type read too small on a real handset.
+  flowTitle: {
+    color: '#FFFFFF',
+    fontSize: 27,
+    lineHeight: 30,
+    letterSpacing: -1.08,
+    fontFamily: FontFamily.accent.interExtraBold,
+  },
+  flowSubtitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 19,
+    marginTop: 14,
+    fontFamily: FontFamily.accent.sfProDisplayThin,
+  },
+  // All three sized off their cap heights in the comp (8.0dp / 11.3dp /
+  // 11.7dp) rather than the text bands, which bundle the arrows in.
+  slotLabel: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    flex: 1,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
+  },
+  pillButtonContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pillButtonLabel: {
+    color: '#1D1D1B',
+    fontSize: 18,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
+  },
+  backRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  backArrow: {
+    width: 10,
+    height: 10 * (84 / 120),
   },
   title: {
     color: Palette.text,
@@ -801,10 +969,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   backLabel: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
     textAlign: 'center',
   },
 });
