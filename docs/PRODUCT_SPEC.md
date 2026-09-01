@@ -103,17 +103,18 @@ Group Chat → Event Day → Feedback
 │   Ready for something?         │
 │   ┌──────────┐┌──────────┐   │
 │   │☕ Cafés   ││🍽 Dinners│   │
-│   │  Unlock a ││ Unlock a │   │
-│   │  table    ││ table    │   │
+│   │Unlock Your││Unlock Your│  │
+│   │  Table    ││  Table    │  │
 │   └──────────┘└──────────┘   │
 │   ┌──────────┐                │
 │   │🎬 Movies  │                │
-│   │  Unlock a  │                │
-│   │  seat      │                │
+│   │Unlock Your │                │
+│   │  Seat      │                │
 │   └──────────┘                │
 └─────────────────────────────┘
 ```
 - All three tappable and fully live from day one, per the new constraint — no locked/greyed states anywhere in this screen.
+- **[COPY CHANGE 2026-09-02]** Card taglines were "Unlock a table / a seat / a game"; the approved home redesign comp sets them as **"Unlock Your Table / Your Seat / Your Game"** and the founder confirmed the comp wins. The Chats tab is also labelled **"Messages"** in the UI from that comp — the route, store and notification routing all still key off `chats`, only the visible label changed.
 
 ### 1.5a Sports (added post-launch, founder request 2026-08-19)
 A fourth home-screen card, 🏆 Sports, sits alongside Cafés/Dinners/Movies. Unlike
