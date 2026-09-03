@@ -1,13 +1,42 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Share, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Share,
+  ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
+import { FlowSurfaceBox } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { FlowBackButton } from '@/components/flow-back-button';
 import { supabase } from '@/lib/supabase';
+
+/** Matches the primary pill's near-white, as the other redesigned screens set it. */
+const LOADER = '#FFFDF8';
+
+/** A stat as one row: the approved label ranged left, its figure right. */
+function StatRow({ label, value, width }: { label: string; value: number; width: number }) {
+  return (
+    <FlowSurfaceBox width={width}>
+      <View style={styles.statRow}>
+        <Text style={FlowText.rowLabel}>{label}</Text>
+        <Text style={styles.statValue}>{value}</Text>
+      </View>
+    </FlowSurfaceBox>
+  );
+}
 
 export default function InviteScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Same content column the rest of the redesign runs.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [code, setCode] = useState<string | null>(null);
   const [redeemedCount, setRedeemedCount] = useState(0);
@@ -61,44 +90,52 @@ export default function InviteScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={{ gap: 6, marginBottom: 28 }}>
-          <Text style={styles.title}>Invite someone into the story</Text>
+        <View style={{ width: contentWidth }}>
+          <Text style={FlowText.title}>Invite someone{'\n'}into the story</Text>
           <Text style={styles.subtitle}>
             Your next Café or Dinner is on us when a friend takes their first step in. Bigger
             adventures get ₹21 off.
           </Text>
+
+          {isLoading ? (
+            <ActivityIndicator size="large" color={LOADER} style={{ marginTop: 40 }} />
+          ) : error ? (
+            <Text style={styles.error}>{error}</Text>
+          ) : (
+            <>
+              <View style={{ marginTop: 36, gap: 14 }}>
+                <Text style={FlowText.sectionLabel}>Your code</Text>
+                <FlowSurfaceBox width={contentWidth}>
+                  <View style={styles.codeRow}>
+                    <Text style={styles.codeValue}>{code}</Text>
+                  </View>
+                </FlowSurfaceBox>
+              </View>
+
+              {/* Label and figure on one row each, rather than the two boxed
+                  numerals this had side by side: a half-width box has to
+                  stretch tall to hold a stacked value and caption, and the row
+                  art's corners pull out of shape when it does. */}
+              <View style={{ marginTop: 28, gap: 12 }}>
+                <StatRow label="Friends who stepped in" value={redeemedCount} width={contentWidth} />
+                <StatRow label="₹21 credits waiting" value={availableCredits} width={contentWidth} />
+              </View>
+            </>
+          )}
         </View>
-
-        {isLoading ? (
-          <ActivityIndicator size="large" color={Palette.text} />
-        ) : error ? (
-          <Text style={styles.error}>{error}</Text>
-        ) : (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.codeLabel}>Your code</Text>
-              <Text style={styles.codeValue}>{code}</Text>
-            </View>
-
-            <View style={styles.statsRow}>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{redeemedCount}</Text>
-                <Text style={styles.statLabel}>Friends who stepped in</Text>
-              </View>
-              <View style={styles.statCard}>
-                <Text style={styles.statValue}>{availableCredits}</Text>
-                <Text style={styles.statLabel}>₹21 credits waiting</Text>
-              </View>
-            </View>
-          </>
-        )}
       </ScrollView>
 
-      <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 14 }}>
-        <AuthButton label="Share via WhatsApp" onPress={handleShare} loading={isSharing} disabled={!code} />
-        <Text style={styles.backLink} onPress={() => router.back()}>
-          Back
-        </Text>
+      <View style={styles.footer}>
+        <FlowBackButton onPress={() => router.back()} />
+        <View style={{ marginTop: 18 }}>
+          <FlowPillButton
+            label="Share via WhatsApp"
+            width={contentWidth}
+            onPress={handleShare}
+            loading={isSharing}
+            disabled={!code}
+          />
+        </View>
       </View>
     </View>
   );
@@ -107,85 +144,56 @@ export default function InviteScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 56,
+    alignItems: 'center',
+    // The header drop the rest of this stack uses.
+    paddingTop: 88,
+    paddingHorizontal: 16,
     paddingBottom: 24,
   },
-  title: {
-    color: Palette.text,
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.5,
-  },
   subtitle: {
-    color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 21,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.subtitle,
+    marginTop: 14,
   },
-  card: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 20,
-    padding: 24,
+  codeRow: {
+    flexGrow: 1,
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 20,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    paddingVertical: 14,
   },
-  codeLabel: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontFamily: FontFamily.body.regular,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  // The one figure on this screen that is the point of it, so it carries the
+  // redesign's numeral face at the size the old card gave it.
   codeValue: {
-    color: Palette.text,
-    fontSize: 34,
-    fontWeight: '800',
-    fontFamily: FontFamily.body.bold,
+    color: '#FFFFFF',
+    fontSize: 26,
     letterSpacing: 2,
+    fontFamily: FontFamily.accent.interBold,
   },
-  statsRow: {
+  statRow: {
+    flexGrow: 1,
     flexDirection: 'row',
-    gap: 14,
-  },
-  statCard: {
-    flex: 1,
-    borderWidth: 2,
-    borderColor: Palette.ring,
-    borderRadius: 16,
-    padding: 16,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
+    paddingVertical: 14,
+    gap: 12,
   },
   statValue: {
-    color: Palette.text,
-    fontSize: 26,
-    fontWeight: '800',
-    fontFamily: FontFamily.body.bold,
-  },
-  statLabel: {
-    color: Palette.muted,
-    fontSize: 12,
-    lineHeight: 16,
-    fontFamily: FontFamily.body.regular,
-    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 20,
+    fontFamily: FontFamily.accent.interBold,
   },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    ...FlowText.error,
+    textAlign: 'left',
+    marginTop: 36,
   },
-  backLink: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
-    textAlign: 'center',
+  footer: {
+    alignSelf: 'center',
+    paddingBottom: 40,
+    paddingTop: 12,
   },
 });

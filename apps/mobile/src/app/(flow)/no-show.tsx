@@ -1,21 +1,30 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
+import { View, Text, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
+import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
+import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { SummaryBadge } from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { formatSlotDateTime } from '@/lib/format';
 
+/** Matches the primary pill's near-white, as the other redesigned screens set it. */
+const LOADER = '#FFFDF8';
+
 interface MissedBooking {
   activity_name: string;
-  activity_emoji: string;
   slot_datetime: string;
 }
 
 export default function NoShowScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId: string }>();
+  const router = useRouter();
   const userId = useAuthStore((state) => state.user?.id);
+  const { width: screenWidth } = useWindowDimensions();
+
+  // Same content column the rest of the redesign runs.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [missed, setMissed] = useState<MissedBooking | null>(null);
   const [strikes, setStrikes] = useState(0);
@@ -45,7 +54,6 @@ export default function NoShowScreen() {
         if (slot) {
           setMissed({
             activity_name: slot.activity_types?.name ?? 'Activity',
-            activity_emoji: slot.activity_types?.emoji ?? '',
             slot_datetime: slot.slot_datetime,
           });
         }
@@ -71,32 +79,54 @@ export default function NoShowScreen() {
   if (isLoading) {
     return (
       <View style={styles.root}>
-        <ActivityIndicator size="large" color={Palette.text} />
+        <ActivityIndicator size="large" color={LOADER} />
       </View>
     );
   }
 
   return (
     <View style={[styles.root, { paddingHorizontal: 24 }]}>
-      <Text style={styles.emoji}>🕯️</Text>
-      <Text style={styles.title}>Your seat sat empty tonight.</Text>
+      <View style={{ width: contentWidth, alignItems: 'center' }}>
+        {/* The activity's own render where a 🕯️ used to sit: the redesign
+            draws its marks, and this one says which evening went empty
+            instead of only setting a mood. */}
+        {missed && (
+          <View style={{ marginBottom: 18 }}>
+            <SummaryBadge
+              cardWidth={contentWidth}
+              icon={{ source: activityArt(missed.activity_name), scale: ACTIVITY_ART_BADGE_SCALE }}
+            />
+          </View>
+        )}
 
-      {missed && (
-        <Text style={[styles.subtitle, { marginTop: 8 }]}>
-          {missed.activity_emoji} {missed.activity_name}, {formatSlotDateTime(missed.slot_datetime, missed.activity_name)}
-        </Text>
-      )}
+        <Text style={FlowText.titleCentred}>Your seat sat empty tonight.</Text>
 
-      {isBlocked ? (
-        <Text style={[styles.subtitle, { marginTop: 24, color: Palette.error }]}>
-          Three empty seats in a row. Your invitations are paused until{' '}
-          {formatSlotDateTime(blockedUntil!)}.
-        </Text>
-      ) : (
-        <Text style={[styles.subtitle, { marginTop: 24 }]}>
-          Strike {strikes} of 3. Three in a row pauses new invitations for a week.
-        </Text>
-      )}
+        {missed && (
+          <Text style={[styles.centredSubtitle, { marginTop: 10 }]}>
+            {missed.activity_name}, {formatSlotDateTime(missed.slot_datetime, missed.activity_name)}
+          </Text>
+        )}
+
+        {isBlocked ? (
+          <Text style={[FlowText.error, { marginTop: 26 }]}>
+            Three empty seats in a row. Your invitations are paused until{' '}
+            {formatSlotDateTime(blockedUntil!)}.
+          </Text>
+        ) : (
+          <Text style={[styles.centredSubtitle, { marginTop: 26 }]}>
+            Strike {strikes} of 3. Three in a row pauses new invitations for a week.
+          </Text>
+        )}
+
+        {/* A way out: this screen opens from a notification tap, and had
+            nothing on it to leave with but the OS back gesture. */}
+        <FlowPillButton
+          label="Back to home  →"
+          width={contentWidth}
+          onPress={() => router.push('/(home)')}
+          style={{ marginTop: 40 }}
+        />
+      </View>
     </View>
   );
 }
@@ -104,26 +134,12 @@ export default function NoShowScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  emoji: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  title: {
-    color: Palette.text,
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: FontFamily.body.regular,
+  centredSubtitle: {
+    ...FlowText.subtitle,
     textAlign: 'center',
   },
 });

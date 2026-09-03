@@ -25,10 +25,13 @@ import {
  * FLOW_PILL_HEIGHT.
  *
  * The fill lives on a plain View with static styles, and press feedback is
- * plain state — not `style={({ pressed }) => ...}`. Android drops a
- * backgroundColor set through that callback form and leaves a hollow outline;
- * it looks correct on web either way, which is how it once shipped broken.
- * See components/auth-button.tsx for the full account.
+ * plain state — not `style={({ pressed }) => ...}`. Android was dropping the
+ * cream fill and leaving a hollow outline, and device testing narrowed it to
+ * exactly that: a plain View with fill + radius renders correctly, but the same
+ * fill on a Pressable styled with the callback form does not, since that path
+ * goes through NativeWind's component wrapping. Do not "tidy" this back into
+ * `style={({ pressed }) => ...}` without an Android device to hand — it looks
+ * correct on web either way, which is how it once shipped broken.
  */
 export function FlowPillButton({
   label,
