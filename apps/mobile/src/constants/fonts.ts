@@ -42,6 +42,9 @@ export const FontFamily = {
     bold: 'InstrumentSans_700Bold',
   },
   accent: {
+    // The budget step's comp sets its heading much lighter than the slot
+    // step's: stem/cap 0.160 against 0.220, which is Inter Medium exactly.
+    interMedium: 'Inter_500Medium',
     interBold: 'Inter_700Bold',
     // The booking flow's headings measure stem/cap 0.220 in the comp — exactly
     // between Inter Bold (0.200) and ExtraBold (0.240). ExtraBold is the closer

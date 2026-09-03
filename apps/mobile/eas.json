@@ -21,7 +21,12 @@
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_h3JitSz-Jg36NvUzquQz4A_evcoAkIW"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hzydzyeyvfuokveujbki.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_in9PqwUIAa1OOmLErfFO2w_2fve-R4x"
+      }
+    }
   },
   "submit": {
     "production": {}

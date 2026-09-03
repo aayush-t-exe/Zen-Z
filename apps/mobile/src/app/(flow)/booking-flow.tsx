@@ -7,14 +7,30 @@ import {
   Image,
   ActivityIndicator,
   StyleSheet,
-  TextInput,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import {
+  FLOW_CHECK_ASPECT,
+  FLOW_CHECK_RIGHT,
+  FLOW_CHECK_W,
+  FLOW_CONTENT_MAX,
+  FLOW_ROW_SCALE,
+  FLOW_SIDE_PADDING,
+  FlowText,
+} from '@/constants/flow-theme';
+import { FlowField, FlowPanel } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { FlowBackButton } from '@/components/flow-back-button';
+import {
+  SUMMARY_ICONS,
+  SummaryCard,
+  SummaryToggleRow,
+  type SummaryIcon,
+} from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { formatSlotDateTime, formatDuration } from '@/lib/format';
@@ -53,10 +69,13 @@ function getBookingCutoffInstant(): Date {
   return new Date(todayIstMidnightMs + 3 * 24 * 60 * 60 * 1000 - IST_OFFSET_MS);
 }
 
+// Labels are the comp's own (UI PAGE 3): the second band repeats the rupee
+// sign rather than eliding it, and the third spaces the plus off the figure.
+// `value` is what lands in `bookings.budget_band` — those stay untouched.
 const BUDGET_BANDS = [
   { value: 'under_200', label: 'Under ₹200' },
-  { value: '200_400', label: '₹200–400' },
-  { value: '400_plus', label: '₹400+' },
+  { value: '200_400', label: '₹200 - ₹400' },
+  { value: '400_plus', label: '₹400 +' },
 ];
 
 // Activities with a fixed duration (currently just the Sports games) have a
@@ -79,30 +98,35 @@ const GROUP_PREFERENCES = [
   { value: 'men_only', label: 'Men only' },
 ];
 
-// This map only feeds the summary card's activity row, which sits on a
-// cream background — the opposite of Home's black activity cards. Dinners
-// and Movies use the dark-outlined variant here since their cream-filled
-// Home icon otherwise disappears against the cream card.
-const ACTIVITY_ICONS: Record<string, any> = {
-  Cafés: require('@/assets/images/icon-cafes.png'),
-  Dinners: require('@/assets/images/icon-dinners-dark.png'),
-  Movies: require('@/assets/images/icon-movies-dark.png'),
-  Sports: require('@/assets/images/icon-sports.png'),
-  // Sports bookings carry the specific game's name (not "Sports"), and its
-  // fixed-price flow skips straight from "time" to "summary" — this map
-  // needs an entry for each game or the summary row's icon comes up empty.
-  'Box Cricket': require('@/assets/images/icon-cricket.png'),
-  Football: require('@/assets/images/icon-football.png'),
-  '8-Ball Pool': require('@/assets/images/icon-pool.png'),
-  Pickleball: require('@/assets/images/icon-pickleball.png'),
+/**
+ * Feeds the summary card's activity row, which now sits in a dark badge
+ * rather than on the old cream bubble — so these are the light-on-black
+ * variants, not the dark-outlined ones.
+ *
+ * [ASSUMPTION] The UI PAGE 5 comp only shipped a line-art glyph for Dinners
+ * (icon-dinners-line.png), which is the one used at the comp's own scale
+ * below. Every other activity falls back to its existing illustration at a
+ * smaller scale so it still sits inside the badge — those read as a different
+ * icon language than the crisp white marks on the other three rows, and want
+ * replacing with matching line art when the founder draws it. Sports
+ * bookings carry the specific game's name (not "Sports"), so this map needs
+ * an entry per game or the row's icon comes up empty.
+ */
+const ACTIVITY_ICONS: Record<string, SummaryIcon> = {
+  Dinners: SUMMARY_ICONS.dinners,
+  Cafés: { source: require('@/assets/images/icon-cafes.png'), scale: 0.62 },
+  Movies: { source: require('@/assets/images/icon-movies.png'), scale: 0.62 },
+  Sports: { source: require('@/assets/images/icon-sports.png'), scale: 0.62 },
+  'Box Cricket': { source: require('@/assets/images/icon-cricket.png'), scale: 0.62 },
+  Football: { source: require('@/assets/images/icon-football.png'), scale: 0.62 },
+  '8-Ball Pool': { source: require('@/assets/images/icon-pool.png'), scale: 0.62 },
+  Pickleball: { source: require('@/assets/images/icon-pickleball.png'), scale: 0.62 },
 };
 
 // Games like 8-Ball Pool and Pickleball have a fixed group size (min ===
 // max) — "Group of 4–4" reads as a typo, so collapse it to a single number.
 const formatGroupSize = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
 
-const CARD_SMALL_RATIO = 188 / 978;
-const CARD_LARGE_RATIO = 2500 / 1912;
 
 /**
  * Geometry for the redesigned "time" step, measured off the approved comp
@@ -110,7 +134,6 @@ const CARD_LARGE_RATIO = 2500 / 1912;
  * comp pixels divide by 3 for dp. This screen runs wider side margins (45dp)
  * than Home's 21dp, giving a 300dp content column.
  */
-const FLOW_SIDE_PADDING = 34;
 const SLOT_ROW_RATIO = 154 / 902; // row height / width
 // The row art keeps 100px of its outer glow on each side so the lit halo the
 // comp shows around the box survives. That glow is very diffuse — it never
@@ -122,17 +145,31 @@ const SLOT_GLOW_W = 1102 / 902;
 const SLOT_GLOW_H = 354 / 154;
 const SLOT_GLOW_OFFSET_X = 100 / 902;
 const SLOT_GLOW_OFFSET_Y = 100 / 154;
-const NEXT_PILL_RATIO = 145 / 902; // button height / width
 const CHARACTERS_RATIO = 868 / 877; // illustration height / width
-// Founder asked for a larger row than the comp's — this scales its height past
-// the art's natural aspect, so the rounded corners stretch slightly.
-const SLOT_ROW_SCALE = 1.12;
 // Positions inside the slot row, as fractions of its width.
 const SLOT_STAR_W = 19.7 / 300.3;
 const SLOT_STAR_LEFT = 13.6 / 300.3;
 const SLOT_STAR_GAP = 17.6 / 300.3;
-const SLOT_CHECK_W = 15 / 300.3; // enlarged past the comp's 10dp on request
-const SLOT_CHECK_RIGHT = 38 / 300.3;
+
+/**
+ * Geometry for the redesigned "budget" and "preference" steps, measured off
+ * their approved comps (Desktop/UI/UI PAGE 3 and 4) on the same basis as the
+ * "time" step above: 1170x2532 is a 390pt screen at @3x, so comp pixels
+ * divide by 3. Both comps ship the same panel art and place all three panels
+ * at the same y, so the two steps share every number here.
+ *
+ * The panel itself is now FlowPanel (components/flow-panel.tsx) — the same
+ * row profile creation, the quiz and the profile tab draw from — so its
+ * ratio, scale and tick geometry live in constants/flow-theme.ts. Only the
+ * illustration below is specific to this step.
+ */
+const BUDGET_NOTES_RATIO = 604 / 902; // illustration canvas height / width
+// The illustration keeps the designer's full canvas, transparent margins
+// included, so the art lands where the comp places it without carrying a pair
+// of crop offsets. Drawn slightly under the content column: the comp's own
+// vertical rhythm can't fit beside the founder's larger type, taller rows and
+// lifted footer, so the notes give back ~22dp for the gaps to use.
+const BUDGET_NOTES_SCALE = 0.93;
 
 function SlotRow({
   label,
@@ -145,9 +182,9 @@ function SlotRow({
   onPress: () => void;
   width: number;
 }) {
-  const height = width * SLOT_ROW_RATIO * SLOT_ROW_SCALE;
+  const height = width * SLOT_ROW_RATIO * FLOW_ROW_SCALE;
   const starSize = width * SLOT_STAR_W;
-  const checkSize = width * SLOT_CHECK_W;
+  const checkSize = width * FLOW_CHECK_W;
   return (
     <Pressable onPress={onPress} style={{ width, height }}>
       <Image
@@ -169,7 +206,7 @@ function SlotRow({
             flexDirection: 'row',
             alignItems: 'center',
             paddingLeft: width * SLOT_STAR_LEFT,
-            paddingRight: width * SLOT_CHECK_RIGHT,
+            paddingRight: width * FLOW_CHECK_RIGHT,
           },
         ]}>
         <Image
@@ -184,77 +221,11 @@ function SlotRow({
         {selected && (
           <Image
             source={require('@/assets/images/icon-check-filled.png')}
-            style={{ width: checkSize, height: checkSize * (116 / 120) }}
+            style={{ width: checkSize, height: checkSize * FLOW_CHECK_ASPECT }}
             resizeMode="contain"
             accessibilityIgnoresInvertColors
           />
         )}
-      </View>
-    </Pressable>
-  );
-}
-
-/** The comp's white pill primary action, with the flow's loading/disabled states. */
-function PillButton({
-  label,
-  onPress,
-  width,
-  loading,
-  disabled,
-}: {
-  label: string;
-  onPress: () => void;
-  width: number;
-  loading?: boolean;
-  disabled?: boolean;
-}) {
-  const height = width * NEXT_PILL_RATIO;
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled || loading}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || loading }}
-      style={{ width, height, opacity: disabled ? 0.45 : 1 }}>
-      <Image
-        source={require('@/assets/images/booking-next-pill.png')}
-        style={{ width, height }}
-        resizeMode="stretch"
-        accessibilityIgnoresInvertColors
-      />
-      <View style={[StyleSheet.absoluteFill, styles.pillButtonContent]}>
-        {loading ? (
-          <ActivityIndicator color="#1D1D1B" />
-        ) : (
-          <Text style={styles.pillButtonLabel}>{label}</Text>
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
-function OptionCard({
-  label,
-  selected,
-  onPress,
-  width,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-  width: number;
-}) {
-  const height = width * CARD_SMALL_RATIO;
-  return (
-    <Pressable onPress={onPress} style={{ width, height }}>
-      <Image
-        source={require('@/assets/images/bubble-card-small.png')}
-        style={{ width, height }}
-        resizeMode="stretch"
-      />
-      <View style={[StyleSheet.absoluteFill, styles.cardContent]}>
-        <Text style={styles.cardLabel}>{label}</Text>
-        {selected && <Text style={styles.pillCheck}>✓</Text>}
       </View>
     </Pressable>
   );
@@ -266,7 +237,7 @@ export default function BookingFlowScreen() {
   const user = useAuthStore((state) => state.user);
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const contentWidth = Math.min(358, screenWidth - FLOW_SIDE_PADDING * 2);
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [stepIndex, setStepIndex] = useState(0);
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -518,7 +489,7 @@ export default function BookingFlowScreen() {
         <Text style={[styles.title, { textAlign: 'center', fontSize: 22 }]}>Couldn&apos;t load this.</Text>
         <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>{loadError}</Text>
         <View style={{ marginTop: 24, width: contentWidth }}>
-          <AuthButton label="Retry" onPress={loadActivityAndSlots} loading={isLoading} />
+          <FlowPillButton label="Retry" width={contentWidth} onPress={loadActivityAndSlots} loading={isLoading} />
         </View>
       </View>
     );
@@ -536,7 +507,21 @@ export default function BookingFlowScreen() {
     );
   }
 
-  const selectedActivityIcon = activity ? ACTIVITY_ICONS[activity.name] : null;
+  const activityIcon = (activity && ACTIVITY_ICONS[activity.name]) || SUMMARY_ICONS.slot;
+  const selectedSlotRow = slots.find((slot) => slot.id === selectedSlot) ?? null;
+  const totalFee = activity ? (plusOne ? activity.convenience_fee * 2 : activity.convenience_fee) : 0;
+
+  /**
+   * Jumps back to an earlier step from the summary card's chevrons. Every
+   * selection lives in this screen's state, so stepping back and forward
+   * again leaves the booking exactly as it was.
+   */
+  const goToStep = (step: BookingStep) => {
+    const index = steps.indexOf(step);
+    if (index === -1) return;
+    setError('');
+    setStepIndex(index);
+  };
 
   return (
     <View style={styles.root}>
@@ -587,15 +572,14 @@ export default function BookingFlowScreen() {
 
         {/* Budget Selection */}
         {currentStep === 'budget' && (
-          <View style={{ width: contentWidth, gap: 18 }}>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.title}>What&apos;s your range?</Text>
-              <Text style={styles.subtitle}>This helps us match similar budgets</Text>
-            </View>
+          <View style={{ width: contentWidth }}>
+            <Text style={styles.stepTitleCentred}>What&apos;s your range?</Text>
+            {/* The comp misspells this as "bugets"; kept spelled. */}
+            <Text style={styles.stepSubtitleCentred}>This helps us match similar budgets</Text>
 
-            <View style={{ gap: 14 }}>
+            <View style={{ marginTop: 32, gap: 30 }}>
               {BUDGET_BANDS.map((band) => (
-                <OptionCard
+                <FlowPanel
                   key={band.value}
                   label={band.label}
                   selected={selectedBudget === band.value}
@@ -604,20 +588,34 @@ export default function BookingFlowScreen() {
                 />
               ))}
             </View>
+
+            <Image
+              source={require('@/assets/images/booking-budget-notes.png')}
+              style={{
+                width: contentWidth * BUDGET_NOTES_SCALE,
+                height: contentWidth * BUDGET_NOTES_SCALE * BUDGET_NOTES_RATIO,
+                alignSelf: 'center',
+                marginTop: 24,
+              }}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
           </View>
         )}
 
         {/* Group Preference Selection */}
         {currentStep === 'preference' && (
-          <View style={{ width: contentWidth, gap: 18 }}>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.title}>Who&apos;s in the room?</Text>
-              <Text style={styles.subtitle}>Choose your group dynamic</Text>
-            </View>
+          <View style={{ width: contentWidth }}>
+            {/* "your room" is the comp's wording over the spec's "the room". */}
+            <Text style={styles.stepTitleCentred}>Who&apos;s in your room?</Text>
+            <Text style={styles.stepSubtitleCentred}>Choose your group dynamic</Text>
 
-            <View style={{ gap: 14 }}>
+            {/* Panels sit exactly where the budget step leaves them: both
+                comps place all three at the same y, so the boxes hold still
+                as the student moves from one step to the next. */}
+            <View style={{ marginTop: 32, gap: 30 }}>
               {GROUP_PREFERENCES.map((pref) => (
-                <OptionCard
+                <FlowPanel
                   key={pref.value}
                   label={pref.label}
                   selected={selectedPreference === pref.value}
@@ -664,84 +662,113 @@ export default function BookingFlowScreen() {
           selectedSlot &&
           (steps.includes('budget') ? selectedBudget : true) &&
           (steps.includes('preference') ? selectedPreference : true) && (
-          <View style={{ width: contentWidth, gap: 18 }}>
-            <Text style={styles.title}>Your adventure awaits</Text>
-            <Text style={styles.subtitle}>Confirm your choices</Text>
+          <View style={{ width: contentWidth }}>
+            {/* Comp reads "Your new adventure awaits" / "Unlock your new
+                adventure". Kept as "next": that is the wording in
+                docs/PRODUCT_SPEC.md §1.6's Step 5 mockup and in the two other
+                screens that echo it (Home's subtitle, Bookings' empty state),
+                so switching this one screen to "new" would leave the phrase
+                inconsistent in three places. */}
+            <Text style={styles.stepTitleCentred}>Your adventure awaits</Text>
+            <Text style={styles.stepSubtitleCentred}>Confirm your choices</Text>
 
-            <View style={{ width: contentWidth, height: contentWidth * CARD_LARGE_RATIO }}>
-              <Image
-                source={require('@/assets/images/bubble-card-large.png')}
-                style={{ width: contentWidth, height: contentWidth * CARD_LARGE_RATIO }}
-                resizeMode="stretch"
-              />
-              <View style={[StyleSheet.absoluteFill, styles.summaryContent]}>
-                <SummaryRow icon={selectedActivityIcon} label={activity.name} />
-                <SummaryRow
-                  iconSource={require('@/assets/images/star-dark.png')}
-                  label={
-                    slots.find((s) => s.id === selectedSlot)
-                      ? formatSlotDateTime(slots.find((s) => s.id === selectedSlot)!.slot_datetime, activity?.name)
-                      : ''
-                  }
-                />
-                <SummaryRow
-                  iconSource={require('@/assets/images/icon-group.png')}
-                  label={
-                    `Group of ${formatGroupSize(activity.min_group_size, activity.max_group_size)}` +
-                    (steps.includes('preference')
-                      ? ` · ${GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label}`
-                      : '')
-                  }
-                />
-                {steps.includes('budget') && (
-                  <SummaryRow
-                    iconSource={require('@/assets/images/icon-budget.png')}
-                    label={BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label ?? ''}
-                  />
-                )}
+            <SummaryCard
+              width={contentWidth}
+              style={{ marginTop: 58 }}
+              rows={[
+                {
+                  icon: activityIcon,
+                  label: activity.name,
+                },
+                {
+                  icon: SUMMARY_ICONS.slot,
+                  label: selectedSlotRow
+                    ? formatSlotDateTime(selectedSlotRow.slot_datetime, activity.name)
+                    : '',
+                  onPress: () => goToStep('time'),
+                },
+                {
+                  icon: SUMMARY_ICONS.group,
+                  label: `Group of ${formatGroupSize(activity.min_group_size, activity.max_group_size)}`,
+                  // The comp shows this row as a single line, but its own
+                  // example activity does collect a gender preference and has
+                  // nowhere to show it. Appending it to the label overflows
+                  // the row (the label has ~170dp between badge and chevron,
+                  // and "Group of 4–5 · Surprise me (mixed)" needs far more),
+                  // and the row can't grow because the divider under it is
+                  // drawn into the card art — so it goes on a second line
+                  // inside the same band, which has the height for it.
+                  detail: steps.includes('preference')
+                    ? GROUP_PREFERENCES.find((p) => p.value === selectedPreference)?.label
+                    : undefined,
+                  onPress: steps.includes('preference')
+                    ? () => goToStep('preference')
+                    : undefined,
+                },
+                {
+                  icon: SUMMARY_ICONS.money,
+                  // The card has room for exactly four rows (see
+                  // SummaryCard), and the comp fills the fourth with the
+                  // budget band. Activities that never ask for one (Movies,
+                  // and the fixed-duration Sports games) would leave that
+                  // band empty, so they show what they are actually paying
+                  // there instead — the same money row, carrying the figure
+                  // it does have.
+                  label: steps.includes('budget')
+                    ? BUDGET_BANDS.find((b) => b.value === selectedBudget)?.label ?? ''
+                    : `₹${totalFee}`,
+                  onPress: steps.includes('budget') ? () => goToStep('budget') : undefined,
+                },
+              ]}
+            />
 
-                {/* Price preview — every activity shows the convenience fee
-                    here (docs/PRODUCT_SPEC.md §1.6's own Step 5 mockup: "₹25
-                    to unlock this evening"), not just fixed-duration ones.
-                    Sports additionally has a known duration to caption. */}
-                <View style={styles.priceBox}>
-                  <Text style={styles.priceValue}>
-                    ₹{plusOne ? activity.convenience_fee * 2 : activity.convenience_fee}
-                  </Text>
-                  <Text style={styles.priceCaption}>
-                    {activity.duration_minutes != null
-                      ? `for ${formatDuration(activity.duration_minutes)}${plusOne ? ', plus your +1' : ''}? Steal.`
-                      : `to unlock your invitation${plusOne ? ', plus your +1' : ''}.`}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <OptionCard
+            <SummaryToggleRow
               label="Bring a +1"
+              icon={SUMMARY_ICONS.gift}
               selected={plusOne}
+              width={contentWidth}
+              style={{ marginTop: 35 }}
               onPress={() => {
                 setPlusOne(!plusOne);
                 if (plusOne) setFriendName('');
               }}
-              width={contentWidth}
             />
+
             {plusOne && (
-              <TextInput
-                value={friendName}
-                onChangeText={(text) => {
-                  setFriendName(text);
-                  setError('');
-                }}
-                placeholder="Their name"
-                placeholderTextColor={Palette.muted}
-                style={styles.friendInput}
-              />
+              <View style={{ marginTop: 20 }}>
+                {/* Comp labels this "Your Name", but the field is the +1's
+                    name — the student's own is already on their profile, and
+                    this value is stored as the guest's. Labelled for what it
+                    collects. */}
+                <Text style={styles.fieldLabel}>Their Name</Text>
+                <FlowField
+                  width={contentWidth}
+                  style={{ marginTop: 15 }}
+                  value={friendName}
+                  onChangeText={(text) => {
+                    setFriendName(text);
+                    setError('');
+                  }}
+                  placeholder="Their name"
+                />
+              </View>
             )}
+
+            {/* Price preview — required by docs/PRODUCT_SPEC.md §1.6's Step 5
+                mockup ("₹25 to unlock this evening"), which the comp has no
+                row for, so it sits here where it reads as the amount the
+                button below is about to charge. Sports additionally has a
+                known duration to caption. */}
+            <Text style={styles.priceCaption}>
+              <Text style={styles.priceValue}>₹{totalFee}</Text>
+              {activity.duration_minutes != null
+                ? ` for ${formatDuration(activity.duration_minutes)}${plusOne ? ', plus your +1' : ''}? Steal.`
+                : ` to unlock your invitation${plusOne ? ', plus your +1' : ''}.`}
+            </Text>
           </View>
         )}
 
-        {error && <Text style={styles.error}>{error}</Text>}
+        {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
       {/* Navigation buttons, held clear of whatever safe area the device
@@ -754,18 +781,10 @@ export default function BookingFlowScreen() {
           paddingBottom: 64 + insets.bottom,
           paddingTop: 12,
         }}>
-        <Pressable onPress={handleBack} hitSlop={8} style={styles.backRow}>
-          <Image
-            source={require('@/assets/images/icon-arrow-left.png')}
-            style={styles.backArrow}
-            resizeMode="contain"
-            accessibilityIgnoresInvertColors
-          />
-          <Text style={styles.backLabel}>Back</Text>
-        </Pressable>
+        <FlowBackButton onPress={handleBack} />
 
         <View style={{ marginTop: 18 }}>
-          <PillButton
+          <FlowPillButton
             label={currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next  →'}
             onPress={handleNext}
             loading={isLoading}
@@ -774,26 +793,6 @@ export default function BookingFlowScreen() {
           />
         </View>
       </View>
-    </View>
-  );
-}
-
-function SummaryRow({
-  icon,
-  iconSource,
-  label,
-}: {
-  icon?: any;
-  iconSource?: any;
-  label: string;
-}) {
-  return (
-    <View>
-      <View style={styles.summaryRow}>
-        <Image source={icon ?? iconSource} style={styles.summaryIcon} resizeMode="contain" />
-        <Text style={styles.summaryLabel}>{label}</Text>
-      </View>
-      <View style={styles.summaryDivider} />
     </View>
   );
 }
@@ -810,53 +809,48 @@ const styles = StyleSheet.create({
     paddingTop: 88,
     paddingHorizontal: 16,
   },
-  // Comp's header pair: Inter Bold sized off its 16.7dp cap (22.5dp at Inter's
-  // 0.727 cap ratio) on near-solid leading, with tight tracking — the comp's
-  // "When do you want your" runs 243dp where untracked Inter Bold runs 262dp.
-  // Subtitle is SF Pro Display Thin, sized off its own 7.3dp cap.
-  // Sizes are the comp's measured values scaled up ~1.2x at the founder's
-  // request — the comp's type read too small on a real handset.
-  flowTitle: {
-    color: '#FFFFFF',
-    fontSize: 27,
-    lineHeight: 30,
-    letterSpacing: -1.08,
-    fontFamily: FontFamily.accent.interExtraBold,
-  },
+  // The redesign's type now lives in constants/flow-theme.ts, so profile
+  // creation, the quiz and the profile tab set their headings from the same
+  // place this screen does. Only the per-use spacing stays here.
+  flowTitle: FlowText.title,
   flowSubtitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    lineHeight: 19,
+    ...FlowText.subtitle,
     marginTop: 14,
-    fontFamily: FontFamily.accent.sfProDisplayThin,
   },
-  // All three sized off their cap heights in the comp (8.0dp / 11.3dp /
-  // 11.7dp) rather than the text bands, which bundle the arrows in.
+  stepTitleCentred: FlowText.titleCentred,
+  stepSubtitleCentred: {
+    ...FlowText.subtitleItalic,
+    marginTop: 2,
+    textAlign: 'center' as const,
+  },
   slotLabel: {
-    color: '#FFFFFF',
-    fontSize: 15,
+    ...FlowText.rowLabel,
     flex: 1,
-    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
-  pillButtonContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  // Sits above the +1's name field. The UI PAGE 5 comp sets it small and
+  // quiet, at a 8dp cap.
+  fieldLabel: {
+    ...FlowText.subtitle,
+    fontSize: 13.5,
   },
-  pillButtonLabel: {
-    color: '#1D1D1B',
-    fontSize: 18,
-    fontFamily: FontFamily.accent.sfProDisplayMedium,
+  /**
+   * The spec-required price line, which the comp has no row for. Set as one
+   * centred sentence with the figure carrying the emphasis, rather than the
+   * old cream card's big stacked number — at this size, under a card of
+   * evenly weighted rows, a 34dp numeral would outshout the heading.
+   */
+  priceCaption: {
+    ...FlowText.subtitle,
+    fontSize: 13.5,
+    textAlign: 'center',
+    marginTop: 26,
   },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+  priceValue: {
+    fontFamily: FontFamily.accent.interBold,
+    fontSize: 15,
   },
-  backArrow: {
-    width: 10,
-    height: 10 * (84 / 120),
-  },
+  // Still used by this screen's load-failure and booking-blocked states,
+  // which have no comp of their own yet.
   title: {
     color: Palette.text,
     fontSize: 26,
@@ -871,107 +865,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontFamily: FontFamily.body.regular,
   },
-  pillContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    gap: 10,
-  },
-  pillStar: {
-    width: 16,
-    height: 16,
-  },
-  pillLabel: {
-    color: Palette.line,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    flex: 1,
-  },
-  pillCheck: {
-    color: Palette.line,
-    fontSize: 18,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-  },
-  cardContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 22,
-    gap: 10,
-  },
-  cardLabel: {
-    color: Palette.line,
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-  },
-  summaryContent: {
-    padding: '10%',
-    justifyContent: 'space-evenly',
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: Palette.ring,
-    opacity: 0.4,
-    marginTop: 10,
-  },
-  summaryIcon: {
-    width: 32,
-    height: 32,
-  },
-  summaryLabel: {
-    color: Palette.line,
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-    flex: 1,
-  },
-  priceBox: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  priceValue: {
-    color: Palette.line,
-    fontSize: 34,
-    fontWeight: '800',
-    fontFamily: FontFamily.body.bold,
-  },
-  priceCaption: {
-    color: Palette.line,
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-  },
-  friendInput: {
-    borderWidth: 2,
-    borderColor: Palette.ring,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    color: Palette.text,
-    fontSize: 16,
-    fontFamily: FontFamily.body.regular,
-  },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
+    ...FlowText.error,
     marginTop: 16,
     paddingHorizontal: 8,
-  },
-  backLabel: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontFamily: FontFamily.accent.sfProDisplayMedium,
-    textAlign: 'center',
   },
 });

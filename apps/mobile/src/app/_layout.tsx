@@ -20,7 +20,12 @@ import {
   InstrumentSans_600SemiBold,
   InstrumentSans_700Bold,
 } from '@expo-google-fonts/instrument-sans';
-import { Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from '@expo-google-fonts/inter';
+import {
+  Inter_500Medium,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+} from '@expo-google-fonts/inter';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
@@ -124,6 +129,7 @@ export default function RootLayout() {
     InstrumentSans_500Medium_Italic,
     InstrumentSans_600SemiBold,
     InstrumentSans_700Bold,
+    Inter_500Medium,
     Inter_700Bold,
     Inter_800ExtraBold,
     Inter_900Black,

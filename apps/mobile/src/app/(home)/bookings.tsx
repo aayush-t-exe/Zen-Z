@@ -1,9 +1,24 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import {
+  FLOW_CONTENT_MAX,
+  FLOW_SIDE_PADDING,
+  FlowText,
+} from '@/constants/flow-theme';
+import { FlowSurfaceBox } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { fetchMyBookings, fetchMyGroups, MyBooking, MyGroupDetails } from '@/lib/groups';
@@ -11,7 +26,11 @@ import { formatSlotDateTime } from '@/lib/format';
 
 export default function BookingsScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
+
+  // Same content column the rest of the redesign runs.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [bookings, setBookings] = useState<MyBooking[]>([]);
   const [groups, setGroups] = useState<MyGroupDetails[]>([]);
@@ -85,7 +104,7 @@ export default function BookingsScreen() {
   if (isLoading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={Palette.text} />
+        <ActivityIndicator size="large" color={LOADER} />
       </View>
     );
   }
@@ -93,11 +112,11 @@ export default function BookingsScreen() {
   if (loadError) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
-        <Text style={[styles.pageTitle, { textAlign: 'center' }]}>Couldn&apos;t load this.</Text>
+        <Text style={[FlowText.titleCentred, { fontSize: 22 }]}>Couldn&apos;t load this.</Text>
         <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
           {loadError}
         </Text>
-        <AuthButton label="Retry" onPress={load} />
+        <FlowPillButton label="Retry" width={contentWidth} onPress={load} />
       </View>
     );
   }
@@ -107,6 +126,10 @@ export default function BookingsScreen() {
       <ScrollView
         contentContainerStyle={[styles.scroll, bookings.length === 0 && styles.scrollEmpty]}
         showsVerticalScrollIndicator={false}>
+        {/* The scroll centres this column, so the heading and cards range
+            left against the same margin the rest of the redesign uses
+            instead of each centring on its own width. */}
+        <View style={[{ width: contentWidth }, bookings.length === 0 && { flex: 1 }]}>
         <Text style={styles.pageTitle}>Your Events</Text>
 
         {bookings.length === 0 ? (
@@ -114,7 +137,11 @@ export default function BookingsScreen() {
             <Text style={[styles.emptyText, styles.emptyTextCentered]}>
               No upcoming events yet. Book one to unlock your next adventure.
             </Text>
-            <AuthButton label="Back to home  →" onPress={() => router.push('/(home)')} />
+            <FlowPillButton
+              label="Back to home  →"
+              width={contentWidth}
+              onPress={() => router.push('/(home)')}
+            />
           </View>
         ) : (
           <View style={{ gap: 14 }}>
@@ -124,45 +151,49 @@ export default function BookingsScreen() {
               if (booking.status === 'pending_match' && booking.payment_status !== 'paid') {
                 const isCancelling = cancellingId === booking.id;
                 return (
-                  <View key={booking.id} style={styles.card}>
-                    <Pressable
-                      onPress={() =>
-                        router.push({
-                          pathname: '/(flow)/payment',
-                          params: { slotId: booking.slot_id },
-                        })
-                      }
-                      disabled={isCancelling}
-                    >
-                      <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
-                      <Text style={styles.cardTitle}>{booking.activity_name}</Text>
-                      <Text style={styles.cardSubtitle}>Finish unlocking your spot →</Text>
-                    </Pressable>
+                  <FlowSurfaceBox key={booking.id} width={contentWidth}>
+                    <View style={styles.cardBody}>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: '/(flow)/payment',
+                            params: { slotId: booking.slot_id },
+                          })
+                        }
+                        disabled={isCancelling}
+                      >
+                        <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
+                        <Text style={styles.cardTitle}>{booking.activity_name}</Text>
+                        <Text style={styles.cardSubtitle}>Finish unlocking your spot →</Text>
+                      </Pressable>
 
-                    <Pressable
-                      onPress={() => handleCancelBooking(booking)}
-                      disabled={isCancelling}
-                      style={{ marginTop: 14, alignSelf: 'flex-start' }}
-                    >
-                      {isCancelling ? (
-                        <ActivityIndicator size="small" color={Palette.error} />
-                      ) : (
-                        <Text style={styles.cancelText}>Cancel booking</Text>
-                      )}
-                    </Pressable>
-                  </View>
+                      <Pressable
+                        onPress={() => handleCancelBooking(booking)}
+                        disabled={isCancelling}
+                        style={{ marginTop: 14, alignSelf: 'flex-start' }}
+                      >
+                        {isCancelling ? (
+                          <ActivityIndicator size="small" color={Palette.error} />
+                        ) : (
+                          <Text style={styles.cancelText}>Cancel booking</Text>
+                        )}
+                      </Pressable>
+                    </View>
+                  </FlowSurfaceBox>
                 );
               }
 
               if (booking.status === 'pending_match') {
                 return (
-                  <View key={booking.id} style={styles.card}>
-                    <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
-                    <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
-                    </Text>
-                  </View>
+                  <FlowSurfaceBox key={booking.id} width={contentWidth}>
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
+                      <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
+                      <Text style={styles.cardSubtitle}>
+                        {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
+                      </Text>
+                    </View>
+                  </FlowSurfaceBox>
                 );
               }
 
@@ -176,19 +207,22 @@ export default function BookingsScreen() {
                         params: { groupId: group.group_id },
                       })
                     }
-                    style={styles.card}
                   >
-                    {/* activity_emoji/activity_name — with two matched
-                        bookings (e.g. Cafés + Dinners) this card used to
-                        show the same generic 🎭 + "The story begins here."
-                        for both, with nothing distinguishing which slot
-                        was which. */}
-                    <Text style={styles.cardEmoji}>{group.activity_emoji}</Text>
-                    <Text style={styles.cardTitle}>The story begins here.</Text>
-                    <Text style={styles.cardSubtitle}>
-                      {group.activity_name} ·{' '}
-                      {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
-                    </Text>
+                    <FlowSurfaceBox width={contentWidth}>
+                      <View style={styles.cardBody}>
+                        {/* activity_emoji/activity_name — with two matched
+                            bookings (e.g. Cafés + Dinners) this card used to
+                            show the same generic 🎭 + "The story begins here."
+                            for both, with nothing distinguishing which slot
+                            was which. */}
+                        <Text style={styles.cardEmoji}>{group.activity_emoji}</Text>
+                        <Text style={styles.cardTitle}>The story begins here.</Text>
+                        <Text style={styles.cardSubtitle}>
+                          {group.activity_name} ·{' '}
+                          {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
+                        </Text>
+                      </View>
+                    </FlowSurfaceBox>
                   </Pressable>
                 );
               }
@@ -197,30 +231,35 @@ export default function BookingsScreen() {
             })}
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
+/** Matches the primary pill's near-white, same as the progress bar's fill. */
+const LOADER = '#FFFDF8';
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
+    alignItems: 'center',
+    paddingTop: 56,
+    // The floating pill tab bar (home/_layout.tsx) is position: 'absolute',
+    // so this screen has to reserve the space itself (bar height 66 + its own
+    // 33 bottom offset, plus breathing room) or the last card sits under it.
+    // Same allowance the Home screen makes.
+    paddingBottom: 116,
   },
   scrollEmpty: {
     flexGrow: 1,
   },
   pageTitle: {
-    color: Palette.text,
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    marginBottom: 20,
+    ...FlowText.title,
+    marginBottom: 24,
   },
   emptyState: {
     flex: 1,
@@ -232,37 +271,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyText: {
-    color: Palette.muted,
+    ...FlowText.subtitle,
     fontSize: 15,
     lineHeight: 21,
-    fontFamily: FontFamily.body.regular,
   },
-  card: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 20,
-    padding: 18,
+  cardBody: {
+    flexGrow: 1,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
   },
   cardEmoji: {
     fontSize: 24,
     marginBottom: 8,
   },
   cardTitle: {
-    color: Palette.text,
+    ...FlowText.panelLabel,
     fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
   },
   cardSubtitle: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.subtitle,
+    fontSize: 13,
     marginTop: 4,
   },
   cancelText: {
     color: Palette.error,
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });

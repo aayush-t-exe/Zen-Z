@@ -371,6 +371,19 @@ authorization_url_path = "/oauth/consent"
 # Allow dynamic client registration
 allow_dynamic_registration = false
 
+# PayU's webhook POST carries no Supabase auth header at all — it has no
+# concept of our project's JWT scheme, only the HMAC signature the function
+# itself verifies (payu-webhook/logic.ts's verifySignature). Without this,
+# the platform's default verify_jwt gate rejects every real delivery before
+# our own signature check ever runs. Found live (2026-09-02): the webhook
+# had never actually reached this function on either project — PayU's
+# registered webhook URL had been pointing at a webhook.site debug endpoint
+# since the original sandbox spike and was never switched over, which is
+# what let this go unnoticed until a real end-to-end payment was tested
+# post-launch-prep.
+[functions.payu-webhook]
+verify_jwt = false
+
 [edge_runtime]
 enabled = true
 # Supported request policies: `oneshot`, `per_worker`.

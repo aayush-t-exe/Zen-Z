@@ -164,12 +164,12 @@ Step 2 — Day & Time:
 Step 3 — Budget:
 ┌─────────────────────────────┐
 │   What's your range?           │
-│   ○ Under ₹300  ○ ₹300–600    │
-│   ○ ₹600+                      │
+│   ○ Under ₹200  ○ ₹200 - ₹400 │
+│   ○ ₹400 +                     │
 └─────────────────────────────┘
 Step 4 — Group Preference:
 ┌─────────────────────────────┐
-│   Who's in the room?           │
+│   Who's in your room?          │
 │   ○ Surprise me (mixed)        │
 │   ○ Women only                 │
 └─────────────────────────────┘
@@ -182,6 +182,7 @@ Step 5 — Confirm:
 └─────────────────────────────┘
 ```
 - **[NEW DETAIL]** No area/venue/location field anywhere in the flow, per constraint — venue is decided entirely by the founder post-booking (Module 2) and revealed only at Match Reveal.
+- **[COPY CHANGE 2026-09-02]** Step 4's heading was "Who's in the room?"; the approved comp (UI PAGE 4) sets it as **"Who's in your room?"** and the comp wins. Step 3's bands are also written the comp's way — **"Under ₹200 / ₹200 - ₹400 / ₹400 +"**, repeating the rupee sign and spacing the plus. The Step 3 block above previously showed ₹300/₹600 tiers, which had never matched the shipped `budget_band` values (`under_200` / `200_400` / `400_plus`); those stored values are unchanged. Both comps carry a typo the UI does not: "bugets" (Step 3's subtitle) and "Suprise" (Step 4's first option) stay spelled in the app.
 - **[NEW DETAIL]** A student with an active no-show block (see §1.10 No-Show Policy) cannot start this flow at all — they see a paused-invitations message in place of Step 1 instead.
 - **Booking cutoff (founder decision, 2026-08-25; revised twice same day):** a slot stops being bookable at midnight IST, 2 days before its date — the same calendar rule for every activity ("book by end of day, 2 days ahead"), chosen over a flat hour count so it's something a student can actually reason about. (0039 originally set this to a flat 24h before `slot_datetime`, which left a window where a student could book *after* that slot's reveal moment — `reveal_venue_at` (§1.8) — had already passed, making the group's venue/chat unlock all at once instead of via the intended slow reveal; 0043 tightened that to a flat 48h, matching `reveal_venue_at` exactly but landing at a different odd clock time per activity; 0044 replaced the flat-hour rule with this calendar rule, which still always lands safely before `reveal_venue_at` for every activity — by 17-20 hours' margin, since every activity's slot time is a PM hour and this cutoff is always midnight the same day.) Enforced on the `bookings` insert RLS policy (the only server-side checkpoint, since bookings are inserted directly from the mobile client) and mirrored client-side so a slot inside the window is never offered in Step 2 in the first place. See `supabase/migrations/0044_midnight_ist_booking_cutoff.sql`.
 - **Slot rollover:** Cafés/Dinners/Movies/Sports each keep exactly one upcoming slot (§1.5a). An hourly pg_cron job (`slot-rollover`, same pattern as the Module notifications cron) inserts the next weekly occurrence once the current one has no future slot left — this used to require a hand-written migration (0011, 0014) every time, and originally excluded Sports (0032) until the founder reversed that call (0041) so all four activities roll over the same way.
@@ -327,7 +328,7 @@ can never fully waive an expensive activity's real venue/equipment cost.
 │  Dinners · Wed 7 PM   (9 unmatched)          │
 │  ┌──────────────────────────────────────┐  │
 │  │ [📷] Ravi  ·  M  ·  2nd yr             │  │
-│  │  Budget: ₹300-600  ·  Mixed OK         │  │
+│  │  Budget: ₹200 - ₹400  ·  Mixed OK      │  │
 │  │  Vector: [Adventurous 0.8][Talker 0.7] │  │
 │  │          [Novelty-seeking 0.9]          │  │
 │  │  [ View Full Profile ]                  │  │

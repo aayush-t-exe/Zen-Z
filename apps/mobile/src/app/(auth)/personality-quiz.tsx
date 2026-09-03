@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Animated, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Animated, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
-import { OptionPill } from '@/components/option-pill';
+import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
+import { FlowBackArrow } from '@/components/flow-back-button';
+import { FlowPanel } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { OptionChip } from '@/components/option-chip';
 import { QuizProgressBar } from '@/components/quiz-progress-bar';
 import { ScaleQuestionSlider, type ScaleStop } from '@/components/scale-question-slider';
@@ -52,7 +53,11 @@ type Phase = 'quiz' | 'curating' | 'recap';
 export default function PersonalityQuizScreen() {
   const router = useRouter();
   const { name } = useLocalSearchParams<{ name?: string }>();
+  const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
+
+  // Same content column the booking flow and profile creation run.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [phase, setPhase] = useState<Phase>('quiz');
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -163,7 +168,7 @@ export default function PersonalityQuizScreen() {
   if (isLoading) {
     return (
       <View style={[styles.root, styles.centered]}>
-        <ActivityIndicator size="large" color={Palette.paper} />
+        <ActivityIndicator size="large" color={LOADER} />
       </View>
     );
   }
@@ -171,9 +176,9 @@ export default function PersonalityQuizScreen() {
   if (questions.length === 0) {
     return (
       <View style={[styles.root, styles.centered]}>
-        <Text style={styles.title}>{error || 'No questions available'}</Text>
-        <View style={{ marginTop: 24, width: '100%', paddingHorizontal: 20 }}>
-          <AuthButton label="Retry" onPress={fetchQuestions} />
+        <Text style={FlowText.titleCentred}>{error || 'No questions available'}</Text>
+        <View style={{ marginTop: 28 }}>
+          <FlowPillButton label="Retry" width={contentWidth} onPress={fetchQuestions} />
         </View>
       </View>
     );
@@ -189,6 +194,7 @@ export default function PersonalityQuizScreen() {
         name={name}
         traitLabel={topTraitLabel}
         traitValue={topTraitValue}
+        width={contentWidth}
         onContinue={() => router.replace('/(home)')}
       />
     );
@@ -375,31 +381,35 @@ export default function PersonalityQuizScreen() {
 
   return (
     <View style={styles.root}>
+      <View style={{ width: contentWidth, flex: 1 }}>
       <View style={styles.header}>
-        <Text onPress={handleBack} style={styles.back} accessibilityRole="button" accessibilityLabel="Back">
-          {'←'}
-        </Text>
+        <FlowBackArrow onPress={handleBack} />
         <View style={{ flex: 1, marginLeft: 16 }}>
           <QuizProgressBar step={currentIndex} total={questions.length} tintColor={progressTint} />
         </View>
       </View>
 
       <View style={styles.body}>
-        <Text style={styles.title}>{currentQuestion.prompt}</Text>
+        <Text style={FlowText.title}>{currentQuestion.prompt}</Text>
 
         {currentQuestion.question_type === 'single_select' && (
-          <View style={{ gap: 12, marginTop: 28 }}>
+          <View style={{ gap: 14, marginTop: 32 }}>
             {currentQuestion.options?.map((option) => {
               const isSelected = currentAnswer?.selectedOptionIds?.[0] === option.id;
               const hasSelection = (currentAnswer?.selectedOptionIds?.length ?? 0) > 0;
               return (
-                <OptionPill
+                <FlowPanel
                   key={option.id}
                   label={option.label}
+                  width={contentWidth}
+                  // These answers are whole sentences, not the two-word
+                  // labels the booking flow's rows hold — the longest active
+                  // one is 77 characters. Left-ranged so a wrapped answer
+                  // reads as a sentence.
+                  align="left"
                   selected={isSelected}
                   dimmed={hasSelection && !isSelected}
                   onPress={() => handleSelectOption(option.id)}
-                  variant="radio"
                 />
               );
             })}
@@ -430,16 +440,18 @@ export default function PersonalityQuizScreen() {
           </View>
         )}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={[FlowText.error, styles.error]}>{error}</Text> : null}
       </View>
 
       <View style={styles.footer}>
-        <AuthButton
+        <FlowPillButton
           label={isLastQuestion ? 'Continue  →' : 'Next  →'}
+          width={contentWidth}
           onPress={handleNext}
           loading={isSaving}
           disabled={!isAnswered || isSaving}
         />
+      </View>
       </View>
     </View>
   );
@@ -546,7 +558,7 @@ function CuratingScreen() {
         })}
       </Animated.View>
 
-      <Text style={[styles.title, { textAlign: 'center', marginTop: 32 }]}>
+      <Text style={[FlowText.titleCentred, { marginTop: 36 }]}>
         {'We’re piecing together\nyour story'}
       </Text>
 
@@ -619,11 +631,13 @@ function RecapScreen({
   name,
   traitLabel,
   traitValue,
+  width,
   onContinue,
 }: {
   name?: string;
   traitLabel: string | null;
   traitValue: number;
+  width: number;
   onContinue: () => void;
 }) {
   const greetingName = name ? `, ${name}` : '';
@@ -631,9 +645,9 @@ function RecapScreen({
 
   return (
     <View style={styles.root}>
-      <View style={[styles.body, styles.centered]}>
+      <View style={[styles.body, styles.centered, { width }]}>
         {traitLabel && <PersonalityRevealCard tier={tier} label={traitLabel} />}
-        <Text style={[styles.title, { textAlign: 'center', marginTop: 28 }]}>
+        <Text style={[FlowText.titleCentred, { marginTop: 32 }]}>
           {`Hey${greetingName}, we're starting\nto see your shape in this story.`}
         </Text>
         {traitLabel ? (
@@ -647,35 +661,33 @@ function RecapScreen({
         )}
       </View>
 
-      <View style={styles.footer}>
-        <AuthButton label="Continue  →" onPress={onContinue} />
+      <View style={[styles.footer, { width }]}>
+        <FlowPillButton label="Continue  →" width={width} onPress={onContinue} />
       </View>
     </View>
   );
 }
 
+/** Matches the primary pill art's near-white, same as the progress bar's fill. */
+const LOADER = '#FFFDF8';
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
+    alignItems: 'center',
     paddingTop: 56,
-    paddingHorizontal: 20,
     paddingBottom: 28,
   },
   centered: {
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 24,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
-  },
-  back: {
-    color: Palette.text,
-    fontSize: 22,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    marginBottom: 40,
   },
   body: {
     flex: 1,
@@ -683,19 +695,8 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: 12,
   },
-  title: {
-    color: Palette.text,
-    fontSize: 25,
-    lineHeight: 32,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.4,
-  },
   subtitleCenter: {
-    color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 22,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.subtitle,
     textAlign: 'center',
     marginTop: 14,
     paddingHorizontal: 12,
@@ -704,15 +705,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 28,
+    marginTop: 32,
   },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
-    marginTop: 16,
+    marginTop: 20,
   },
   dotRing: {
     width: 88,
@@ -723,7 +719,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: Palette.paper,
+    backgroundColor: LOADER,
   },
   curatingList: {
     marginTop: 40,
@@ -737,12 +733,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   curatingLabel: {
-    color: Palette.muted,
+    ...FlowText.panelLabel,
     fontSize: 15,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    color: Palette.muted,
   },
   curatingLabelDone: {
-    color: Palette.text,
+    color: '#FFFFFF',
   },
 });

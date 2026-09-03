@@ -1,9 +1,24 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Pressable, ScrollView, Image, ActivityIndicator, Platform, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Image,
+  ActivityIndicator,
+  Platform,
+  Alert,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Linking from 'expo-linking';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
+import {
+  FLOW_CONTENT_MAX,
+  FLOW_SIDE_PADDING,
+  FlowSurface,
+  FlowText,
+} from '@/constants/flow-theme';
+import { FlowActionRow, FlowSurfaceBox } from '@/components/flow-panel';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
@@ -13,9 +28,13 @@ const INSTAGRAM_HANDLE = 'zen_z.app';
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
+
+  // Same content column the rest of the redesign runs.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [photoLoading, setPhotoLoading] = useState(true);
@@ -176,105 +195,106 @@ export default function ProfileScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.pageTitle}>Your Profile</Text>
+        <View style={{ width: contentWidth }}>
+          <Text style={FlowText.title}>Your Profile</Text>
 
-        <View style={{ alignItems: 'center', marginBottom: 24 }}>
-          {photoLoading ? (
-            <View style={styles.photo}>
-              <ActivityIndicator color={Palette.text} />
-            </View>
-          ) : photoUrl ? (
-            <Image source={{ uri: photoUrl }} style={styles.photo} />
-          ) : (
-            <View style={styles.photo}>
-              <Text style={{ fontSize: 28 }}>📷</Text>
-            </View>
-          )}
+          <View style={styles.photoWrap}>
+            {photoLoading ? (
+              <View style={styles.photo}>
+                <ActivityIndicator color="#FFFDF8" />
+              </View>
+            ) : photoUrl ? (
+              <Image
+                source={{ uri: photoUrl }}
+                style={styles.photo}
+                accessibilityIgnoresInvertColors
+              />
+            ) : (
+              // No photo on file. Left as a plain empty well rather than an
+              // icon or an "add a photo" prompt: photos are collected once
+              // at profile creation and only ever seen by the founder's
+              // team, so there is nothing for a student to do here.
+              <View style={styles.photo} />
+            )}
+          </View>
+
+          <View style={styles.group}>
+            <Text style={FlowText.sectionLabel}>Email</Text>
+            <FlowSurfaceBox width={contentWidth}>
+              <View style={styles.rowContent}>
+                <Text style={FlowText.panelLabel}>{user?.email || 'Not set'}</Text>
+              </View>
+            </FlowSurfaceBox>
+          </View>
+
+          <View style={styles.group}>
+            <Text style={FlowText.sectionLabel}>Account</Text>
+            <FlowActionRow
+              label="Need help now"
+              width={contentWidth}
+              disabled={isDialing}
+              onPress={() => dialEmergencyContact(fetchEmergencyContactPhone)}
+            />
+            <FlowActionRow
+              label="Need help now (backup)"
+              width={contentWidth}
+              disabled={isDialing}
+              onPress={() => dialEmergencyContact(fetchEmergencyContactPhoneBackup)}
+            />
+          </View>
+
+          <View style={styles.group}>
+            <Text style={FlowText.sectionLabel}>Zen-Z</Text>
+            <FlowActionRow
+              label="Invite a friend"
+              width={contentWidth}
+              onPress={() => router.push('/(flow)/invite')}
+            />
+            <FlowActionRow label="Rate the app" width={contentWidth} onPress={handleRateApp} />
+            <FlowActionRow
+              label="Follow us on Instagram"
+              width={contentWidth}
+              onPress={handleFollowInstagram}
+            />
+          </View>
+
+          <View style={styles.group}>
+            <Text style={FlowText.sectionLabel}>Legal</Text>
+            <FlowActionRow
+              label="Terms & Conditions"
+              width={contentWidth}
+              onPress={() => Linking.openURL('https://zen-z.site/terms')}
+            />
+            <FlowActionRow
+              label="Privacy Policy"
+              width={contentWidth}
+              onPress={() => Linking.openURL('https://zen-z.site/privacy')}
+            />
+            <FlowActionRow
+              label="Cancellation & Refund Policy"
+              width={contentWidth}
+              onPress={() => Linking.openURL('https://zen-z.site/refund')}
+            />
+          </View>
+
+          <View style={styles.group}>
+            <FlowActionRow
+              label="Sign Out"
+              width={contentWidth}
+              tone="danger"
+              onPress={handleSignOut}
+            />
+            <FlowActionRow
+              label={isDeleting ? 'Deleting…' : 'Delete Account'}
+              width={contentWidth}
+              tone="danger"
+              disabled={isDeleting}
+              onPress={handleDeleteAccount}
+            />
+          </View>
+
+          <Text style={[FlowText.fine, styles.versionText]}>App Version: 1.0.0</Text>
         </View>
-
-        <View style={styles.card}>
-          <Text style={styles.fieldLabel}>Email</Text>
-          <Text style={styles.fieldValue}>{user?.email || 'Not set'}</Text>
-        </View>
-
-        <View style={{ marginTop: 24, gap: 10 }}>
-          <Text style={styles.sectionLabel}>Account</Text>
-
-          <Pressable
-            onPress={() => dialEmergencyContact(fetchEmergencyContactPhone)}
-            disabled={isDialing}
-            style={styles.actionCard}
-          >
-            <Text style={styles.actionLabel}>Need help now</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => dialEmergencyContact(fetchEmergencyContactPhoneBackup)}
-            disabled={isDialing}
-            style={styles.actionCard}
-          >
-            <Text style={styles.actionLabel}>Need help now (backup)</Text>
-          </Pressable>
-        </View>
-
-        <View style={{ marginTop: 24, gap: 10 }}>
-          <Text style={styles.sectionLabel}>Zen-Z</Text>
-
-          <Pressable onPress={() => router.push('/(flow)/invite')} style={styles.actionCard}>
-            <Text style={styles.actionLabel}>Invite a friend</Text>
-          </Pressable>
-
-          <Pressable onPress={handleRateApp} style={styles.actionCard}>
-            <Text style={styles.actionLabel}>Rate the app</Text>
-          </Pressable>
-
-          <Pressable onPress={handleFollowInstagram} style={styles.actionCard}>
-            <Text style={styles.actionLabel}>Follow us on Instagram</Text>
-          </Pressable>
-        </View>
-
-        <View style={{ marginTop: 24, gap: 10 }}>
-          <Text style={styles.sectionLabel}>Legal</Text>
-
-          <Pressable
-            onPress={() => Linking.openURL('https://zen-z.site/terms')}
-            style={styles.actionCard}
-          >
-            <Text style={styles.actionLabel}>Terms & Conditions</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => Linking.openURL('https://zen-z.site/privacy')}
-            style={styles.actionCard}
-          >
-            <Text style={styles.actionLabel}>Privacy Policy</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={() => Linking.openURL('https://zen-z.site/refund')}
-            style={styles.actionCard}
-          >
-            <Text style={styles.actionLabel}>Cancellation & Refund Policy</Text>
-          </Pressable>
-        </View>
-
-        <View style={{ marginTop: 24, gap: 10 }}>
-          <Pressable onPress={handleSignOut} style={[styles.actionCard, styles.signOutCard]}>
-            <Text style={[styles.actionLabel, styles.signOutLabel]}>Sign Out</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={handleDeleteAccount}
-            disabled={isDeleting}
-            style={[styles.actionCard, styles.signOutCard, isDeleting && { opacity: 0.6 }]}
-          >
-            <Text style={[styles.actionLabel, styles.signOutLabel]}>
-              {isDeleting ? 'Deleting…' : 'Delete Account'}
-            </Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.versionText}>App Version: 1.0.0</Text>
       </ScrollView>
     </View>
   );
@@ -283,79 +303,50 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
+    alignItems: 'center',
+    paddingTop: 56,
+    // The floating pill tab bar (home/_layout.tsx) is position: 'absolute',
+    // so this screen has to reserve the space itself (bar height 66 + its own
+    // 33 bottom offset, plus breathing room) or the last row sits under it.
+    // Same allowance the Home screen makes.
+    paddingBottom: 116,
   },
-  pageTitle: {
-    color: Palette.text,
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    marginBottom: 24,
+  photoWrap: {
+    alignItems: 'center',
+    marginTop: 28,
   },
+  // Coded rather than drawn from the row art: stretching a 902x154 box into a
+  // circle distorts its corners. Matched to the art's fill and stroke by
+  // value — see FlowSurface.
   photo: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  card: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 20,
-    padding: 16,
-    gap: 4,
+  group: {
+    marginTop: 32,
+    gap: 14,
   },
-  fieldLabel: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-  },
-  fieldValue: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
-  },
-  sectionLabel: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  actionCard: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 16,
+  // In flow rather than absolute, matching FlowActionRow, so a long address
+  // wraps and takes the row with it instead of being clipped.
+  rowContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
     paddingVertical: 14,
-    paddingHorizontal: 16,
-  },
-  actionLabel: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-    textAlign: 'center',
-  },
-  signOutCard: {
-    borderColor: Palette.error,
-  },
-  signOutLabel: {
-    color: Palette.error,
   },
   versionText: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontFamily: FontFamily.body.regular,
-    marginTop: 32,
+    marginTop: 36,
+    textAlign: 'center',
   },
 });

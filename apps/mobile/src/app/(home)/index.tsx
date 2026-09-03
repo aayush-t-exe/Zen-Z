@@ -12,9 +12,9 @@ import {
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
-import { AuthButton } from '@/components/auth-button';
 
 interface ActivityType {
   id: number;
@@ -154,7 +154,7 @@ export default function HomeScreen() {
               Couldn&apos;t load activities. {loadError}
             </Text>
             <View style={{ marginTop: 16, width: contentWidth }}>
-              <AuthButton label="Retry" onPress={loadActivities} loading={isLoading} />
+              <FlowPillButton label="Retry" width={contentWidth} onPress={loadActivities} loading={isLoading} />
             </View>
           </View>
         ) : (
