@@ -20,11 +20,18 @@ import {
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
-import { SummaryBadge } from '@/components/summary-card';
+import { SummaryBadge, summaryBadgeSize } from '@/components/summary-card';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { fetchMyBookings, fetchMyGroups, MyBooking, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+
+/** Gap from the badge to the label, at roughly the summary card's own. */
+const ACTIVITY_ROW_GAP = 13;
+
+/** Where a card's label column starts, for anything that has to line up with it. */
+const activityLabelColumn = (cardWidth: number) =>
+  summaryBadgeSize(cardWidth) + ACTIVITY_ROW_GAP;
 
 /**
  * A card's leading mark: the activity's own render on the same dark badge the
@@ -199,7 +206,10 @@ export default function BookingsScreen() {
                       <Pressable
                         onPress={() => handleCancelBooking(booking)}
                         disabled={isCancelling}
-                        style={{ marginTop: 14, alignSelf: 'flex-start' }}
+                        // Indented to the label column above it, past the
+                        // badge — it acts on that booking, and hanging it off
+                        // the card's own left edge left a ragged step.
+                        style={{ marginTop: 14, marginLeft: activityLabelColumn(contentWidth), alignSelf: 'flex-start' }}
                       >
                         {isCancelling ? (
                           <ActivityIndicator size="small" color={Palette.error} />
@@ -317,7 +327,7 @@ const styles = StyleSheet.create({
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
+    gap: ACTIVITY_ROW_GAP,
   },
   cardTitle: {
     ...FlowText.panelLabel,

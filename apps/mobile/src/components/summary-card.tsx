@@ -30,6 +30,13 @@ const DIVIDERS = [223 / 899, 452 / 899, 661 / 899];
 const BADGE_LEFT = 0.0903;
 /** The badge art's full canvas (summary-badge.png keeps a 4px margin). */
 const BADGE_CANVAS = 0.1594;
+
+/**
+ * What SummaryBadge occupies at a given card width. Exported for the screens
+ * that seat one in a row of their own (Bookings, Messages, Booking Details)
+ * and need to indent something else to the same column.
+ */
+export const summaryBadgeSize = (cardWidth: number) => cardWidth * BADGE_CANVAS;
 /** The visible circle inside that canvas — what the glyph is sized against. */
 const BADGE_CIRCLE = 0.1509;
 const LABEL_LEFT = 0.2805;
