@@ -17,12 +17,40 @@ import {
   FLOW_SIDE_PADDING,
   FlowText,
 } from '@/constants/flow-theme';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
+import { SummaryBadge } from '@/components/summary-card';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
 import { fetchMyBookings, fetchMyGroups, MyBooking, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+
+/**
+ * A card's leading mark: the activity's own render on the same dark badge the
+ * summary card seats its glyphs on, rather than the `activity_emoji` these
+ * cards used to print at 24pt. Every other screen in the redesign draws its
+ * marks, so a system emoji here read as the one thing that hadn't been.
+ */
+function ActivityRow({
+  name,
+  cardWidth,
+  children,
+}: {
+  name: string;
+  cardWidth: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <View style={styles.activityRow}>
+      <SummaryBadge
+        cardWidth={cardWidth}
+        icon={{ source: activityArt(name), scale: ACTIVITY_ART_BADGE_SCALE }}
+      />
+      <View style={{ flex: 1 }}>{children}</View>
+    </View>
+  );
+}
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -162,9 +190,10 @@ export default function BookingsScreen() {
                         }
                         disabled={isCancelling}
                       >
-                        <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
-                        <Text style={styles.cardTitle}>{booking.activity_name}</Text>
-                        <Text style={styles.cardSubtitle}>Finish unlocking your spot →</Text>
+                        <ActivityRow name={booking.activity_name} cardWidth={contentWidth}>
+                          <Text style={styles.cardTitle}>{booking.activity_name}</Text>
+                          <Text style={styles.cardSubtitle}>Finish unlocking your spot →</Text>
+                        </ActivityRow>
                       </Pressable>
 
                       <Pressable
@@ -187,11 +216,12 @@ export default function BookingsScreen() {
                 return (
                   <FlowSurfaceBox key={booking.id} width={contentWidth}>
                     <View style={styles.cardBody}>
-                      <Text style={styles.cardEmoji}>{booking.activity_emoji}</Text>
-                      <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
-                      <Text style={styles.cardSubtitle}>
-                        {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
-                      </Text>
+                      <ActivityRow name={booking.activity_name} cardWidth={contentWidth}>
+                        <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
+                        <Text style={styles.cardSubtitle}>
+                          {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
+                        </Text>
+                      </ActivityRow>
                     </View>
                   </FlowSurfaceBox>
                 );
@@ -210,17 +240,18 @@ export default function BookingsScreen() {
                   >
                     <FlowSurfaceBox width={contentWidth}>
                       <View style={styles.cardBody}>
-                        {/* activity_emoji/activity_name — with two matched
+                        {/* The activity's own mark and name — with two matched
                             bookings (e.g. Cafés + Dinners) this card used to
                             show the same generic 🎭 + "The story begins here."
                             for both, with nothing distinguishing which slot
                             was which. */}
-                        <Text style={styles.cardEmoji}>{group.activity_emoji}</Text>
-                        <Text style={styles.cardTitle}>The story begins here.</Text>
-                        <Text style={styles.cardSubtitle}>
-                          {group.activity_name} ·{' '}
-                          {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
-                        </Text>
+                        <ActivityRow name={group.activity_name} cardWidth={contentWidth}>
+                          <Text style={styles.cardTitle}>The story begins here.</Text>
+                          <Text style={styles.cardSubtitle}>
+                            {group.activity_name} ·{' '}
+                            {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
+                          </Text>
+                        </ActivityRow>
                       </View>
                     </FlowSurfaceBox>
                   </Pressable>
@@ -280,9 +311,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
     paddingVertical: 18,
   },
-  cardEmoji: {
-    fontSize: 24,
-    marginBottom: 8,
+  // Badge then text, at roughly the gap the summary card sets between the two
+  // (its label starts 0.28 of the card in, against this row's 22dp padding
+  // plus a 51dp badge).
+  activityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
   },
   cardTitle: {
     ...FlowText.panelLabel,

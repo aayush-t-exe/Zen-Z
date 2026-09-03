@@ -4,6 +4,7 @@ import {
   Text,
   ScrollView,
   Pressable,
+  Image,
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
@@ -14,10 +15,15 @@ import {
   FLOW_SIDE_PADDING,
   FlowText,
 } from '@/constants/flow-theme';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
+import { SummaryBadge } from '@/components/summary-card';
 import { fetchMyGroups, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+
+/** icon-chevron-right.png is 27x47. */
+const CHEVRON_ASPECT = 47 / 27;
 
 export default function ChatsScreen() {
   const router = useRouter();
@@ -78,7 +84,12 @@ export default function ChatsScreen() {
             left against the same margin the rest of the redesign uses
             instead of each centring on its own width. */}
         <View style={[{ width: contentWidth }, groups.length === 0 && { flex: 1 }]}>
-        <Text style={styles.pageTitle}>Group Chats</Text>
+        {/* "Messages", not "Group Chats": that is the label on the tab that
+            got you here (see (home)/_layout.tsx and the 2026-09-02 copy change
+            in docs/PRODUCT_SPEC.md §1.5), and the heading was still the old
+            wording. The route, store and notification routing all still key
+            off `chats`. */}
+        <Text style={styles.pageTitle}>Messages</Text>
 
         {groups.length === 0 ? (
           <View style={styles.emptyState}>
@@ -105,17 +116,33 @@ export default function ChatsScreen() {
               >
                 <FlowSurfaceBox width={contentWidth}>
                   <View style={styles.cardBody}>
+                    {/* The activity's own render on the summary card's badge,
+                        where the row used to prefix its title with
+                        activity_emoji and close with a 💬/🔒 pair — the
+                        redesign draws its marks rather than setting emoji. The
+                        locked state stays in the subtitle, which says outright
+                        when the chat unlocks; the row opens either way, so the
+                        chevron does not promise something the lock denied. */}
+                    <SummaryBadge
+                      cardWidth={contentWidth}
+                      icon={{ source: activityArt(group.activity_name), scale: ACTIVITY_ART_BADGE_SCALE }}
+                    />
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.cardTitle}>
-                        {group.activity_emoji} {group.activity_name}
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {group.activity_name}
                       </Text>
-                      <Text style={styles.cardSubtitle}>
+                      <Text style={styles.cardSubtitle} numberOfLines={1}>
                         {group.is_revealed
                           ? group.venue_name ?? formatSlotDateTime(group.slot_datetime, group.activity_name)
                           : `Unlocks ${formatSlotDateTime(group.reveal_venue_at)}`}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 18 }}>{group.is_revealed ? '💬' : '🔒'}</Text>
+                    <Image
+                      source={require('@/assets/images/icon-chevron-right.png')}
+                      style={styles.chevron}
+                      resizeMode="contain"
+                      accessibilityIgnoresInvertColors
+                    />
                   </View>
                 </FlowSurfaceBox>
               </Pressable>
@@ -170,10 +197,14 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 22,
     paddingVertical: 18,
-    gap: 12,
+    // Badge to label at roughly the gap the summary card sets between the two.
+    gap: 13,
+  },
+  chevron: {
+    width: 9,
+    height: 9 * CHEVRON_ASPECT,
   },
   cardTitle: {
     ...FlowText.panelLabel,
