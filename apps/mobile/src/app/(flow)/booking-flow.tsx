@@ -6,6 +6,8 @@ import {
   ScrollView,
   Image,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
@@ -516,7 +518,14 @@ export default function BookingFlowScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      // Same fix as group/[groupId].tsx's message input: without this, the
+      // keyboard could cover the "+1" name field entirely on Android with
+      // nothing pushing it back into view, forcing a manual scroll to see
+      // what was being typed.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Day & Time Selection */}
@@ -785,7 +794,7 @@ export default function BookingFlowScreen() {
           />
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

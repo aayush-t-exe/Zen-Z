@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
           supabase
             .from('bookings')
             .select(
-              `id, user_id, status, payment_status, created_at, referral_discount_amount,
+              `id, user_id, status, payment_status, created_at, referral_discount_amount, plus_one,
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee, profit_amount ) )`
             )
             // A cancelled booking isn't an active reservation — counting
@@ -166,8 +166,15 @@ export default function AnalyticsPage() {
           // change (0015: ₹9 → ₹21) is counted here at today's rate, not
           // what was actually charged at the time. Acceptable approximation
           // at this scale; would need a booking-level price snapshot to fix.
-          convenience_fee: b.slots?.activity_types?.convenience_fee ?? 0,
-          profit_amount: b.slots?.activity_types?.profit_amount ?? 0,
+          //
+          // A "+1" booking is charged double (computeOrderAmountRupees in
+          // create-payment-order/logic.ts: `plusOne ? base * 2 : base`) —
+          // both the fee actually collected and the margin actually kept
+          // on it double along with the extra seat, so both figures here
+          // need the same doubling or a +1 silently under-counts revenue
+          // and profit by half.
+          convenience_fee: (b.slots?.activity_types?.convenience_fee ?? 0) * (b.plus_one ? 2 : 1),
+          profit_amount: (b.slots?.activity_types?.profit_amount ?? 0) * (b.plus_one ? 2 : 1),
           referral_discount_amount: b.referral_discount_amount ?? 0,
         }))
       );

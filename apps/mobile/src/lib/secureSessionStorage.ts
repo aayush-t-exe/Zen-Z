@@ -13,22 +13,56 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // blob in AsyncStorage. Net effect: AsyncStorage no longer holds a plain-
 // text session even though it still holds the bulk of the data.
 class LargeSecureStore {
+  // Was: a brand-new random AES key generated (and written to SecureStore)
+  // on every single setItem call, while the matching ciphertext landed in
+  // a *separate* AsyncStorage write. supabase-js calls setItem on every
+  // token refresh, not just at login, so this made every refresh a
+  // two-store atomicity problem: if the app got killed (Android backgrounds
+  // RN apps aggressively) between the SecureStore write and the AsyncStorage
+  // write, the two fell out of sync — the key in SecureStore no longer
+  // matched the ciphertext in AsyncStorage, decrypt() silently failed, and
+  // the session was gone on next launch. Reusing one key per storage slot
+  // (generated once, reused thereafter) means only the very first-ever
+  // write has that two-store window; every later session refresh only
+  // touches AsyncStorage.
+  private async getOrCreateEncryptionKey(key: string): Promise<Uint8Array> {
+    const existing = await SecureStore.getItemAsync(key);
+    if (existing) return aesjs.utils.hex.toBytes(existing);
+
+    const generated = crypto.getRandomValues(new Uint8Array(256 / 8));
+    await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(generated));
+    return generated;
+  }
+
   private async encrypt(key: string, value: string): Promise<string> {
-    const encryptionKey = crypto.getRandomValues(new Uint8Array(256 / 8));
-    const cipher = new aesjs.ModeOfOperation.ctr(encryptionKey, new aesjs.Counter(1));
+    const encryptionKey = await this.getOrCreateEncryptionKey(key);
+    // The key is now stable across writes, so a fixed counter would reuse
+    // the exact same keystream for every session update (a classic
+    // stream-cipher weakness) — a random 16-byte counter per write avoids
+    // that. It isn't secret, so it travels alongside the ciphertext.
+    const counterBytes = crypto.getRandomValues(new Uint8Array(16));
+    const cipher = new aesjs.ModeOfOperation.ctr(encryptionKey, new aesjs.Counter(counterBytes));
     const encryptedBytes = cipher.encrypt(aesjs.utils.utf8.toBytes(value));
 
-    await SecureStore.setItemAsync(key, aesjs.utils.hex.fromBytes(encryptionKey));
-
-    return aesjs.utils.hex.fromBytes(encryptedBytes);
+    return `${aesjs.utils.hex.fromBytes(counterBytes)}:${aesjs.utils.hex.fromBytes(encryptedBytes)}`;
   }
 
   private async decrypt(key: string, value: string): Promise<string | null> {
     const encryptionKeyHex = await SecureStore.getItemAsync(key);
     if (!encryptionKeyHex) return null;
 
-    const cipher = new aesjs.ModeOfOperation.ctr(aesjs.utils.hex.toBytes(encryptionKeyHex), new aesjs.Counter(1));
-    const decryptedBytes = cipher.decrypt(aesjs.utils.hex.toBytes(value));
+    const separatorIndex = value.indexOf(':');
+    // Falls back to the old fixed-counter format for a value written
+    // before this fix — otherwise every session in the wild would be
+    // silently logged out again the moment this ships.
+    const [counterHex, cipherHex] =
+      separatorIndex === -1 ? ['01', value] : [value.slice(0, separatorIndex), value.slice(separatorIndex + 1)];
+
+    const cipher = new aesjs.ModeOfOperation.ctr(
+      aesjs.utils.hex.toBytes(encryptionKeyHex),
+      separatorIndex === -1 ? new aesjs.Counter(1) : new aesjs.Counter(aesjs.utils.hex.toBytes(counterHex))
+    );
+    const decryptedBytes = cipher.decrypt(aesjs.utils.hex.toBytes(cipherHex));
 
     return aesjs.utils.utf8.fromBytes(decryptedBytes);
   }
