@@ -12,9 +12,9 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { FlowSurface, FlowText, flowTracking } from '@/constants/flow-theme';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getPostAuthRoute } from '@/lib/authRouting';
@@ -191,11 +191,12 @@ export default function OTPVerificationScreen() {
           </Text>
         ) : null}
 
-        <AuthButton
+        <FlowPillButton
           label="Verify  →"
           onPress={handleVerifyOTP}
           loading={isLoading}
-          style={{ width: contentWidth, marginTop: 40 }}
+          // Centred explicitly — see the note on email-input.tsx's pill.
+          style={{ width: contentWidth, alignSelf: 'center', marginTop: 40 }}
         />
 
         <Pressable
@@ -218,7 +219,7 @@ export default function OTPVerificationScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
     flexGrow: 1,
@@ -228,21 +229,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    color: Palette.text,
-    fontSize: 34,
+    ...FlowText.display,
     lineHeight: 42,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    textAlign: 'center',
-    letterSpacing: -0.8,
+    letterSpacing: flowTracking(34),
     marginTop: 30,
   },
   subtitle: {
-    color: Palette.text,
+    ...FlowText.subtitle,
     fontSize: 17,
     lineHeight: 25,
-    fontWeight: '400',
-    fontFamily: FontFamily.body.regular,
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 28,
@@ -251,22 +246,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
+  // A box this small can't take the row art (stretching a 902x154 box to
+  // near-square distorts its corners), so it is coded to the art's fill and
+  // stroke — see FlowSurface.
   box: {
-    backgroundColor: Palette.paper,
+    backgroundColor: FlowSurface.fill,
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: 'transparent',
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
   },
   boxActive: {
-    borderColor: Palette.ring,
+    borderWidth: 2,
+    borderColor: '#FFFDF8',
   },
   digit: {
-    color: Palette.line,
+    color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
+    fontFamily: FontFamily.accent.interBold,
   },
   // Off-screen field that actually holds the code; the boxes above are a
   // display of its value.
@@ -277,21 +275,12 @@ const styles = StyleSheet.create({
     width: 1,
   },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
+    ...FlowText.error,
     marginTop: 16,
     paddingHorizontal: 8,
   },
   resend: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
+    ...FlowText.link,
     marginTop: 22,
   },
   pressedText: {

@@ -28,7 +28,18 @@ export interface GroupMember {
   year_of_study: number;
 }
 
-export async function fetchMyBookings(userId: string): Promise<MyBooking[]> {
+// A booking/group screen needs to tell "the fetch failed" apart from "this
+// genuinely doesn't exist" — collapsing both into an empty array (the old
+// behavior) made an already-paid, already-matched booking look identical to
+// one that was never made, on a transient network error. error is a
+// user-safe message (or null on success); callers decide whether that's
+// worth a dedicated retry UI or just a console.error-and-degrade.
+export interface FetchResult<T> {
+  data: T;
+  error: string | null;
+}
+
+export async function fetchMyBookings(userId: string): Promise<FetchResult<MyBooking[]>> {
   const { data, error } = await supabase
     .from('bookings')
     .select(
@@ -40,10 +51,10 @@ export async function fetchMyBookings(userId: string): Promise<MyBooking[]> {
 
   if (error || !data) {
     console.error('Failed to fetch bookings:', error);
-    return [];
+    return { data: [], error: error?.message ?? 'Failed to fetch bookings' };
   }
 
-  return (data as any[])
+  const sorted = (data as any[])
     .map((b) => ({
       id: b.id,
       status: b.status,
@@ -54,20 +65,22 @@ export async function fetchMyBookings(userId: string): Promise<MyBooking[]> {
       activity_emoji: b.slots?.activity_types?.emoji ?? '',
     }))
     .sort((a, b) => new Date(a.slot_datetime).getTime() - new Date(b.slot_datetime).getTime());
+
+  return { data: sorted, error: null };
 }
 
 // my_group_details is self-scoped by RLS (auth.uid()) — no user id needed.
 // Venue fields are already null server-side until reveal_venue_at, so
 // this never even receives a venue for a group that isn't revealed yet.
-export async function fetchMyGroups(): Promise<MyGroupDetails[]> {
+export async function fetchMyGroups(): Promise<FetchResult<MyGroupDetails[]>> {
   const { data, error } = await supabase.from('my_group_details').select('*');
 
   if (error || !data) {
     console.error('Failed to fetch groups:', error);
-    return [];
+    return { data: [], error: error?.message ?? 'Failed to fetch groups' };
   }
 
-  return data as MyGroupDetails[];
+  return { data: data as MyGroupDetails[], error: null };
 }
 
 // Queries group_member_public (never profiles directly) — the same

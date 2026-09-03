@@ -14,7 +14,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
+import { FlowText } from '@/constants/flow-theme';
 import { PersonalityMascot, MASCOT_STOP_POSITIONS, MASCOT_TO_COLORS } from '@/components/personality-mascot';
 
 const THUMB_SIZE = 28;
@@ -269,19 +269,18 @@ const styles = StyleSheet.create({
     gap: 4,
     width: '100%',
   },
+  // The mascot, track and thumb below stay on the Timeleft reference the
+  // founder asked for verbatim (see PersonalityMascot). Only this copy is
+  // chrome, so it follows the redesign's type like every other heading in
+  // the quiz.
   tierLabel: {
-    color: Palette.text,
+    ...FlowText.titleCentred,
     fontSize: 21,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.2,
-    textAlign: 'center',
+    lineHeight: 25,
+    letterSpacing: -0.35,
   },
   tierDescription: {
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.subtitle,
     textAlign: 'center',
     paddingHorizontal: 24,
   },

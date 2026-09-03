@@ -18,7 +18,7 @@ const rows: [string, string, string][] = [
 
 export default function PricingPage() {
   return (
-    <LegalLayout title="Pricing" updated="August 28, 2026">
+    <LegalLayout title="Pricing" updated="September 1, 2026">
       <p>
         Zen-Z charges one flat per-person amount for each activity. The price
         shown in the app at checkout is the final amount you pay — Zen-Z
@@ -83,6 +83,26 @@ export default function PricingPage() {
           Payments are processed through PayU. Zen-Z does not store card
           numbers, CVV, UPI credentials, or bank-account credentials in its own
           database.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>Bringing a +1</h2>
+        <p>
+          Adding a &ldquo;+1&rdquo; companion to a booking automatically
+          doubles the price shown above for that activity, charged as a single
+          payment. See the <a href="/terms">Terms &amp; Conditions</a> for
+          what bringing a +1 involves.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>Referral credits</h2>
+        <p>
+          Inviting a friend who completes their first paid booking earns you a
+          ₹21 credit, automatically applied to your next booking. See the{' '}
+          <a href="/terms">Terms &amp; Conditions</a> for the full referral
+          program rules.
         </p>
       </div>
 

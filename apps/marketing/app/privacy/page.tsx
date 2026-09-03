@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" updated="August 28, 2026">
+    <LegalLayout title="Privacy Policy" updated="September 1, 2026">
       <p>
         This Privacy Policy explains how Zen-Z, operated by Dhruv Goyal,
         collects, uses, stores, and protects information when you use the
@@ -21,11 +21,19 @@ export default function PrivacyPage() {
         <ul>
           <li>Real/legal name</li>
           <li>Email address</li>
-          <li>Phone number</li>
+          <li>
+            WhatsApp number &mdash; used only for event-day coordination such
+            as venue changes and reminders; it is never used to sign in and is
+            not shown to other group members
+          </li>
           <li>Date of birth</li>
           <li>Gender</li>
           <li>Profile photo</li>
           <li>Year of study</li>
+          <li>
+            Push notification token &mdash; used only to deliver booking,
+            group, venue, and chat-related notifications to your device
+          </li>
         </ul>
         <h3>Personality and matching information</h3>
         <p>
@@ -36,8 +44,22 @@ export default function PrivacyPage() {
         <h3>Booking and service information</h3>
         <p>
           We process information about activities, dates/times, bookings,
-          groups, venue arrangements, booking status, and relevant
-          support/refund records.
+          groups, venue arrangements, booking status, the group/budget
+          preferences you select when booking, and relevant support/refund
+          records.
+        </p>
+        <p>
+          If you add a &ldquo;+1&rdquo; companion to a booking, we store that
+          person&apos;s first name, as provided by you, tied to your booking.
+          The companion does not create a Zen-Z account and we do not collect
+          any other information about them.
+        </p>
+        <h3>Referral information</h3>
+        <p>
+          If you use Zen-Z&apos;s referral program, we store your referral
+          code, whether you were referred by someone else&apos;s code, a
+          record when a friend you invite completes their first paid booking,
+          and your referral credit balance.
         </p>
         <h3>Payment information</h3>
         <p>
@@ -54,10 +76,11 @@ export default function PrivacyPage() {
         <ul>
           <li>Create and manage user accounts.</li>
           <li>Verify profiles and account information.</li>
-          <li>Determine eligibility based on the 16+ age requirement.</li>
+          <li>Determine eligibility based on the 18+ age requirement.</li>
           <li>Match users into compatible activity groups.</li>
           <li>Coordinate venues, tables, tickets, and sports slots.</li>
           <li>Process and reconcile payments and refunds.</li>
+          <li>Apply and manage referral credits, and process &ldquo;Bring a +1&rdquo; companion bookings.</li>
           <li>Send booking, payment, group, venue, and chat-related push notifications.</li>
           <li>Provide customer support.</li>
           <li>Investigate reports and enforce community rules.</li>
@@ -71,7 +94,9 @@ export default function PrivacyPage() {
           Once a group is revealed, members can see another member&apos;s name
           and year of study only. Phone number, profile photo, date of birth,
           gender, and personality-quiz responses are never shown to other group
-          members, under any circumstance.
+          members, under any circumstance. If a group member brings a +1, the
+          companion&apos;s first name is visible to the rest of the group, the
+          same as any other member&apos;s name.
         </p>
       </div>
 
@@ -137,7 +162,9 @@ export default function PrivacyPage() {
           profile photo are removed; previously sent chat messages may remain
           visible to other group members. Information may be retained where
           reasonably necessary for legal, accounting, security,
-          fraud-prevention, dispute-resolution, or investigation purposes.
+          fraud-prevention, dispute-resolution, or investigation purposes,
+          including transaction and referral records associated with a
+          deleted account.
         </p>
       </div>
 
@@ -153,8 +180,14 @@ export default function PrivacyPage() {
       <div className="legal-section">
         <h2>10. Children and age</h2>
         <p>
-          Zen-Z is intended for users aged 16 and above. Users provide their
-          date of birth for age eligibility and matching purposes.
+          Zen-Z is intended for users aged 18 and above only. It is not
+          directed at children, and we do not knowingly allow anyone under 18
+          to create or hold an account. Users provide their date of birth,
+          which is checked against this 18+ requirement before an account can
+          be created. If you add a &ldquo;+1&rdquo; companion to a booking,
+          you are responsible for confirming they also meet this age
+          requirement, since Zen-Z has no independent way to verify a
+          companion&apos;s age.
         </p>
       </div>
 

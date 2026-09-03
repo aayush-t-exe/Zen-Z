@@ -14,7 +14,8 @@ import {
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { FlowText, flowTracking } from '@/constants/flow-theme';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getAuthErrorMessage } from '@/lib/authErrors';
@@ -190,11 +191,15 @@ export default function EmailInputScreen() {
           </Text>
         ) : null}
 
-        <AuthButton
+        <FlowPillButton
           label="Continue  →"
           onPress={handleContinue}
           loading={isLoading}
-          style={{ width: fieldWidth, marginTop: 52 }}
+          // alignSelf overrides the `alignSelf: 'stretch'` FlowPillButton
+          // applies when it is given no `width` prop: stretch is not a
+          // centring value, so a pill handed a width through `style` instead
+          // fell back to flex-start and sat left of the field above it.
+          style={{ width: fieldWidth, alignSelf: 'center', marginTop: 52 }}
         />
       </ScrollView>
     </KeyboardAvoidingView>
@@ -204,7 +209,7 @@ export default function EmailInputScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
     flexGrow: 1,
@@ -216,13 +221,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   title: {
-    color: Palette.text,
+    ...FlowText.display,
     fontSize: 36,
     lineHeight: 45,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    textAlign: 'center',
-    letterSpacing: -0.9,
+    letterSpacing: flowTracking(36),
     marginTop: 32,
     marginBottom: 28,
   },
@@ -230,8 +232,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     color: Palette.fieldInk,
     fontSize: 19,
-    fontWeight: '500',
-    fontFamily: FontFamily.body.medium,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
     textAlign: 'center',
     textAlignVertical: 'center',
     padding: 0,
@@ -242,12 +243,7 @@ const styles = StyleSheet.create({
     borderRadius: 1,
   },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
+    ...FlowText.error,
     marginTop: 16,
     paddingHorizontal: 8,
   },

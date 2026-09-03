@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
-  Pressable,
   Image,
-  ImageSourcePropType,
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
@@ -12,6 +10,9 @@ import {
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
+import { activityArt } from '@/constants/activity-art';
+import { ActivityCard, ACTIVITY_GRID, activityCardMetrics } from '@/components/activity-card';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 
@@ -22,18 +23,33 @@ interface ActivityType {
   is_bookable: boolean;
 }
 
-const BANNER_RATIO = 737 / 1625;
-const FRAME_RATIO = 1031 / 1195;
-
-const ICONS: Record<string, ImageSourcePropType> = {
-  Cafés: require('@/assets/images/icon-cafes.png'),
-  Dinners: require('@/assets/images/icon-dinners.png'),
-  Movies: require('@/assets/images/icon-movies.png'),
-  Sports: require('@/assets/images/icon-sports.png'),
-};
+/**
+ * Geometry measured off the approved comp (Desktop/UI/UI PAGE 1/"gen z ui
+ * black.jpg.jpeg"). That file is 1170x2532 — a 390pt screen at @3x — so every
+ * comp pixel divides by 3 to give the dp value used here. Ratios rather than
+ * fixed dp wherever something should track the card/banner as the screen
+ * width changes.
+ *
+ * The activity card itself now lives in components/activity-card.tsx, which
+ * the Sports games grid draws from too; only this screen's banner is measured
+ * here.
+ */
+const CARD_TO_BANNER_GAP = 42; // comp 126px
+const BANNER_RATIO = 488 / 1046; // banner height / banner width
+// Illustration placement, taken from its keyed-out bounds inside the comp's
+// banner box: flush with the banner's bottom edge, a hair in from the right.
+const PEOPLE_W_RATIO = 0.4761; // of banner width
+const PEOPLE_H_RATIO = 0.8299; // of banner height
+const PEOPLE_RIGHT_RATIO = 0.0229; // of banner width
+const BANNER_TEXT_LEFT_RATIO = 84 / 1046; // text inset / banner width
+const BANNER_TEXT_TOP_RATIO = 0.164; // text block top / banner height
 
 const taglineFor = (name: string) =>
-  name === 'Movies' ? 'Unlock a seat' : name === 'Sports' ? 'Unlock a game' : 'Unlock a table';
+  name === 'Movies'
+    ? 'Unlock Your Seat'
+    : name === 'Sports'
+      ? 'Unlock Your Game'
+      : 'Unlock Your Table';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -42,24 +58,34 @@ export default function HomeScreen() {
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [firstName, setFirstName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const contentWidth = Math.min(480, screenWidth - 12);
-  const cardGap = 16;
-  const cardWidth = (contentWidth - cardGap) / 2;
+  const contentWidth = Math.min(480, screenWidth - ACTIVITY_GRID.sidePadding * 2);
+  const { width: cardWidth } = activityCardMetrics(contentWidth);
+  const bannerHeight = contentWidth * BANNER_RATIO;
+
+  const loadActivities = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+
+    const { data, error } = await supabase
+      .from('activity_types')
+      .select('id, name, emoji, is_bookable')
+      .eq('is_live', true)
+      .is('parent_activity_id', null)
+      .order('id', { ascending: true });
+
+    if (error) {
+      setLoadError(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (data) setActivities(data);
+    setIsLoading(false);
+  }, []);
 
   useEffect(() => {
-    const loadActivities = async () => {
-      const { data } = await supabase
-        .from('activity_types')
-        .select('id, name, emoji, is_bookable')
-        .eq('is_live', true)
-        .is('parent_activity_id', null)
-        .order('id', { ascending: true });
-
-      if (data) setActivities(data);
-      setIsLoading(false);
-    };
-
     const loadName = async () => {
       if (!user?.id) return;
       const { data } = await supabase
@@ -71,9 +97,15 @@ export default function HomeScreen() {
       if (data?.full_name) setFirstName(data.full_name.trim().split(' ')[0]);
     };
 
+    // loadActivities is a stable useCallback so this only ever runs
+    // once per user id, same as before it was hoisted out to also be
+    // reachable from the Retry button below — not the repeated-render
+    // loop this lint rule guards against (same reasoning as
+    // network-status-overlay.tsx's identical suppression).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadActivities();
     loadName();
-  }, [user?.id]);
+  }, [user?.id, loadActivities]);
 
   const handleActivityPress = (activity: ActivityType) => {
     if (!activity.is_bookable) {
@@ -94,7 +126,7 @@ export default function HomeScreen() {
     <View style={styles.root}>
       <View style={[styles.content, { width: contentWidth }]}>
         <View style={{ gap: 6 }}>
-          <Text style={styles.title}>{firstName ? `Welcome,\n${firstName}` : 'Welcome'}</Text>
+          <Text style={styles.title}>{firstName ? `Welcome\n${firstName}` : 'Welcome'}</Text>
           <Text style={styles.subtitle}>Pick an activity to unlock your next adventure.</Text>
         </View>
 
@@ -102,48 +134,70 @@ export default function HomeScreen() {
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={Palette.text} />
           </View>
+        ) : loadError ? (
+          <View style={styles.loading}>
+            <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+              Couldn&apos;t load activities. {loadError}
+            </Text>
+            <View style={{ marginTop: 16, width: contentWidth }}>
+              <FlowPillButton label="Retry" width={contentWidth} onPress={loadActivities} loading={isLoading} />
+            </View>
+          </View>
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap }}>
-            {activities.map((activity) => {
-              const cardHeight = cardWidth * FRAME_RATIO * 1.2;
-              return (
-                <Pressable
-                  key={activity.id}
-                  onPress={() => handleActivityPress(activity)}
-                  style={{ width: cardWidth, height: cardHeight }}>
-                  <Image
-                    source={require('@/assets/images/card-frame.png')}
-                    style={{ width: cardWidth, height: cardHeight }}
-                    resizeMode="stretch"
-                    accessibilityIgnoresInvertColors
-                  />
-                  <View style={[StyleSheet.absoluteFill, styles.cardContent]}>
-                    <Image
-                      source={ICONS[activity.name]}
-                      style={styles.cardIcon}
-                      resizeMode="contain"
-                      accessibilityIgnoresInvertColors
-                    />
-                    <Text style={styles.cardTitle}>{activity.name}</Text>
-                    <Text style={styles.cardTagline}>{taglineFor(activity.name)}</Text>
-                  </View>
-                </Pressable>
-              );
-            })}
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              columnGap: ACTIVITY_GRID.columnGap,
+              rowGap: ACTIVITY_GRID.rowGap,
+              marginTop: 40,
+            }}>
+            {activities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                name={activity.name}
+                tagline={taglineFor(activity.name)}
+                art={activityArt(activity.name)}
+                width={cardWidth}
+                onPress={() => handleActivityPress(activity)}
+              />
+            ))}
           </View>
         )}
 
-        {/* Replaces the earlier banner, which had "Match of the Week!" baked
-            into the art — didn't fit a founder-matched-groups product. This
-            one's own baked-in "Ready to meet" headline already reads right,
-            so unlike the previous version there's no separate text overlay
-            here to keep in sync with the art. */}
-        <Image
-          source={require('@/assets/images/home-match-banner.png')}
-          style={{ width: contentWidth, height: contentWidth * BANNER_RATIO }}
-          resizeMode="contain"
-          accessibilityIgnoresInvertColors
-        />
+        <View
+          style={{ width: contentWidth, height: bannerHeight, marginTop: CARD_TO_BANNER_GAP }}>
+          <Image
+            source={require('@/assets/images/home-banner-panel.png')}
+            style={{ position: 'absolute', width: contentWidth, height: bannerHeight }}
+            resizeMode="stretch"
+            accessibilityIgnoresInvertColors
+          />
+          <Image
+            source={require('@/assets/images/home-banner-people.png')}
+            style={{
+              position: 'absolute',
+              right: contentWidth * PEOPLE_RIGHT_RATIO,
+              bottom: 0,
+              width: contentWidth * PEOPLE_W_RATIO,
+              height: bannerHeight * PEOPLE_H_RATIO,
+            }}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+          <View
+            style={[
+              styles.bannerText,
+              {
+                left: contentWidth * BANNER_TEXT_LEFT_RATIO,
+                paddingTop: bannerHeight * BANNER_TEXT_TOP_RATIO,
+              },
+            ]}
+            pointerEvents="none">
+            <Text style={styles.bannerHeadline}>Ready to meet</Text>
+            <Text style={styles.bannerSubtitle}>New people. New stories.{'\n'}New memories.</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -158,17 +212,24 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    gap: 36,
     paddingTop: 24,
-    paddingBottom: 20,
+    // The floating pill tab bar (home/_layout.tsx) is position: 'absolute'
+    // now instead of docked, so this screen has to reserve the space itself
+    // (bar height 66 + its own 33 bottom offset, plus breathing room) or the
+    // banner sits under it.
+    paddingBottom: 116,
   },
+  // Comp sets the header in very heavy sans, not the brand serif. Sized off
+  // its 56px cap height (18.7dp) rather than the x-height: 25.5dp at Inter's
+  // 0.733 cap ratio. Leading is near-solid (comp baselines are 25.7dp apart)
+  // and tracking is tight — the comp's "Your logo" runs 6.20x its cap height
+  // where untracked Inter Black runs 6.56x, hence the -0.8 letterSpacing.
   title: {
-    color: Palette.text,
-    fontSize: 28,
-    lineHeight: 34,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.6,
+    color: '#FFFFFF',
+    fontSize: 25.5,
+    lineHeight: 26,
+    fontFamily: FontFamily.accent.interBlack,
+    letterSpacing: -0.8,
   },
   subtitle: {
     color: Palette.muted,
@@ -178,31 +239,27 @@ const styles = StyleSheet.create({
   },
   loading: {
     height: 200,
+    marginTop: 40,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardContent: {
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+  bannerText: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    maxWidth: '52%',
   },
-  cardIcon: {
-    width: 58,
-    height: 58,
+  bannerHeadline: {
+    color: '#1C1616',
+    fontSize: 29,
+    lineHeight: 34,
+    fontFamily: FontFamily.accent.sitkaDisplay,
   },
-  cardTitle: {
-    color: Palette.text,
-    fontSize: 19,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-    textAlign: 'center',
-  },
-  cardTagline: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
-    textAlign: 'center',
+  bannerSubtitle: {
+    color: '#57585A',
+    fontSize: 12,
+    lineHeight: 17.3,
+    marginTop: 8,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });

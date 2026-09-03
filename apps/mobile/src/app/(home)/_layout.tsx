@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
 import { Tabs, router } from 'expo-router';
-import { TabBarIcon } from '@/components/tab-bar-icon';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
+import { HomeTabBar } from '@/components/home-tab-bar';
 import { useAuthStore } from '@/store/auth';
 import { useChatStore } from '@/store/chat';
 import { registerForPushNotificationsAsync, addNotificationResponseListener } from '@/lib/notifications';
@@ -60,51 +58,25 @@ export default function HomeLayout() {
 
   return (
     <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: Palette.line,
-        tabBarInactiveTintColor: Palette.fieldInk,
-        tabBarLabelStyle: { fontFamily: FontFamily.body.regular },
-        tabBarStyle: {
-          backgroundColor: Palette.paper,
-          borderTopColor: Palette.ring,
-          borderTopWidth: 1,
-          paddingBottom: 4,
-          paddingTop: 8,
-          height: 60,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Discover',
-          tabBarIcon: ({ focused }) => <TabBarIcon name="compass" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="bookings"
-        options={{
-          title: 'Bookings',
-          tabBarIcon: ({ focused }) => <TabBarIcon name="calendar" focused={focused} />,
-        }}
-      />
+      // The bar is drawn by HomeTabBar rather than configured through
+      // tabBar* options — see the note in that file for why the default one
+      // can't produce this layout.
+      tabBar={(props) => <HomeTabBar {...props} />}
+      screenOptions={{ headerShown: false }}>
+      {/* Icons and labels live in HomeTabBar; these screens only carry the
+          title and the unread badge. */}
+      <Tabs.Screen name="index" options={{ title: 'Discover' }} />
+      <Tabs.Screen name="bookings" options={{ title: 'Bookings' }} />
       <Tabs.Screen
         name="chats"
         options={{
-          title: 'Chats',
-          tabBarIcon: ({ focused }) => <TabBarIcon name="message-circle" focused={focused} />,
+          // Route stays `chats` (store, deep links and notification routing all
+          // key off that); only the visible label follows the comp.
+          title: 'Messages',
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
-          tabBarBadgeStyle: { backgroundColor: Palette.error },
         }}
       />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ focused }) => <TabBarIcon name="user" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }

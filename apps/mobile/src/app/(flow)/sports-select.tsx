@@ -2,8 +2,6 @@ import { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  Image,
-  Pressable,
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
@@ -11,22 +9,36 @@ import {
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
+import { activityArt } from '@/constants/activity-art';
+import { ActivityCard, ACTIVITY_GRID, activityCardMetrics } from '@/components/activity-card';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { FlowBackButton } from '@/components/flow-back-button';
 import { supabase } from '@/lib/supabase';
+import { formatDuration } from '@/lib/format';
 
 interface SportOption {
   id: number;
   name: string;
-  emoji: string;
+  convenience_fee: number;
+  duration_minutes: number | null;
 }
 
-const SPORT_ICONS: Record<string, any> = {
-  'Box Cricket': require('@/assets/images/icon-cricket.png'),
-  Football: require('@/assets/images/icon-football.png'),
-  '8-Ball Pool': require('@/assets/images/icon-pool.png'),
-  Pickleball: require('@/assets/images/icon-pickleball.png'),
-};
-
-const FRAME_RATIO = 1031 / 1195;
+/**
+ * The games behind the Home grid's Sports card, drawn on the same card as
+ * that grid (components/activity-card.tsx) rather than the cream frame this
+ * screen used before the redesign — it is the same "pick one of these"
+ * question one level down, and the founder's new game renders are made for
+ * that dark badge.
+ *
+ * Each card's second line carries the game's price and length, which
+ * docs/PRODUCT_SPEC.md §1.5a assumes is "shown up front" (it is why the
+ * Budget step is skipped for these) but which this screen never actually
+ * showed.
+ */
+const taglineFor = (option: SportOption) =>
+  option.duration_minutes != null
+    ? `₹${option.convenience_fee} · ${formatDuration(option.duration_minutes)}`
+    : `₹${option.convenience_fee}`;
 
 export default function SportsSelectScreen() {
   const router = useRouter();
@@ -34,29 +46,35 @@ export default function SportsSelectScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const [options, setOptions] = useState<SportOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const contentWidth = Math.min(480, screenWidth - 12);
-  const cardGap = 16;
-  const cardWidth = (contentWidth - cardGap) / 2;
-  const cardHeight = cardWidth * FRAME_RATIO * 1.2;
+  const contentWidth = Math.min(480, screenWidth - ACTIVITY_GRID.sidePadding * 2);
+  const { width: cardWidth } = activityCardMetrics(contentWidth);
+
+  const loadOptions = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const { data, error } = await supabase
+      .from('activity_types')
+      .select('id, name, convenience_fee, duration_minutes')
+      .eq('parent_activity_id', parseInt(parentId || '0'))
+      .eq('is_live', true)
+      .order('id', { ascending: true });
+
+    if (error) {
+      setLoadError(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (data) setOptions(data);
+    setIsLoading(false);
+  }, [parentId]);
 
   useFocusEffect(
     useCallback(() => {
-      const loadOptions = async () => {
-        setIsLoading(true);
-        const { data } = await supabase
-          .from('activity_types')
-          .select('id, name, emoji')
-          .eq('parent_activity_id', parseInt(parentId || '0'))
-          .eq('is_live', true)
-          .order('id', { ascending: true });
-
-        if (data) setOptions(data);
-        setIsLoading(false);
-      };
-
       loadOptions();
-    }, [parentId])
+    }, [loadOptions])
   );
 
   const handleSelect = (optionId: number) => {
@@ -70,7 +88,7 @@ export default function SportsSelectScreen() {
     <View style={styles.root}>
       <View style={[styles.content, { width: contentWidth }]}>
         <View style={{ gap: 6 }}>
-          <Text style={styles.title}>Enter the arena</Text>
+          <Text style={styles.title}>Enter the{'\n'}arena</Text>
           <Text style={styles.subtitle}>Four games, one Saturday. Choose wisely.</Text>
         </View>
 
@@ -79,33 +97,44 @@ export default function SportsSelectScreen() {
             <ActivityIndicator size="large" color={Palette.text} />
           </View>
         ) : options.length > 0 ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: cardGap }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              columnGap: ACTIVITY_GRID.columnGap,
+              rowGap: ACTIVITY_GRID.rowGap,
+              marginTop: 40,
+            }}>
             {options.map((option) => (
-              <Pressable
+              <ActivityCard
                 key={option.id}
+                name={option.name}
+                tagline={taglineFor(option)}
+                art={activityArt(option.name)}
+                width={cardWidth}
                 onPress={() => handleSelect(option.id)}
-                style={{ width: cardWidth, height: cardHeight }}>
-                <Image
-                  source={require('@/assets/images/card-frame.png')}
-                  style={{ width: cardWidth, height: cardHeight }}
-                  resizeMode="stretch"
-                  accessibilityIgnoresInvertColors
-                />
-                <View style={[StyleSheet.absoluteFill, styles.cardContent]}>
-                  <Image
-                    source={SPORT_ICONS[option.name]}
-                    style={styles.cardIcon}
-                    resizeMode="contain"
-                    accessibilityIgnoresInvertColors
-                  />
-                  <Text style={styles.cardTitle}>{option.name}</Text>
-                </View>
-              </Pressable>
+              />
             ))}
           </View>
+        ) : loadError ? (
+          <View style={styles.loading}>
+            <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+              Couldn&apos;t load games. {loadError}
+            </Text>
+            <View style={{ marginTop: 16, width: contentWidth }}>
+              <FlowPillButton label="Retry" width={contentWidth} onPress={loadOptions} loading={isLoading} />
+            </View>
+          </View>
         ) : (
-          <Text style={styles.subtitle}>No games available at the moment.</Text>
+          <Text style={[styles.subtitle, { marginTop: 40 }]}>No games available at the moment.</Text>
         )}
+
+        {/* This screen is pushed on top of the tabs and has no primary action
+            of its own, so the flow's back row is the only visible way out —
+            on iOS the swipe gesture was previously it. */}
+        <View style={{ marginTop: 44 }}>
+          <FlowBackButton onPress={() => router.back()} />
+        </View>
       </View>
     </View>
   );
@@ -120,16 +149,19 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    gap: 32,
+    // No tab-bar reservation, unlike Home: this screen is pushed on top of the
+    // tabs as its own stack (see (flow)/_layout.tsx), so nothing floats over it.
     paddingTop: 24,
-    paddingBottom: 20,
+    paddingBottom: 24,
   },
+  // Home's own header type — Inter Black, near-solid leading, tight tracking —
+  // since this screen is the same grid one level down.
   title: {
-    color: Palette.text,
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.5,
+    color: '#FFFFFF',
+    fontSize: 25.5,
+    lineHeight: 26,
+    fontFamily: FontFamily.accent.interBlack,
+    letterSpacing: -0.8,
   },
   subtitle: {
     color: Palette.muted,
@@ -139,25 +171,8 @@ const styles = StyleSheet.create({
   },
   loading: {
     height: 200,
+    marginTop: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  cardContent: {
-    paddingVertical: 16,
-    paddingHorizontal: 14,
-    gap: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardIcon: {
-    width: 58,
-    height: 58,
-  },
-  cardTitle: {
-    color: Palette.text,
-    fontSize: 19,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-    textAlign: 'center',
   },
 });

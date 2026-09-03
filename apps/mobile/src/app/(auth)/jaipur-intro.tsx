@@ -10,8 +10,7 @@ import Animated, {
   Easing,
   ReduceMotion,
 } from 'react-native-reanimated';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
+import { FlowText, flowTracking } from '@/constants/flow-theme';
 import { markJaipurIntroSeen } from '@/lib/launch-intro';
 
 const AUTO_ADVANCE_MS = 4400;
@@ -96,7 +95,7 @@ export default function JaipurIntroScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
     paddingHorizontal: 32,
     paddingTop: 56,
     paddingBottom: 48,
@@ -108,23 +107,20 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   eyebrow: {
-    color: Palette.muted,
+    ...FlowText.subtitle,
     fontSize: 16,
-    fontFamily: FontFamily.body.medium,
-    letterSpacing: 0.2,
   },
+  // The one heading in the app given more room than a screen title, so it
+  // takes FlowText.display up a size with tracking scaled to match.
   big: {
-    color: Palette.text,
+    ...FlowText.display,
     fontSize: 42,
     lineHeight: 50,
-    fontFamily: FontFamily.display.bold,
-    textAlign: 'center',
-    letterSpacing: -0.8,
+    letterSpacing: flowTracking(42),
   },
   footer: {
-    color: Palette.muted,
+    ...FlowText.fine,
     fontSize: 13,
-    fontFamily: FontFamily.body.regular,
     textAlign: 'center',
   },
 });

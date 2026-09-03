@@ -14,15 +14,26 @@ import {
 } from '@expo-google-fonts/fraunces';
 import {
   InstrumentSans_400Regular,
+  InstrumentSans_400Regular_Italic,
   InstrumentSans_500Medium,
+  InstrumentSans_500Medium_Italic,
   InstrumentSans_600SemiBold,
   InstrumentSans_700Bold,
 } from '@expo-google-fonts/instrument-sans';
+import {
+  Inter_500Medium,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+} from '@expo-google-fonts/inter';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { initSentry, Sentry } from '@/lib/sentry';
 
 SplashScreen.preventAutoHideAsync();
+initSentry();
 
 // Purely a dev-mode notice that the test device/browser has the OS-level
 // "reduce motion" accessibility setting on — animations still behave
@@ -108,16 +119,28 @@ function RootLayoutContent() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
     Fraunces_600SemiBold,
     Fraunces_700Bold,
     InstrumentSans_400Regular,
+    InstrumentSans_400Regular_Italic,
     InstrumentSans_500Medium,
+    InstrumentSans_500Medium_Italic,
     InstrumentSans_600SemiBold,
     InstrumentSans_700Bold,
+    Inter_500Medium,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+    SitkaDisplay_400Regular: require('../../assets/fonts/Sitka-Display-Regular.ttf'),
+    SitkaDisplay_700Bold: require('../../assets/fonts/Sitka-Display-Bold.ttf'),
+    SFProDisplay_100Thin: require('../../assets/fonts/SFProDisplay-Thin.otf'),
+    SFProDisplay_300Light: require('../../assets/fonts/SFProDisplay-Light.otf'),
+    SFProDisplay_500Medium: require('../../assets/fonts/SFProDisplay-Medium.otf'),
+    SFProDisplay_400Regular_Italic: require('../../assets/fonts/SFProDisplay-RegularItalic.otf'),
   });
 
   useEffect(() => {
@@ -132,10 +155,14 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <RootLayoutContent />
-        <NetworkStatusOverlay />
-      </QueryClientProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <RootLayoutContent />
+          <NetworkStatusOverlay />
+        </QueryClientProvider>
+      </ErrorBoundary>
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);

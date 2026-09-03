@@ -65,7 +65,7 @@ export default function GroupsPage() {
       setLoading(true);
       setError('');
 
-      const [{ data, error: fetchError }, { data: candidateBookings }] = await Promise.all([
+      const [{ data, error: fetchError }, { data: candidateBookings, error: candidatesError }] = await Promise.all([
         supabase
           .from('groups')
           .select(
@@ -97,6 +97,16 @@ export default function GroupsPage() {
       if (fetchError) {
         console.error('Error loading groups:', fetchError);
         setError('Failed to load groups');
+        setLoading(false);
+        return;
+      }
+
+      // A failed fetch here must not read as "no one available to fill an
+      // open seat" — the founder would think the candidate pool is
+      // genuinely empty rather than that the query failed.
+      if (candidatesError) {
+        console.error('Error loading fill-seat candidates:', candidatesError);
+        setError('Failed to load the list of students available to fill an open seat');
         setLoading(false);
         return;
       }

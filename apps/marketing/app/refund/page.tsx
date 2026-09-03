@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function RefundPage() {
   return (
-    <LegalLayout title="Cancellation & Refund Policy" updated="August 28, 2026">
+    <LegalLayout title="Cancellation & Refund Policy" updated="September 1, 2026">
       <p>
         This policy explains cancellation and refund rules for Zen-Z bookings
         and should be read together with the{' '}
@@ -38,7 +38,9 @@ export default function RefundPage() {
         <p>
           If you have started a booking but not completed payment, you can
           cancel it for free at any time from the Bookings screen. Nothing is
-          charged, so there is nothing to refund.
+          charged, so there is nothing to refund. If a referral credit was
+          already applied as a discount toward this unpaid booking, cancelling
+          restores that credit to your account (see Section 14).
         </p>
       </div>
 
@@ -135,7 +137,18 @@ export default function RefundPage() {
       </div>
 
       <div className="legal-section">
-        <h2>12. How refunds are paid back</h2>
+        <h2>12. &ldquo;Bring a +1&rdquo; bookings</h2>
+        <p>
+          A +1 companion is part of a single booking, not a separate one. The
+          booking — including the +1&apos;s seat — follows all the
+          cancellation and refund rules in this policy as one unit, at the
+          combined price paid. A +1 cannot be added, removed, or refunded
+          separately from the rest of the booking after payment.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>13. How refunds are paid back</h2>
         <p>
           Approved refunds are issued to your original payment method through
           PayU. Users cannot request a refund be sent to a different UPI ID,
@@ -147,7 +160,20 @@ export default function RefundPage() {
       </div>
 
       <div className="legal-section">
-        <h2>13. Customer misconduct</h2>
+        <h2>14. Bookings paid with a referral credit</h2>
+        <p>
+          If your booking was fully or partially paid using a referral credit
+          and it&apos;s cancelled under an eligible reason in this policy
+          (Sections 3, 5, 7, 8, or 9), the referral credit itself is restored
+          to your account for use on a future booking. If any part of that
+          booking was paid in real money through PayU, that portion is
+          refunded through PayU as described in Section 13. Since a referral
+          credit has no cash value, it is never paid out as cash.
+        </p>
+      </div>
+
+      <div className="legal-section">
+        <h2>15. Customer misconduct</h2>
         <p>
           If a booking is cancelled because of user misconduct or a policy
           violation, refund treatment is decided case by case based on the
@@ -156,7 +182,7 @@ export default function RefundPage() {
       </div>
 
       <div className="legal-section">
-        <h2>14. Dissatisfaction with a match</h2>
+        <h2>16. Dissatisfaction with a match</h2>
         <p>
           Dissatisfaction with your matched group, without another qualifying
           cancellation reason, is not a basis for a refund. Zen-Z does not
@@ -165,7 +191,7 @@ export default function RefundPage() {
       </div>
 
       <div className="legal-section">
-        <h2>15. Chargebacks and payment disputes</h2>
+        <h2>17. Chargebacks and payment disputes</h2>
         <p>
           Contact Zen-Z support first so payment issues can be investigated and
           resolved directly. If a formal chargeback or payment dispute is
@@ -174,7 +200,7 @@ export default function RefundPage() {
       </div>
 
       <div className="legal-section">
-        <h2>16. Contact for refunds</h2>
+        <h2>18. Contact for refunds</h2>
         <p>
           For any cancellation or refund request, or a question about a charge,
           reach us at{' '}

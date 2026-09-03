@@ -2,21 +2,26 @@ import { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
   Pressable,
   Image,
   Platform,
   Alert,
   StyleSheet,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
-import { OptionPill } from '@/components/option-pill';
+import {
+  FLOW_CONTENT_MAX,
+  FLOW_SIDE_PADDING,
+  FlowSurface,
+  FlowText,
+} from '@/constants/flow-theme';
+import { FlowBackArrow } from '@/components/flow-back-button';
+import { FlowField, FlowFieldButton, FlowPanel } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
 import { QuizProgressBar } from '@/components/quiz-progress-bar';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
@@ -31,7 +36,7 @@ const YEARS: { label: string; value: number }[] = [
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
 const STEP_COUNT = 6;
-const MIN_AGE_YEARS = 16;
+const MIN_AGE_YEARS = 18;
 
 // Exactly 10 digits, no spaces/dashes/parens/+ — a WhatsApp contact
 // number, not an auth identity, but standardized on a plain Indian mobile
@@ -59,8 +64,13 @@ function formatDob(date: Date) {
 
 export default function ProfileCreationScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const setAuthError = useAuthStore((state) => state.setError);
+
+  // Same content column the booking flow runs, so a row is the same width
+  // either side of the sign-up boundary.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [step, setStep] = useState(0);
   const [fullName, setFullName] = useState('');
@@ -267,147 +277,154 @@ export default function ProfileCreationScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={styles.header}>
-        <Pressable onPress={handleBack} hitSlop={12} accessibilityLabel="Back" accessibilityRole="button">
-          <Text style={styles.back}>{'←'}</Text>
-        </Pressable>
-        <View style={{ flex: 1, marginLeft: 16 }}>
-          <QuizProgressBar step={step} total={STEP_COUNT} />
+      <View style={{ width: contentWidth, flex: 1 }}>
+        <View style={styles.header}>
+          <FlowBackArrow onPress={handleBack} />
+          <View style={{ flex: 1, marginLeft: 16 }}>
+            <QuizProgressBar step={step} total={STEP_COUNT} />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.body}>
-        {step === 0 && (
-          <StepShell title="What's your name?">
-            <TextInput
-              placeholder="Your full name"
-              placeholderTextColor={Palette.placeholder}
-              value={fullName}
-              onChangeText={setFullName}
-              editable={!isLoading}
-              autoFocus
-              style={styles.textInput}
-            />
-            <View style={{ marginTop: 20, gap: 6 }}>
-              <Text style={styles.referralLabel}>Have an invite code?</Text>
-              <TextInput
-                placeholder="Optional"
-                placeholderTextColor={Palette.placeholder}
-                value={referralCode}
-                onChangeText={(text) => setReferralCode(text.toUpperCase())}
+        <View style={styles.body}>
+          {step === 0 && (
+            <StepShell title="What's your name?">
+              <FlowField
+                width={contentWidth}
+                placeholder="Your full name"
+                value={fullName}
+                onChangeText={setFullName}
                 editable={!isLoading}
-                autoCapitalize="characters"
-                style={styles.textInput}
+                autoFocus
               />
-            </View>
-          </StepShell>
-        )}
+              <View style={{ marginTop: 20, gap: 10 }}>
+                <Text style={FlowText.fine}>Have an invite code?</Text>
+                <FlowField
+                  width={contentWidth}
+                  placeholder="Optional"
+                  value={referralCode}
+                  onChangeText={(text) => setReferralCode(text.toUpperCase())}
+                  editable={!isLoading}
+                  autoCapitalize="characters"
+                />
+              </View>
+            </StepShell>
+          )}
 
-        {step === 1 && (
-          <StepShell title="When's your birthday?" subtitle="We'll never show this to anyone else.">
-            {Platform.OS === 'android' && !showDatePicker && (
-              <Pressable onPress={() => setShowDatePicker(true)}>
-                <View style={styles.dateField}>
-                  <Text style={styles.dateFieldText}>
-                    {dateOfBirth ? formatDob(dateOfBirth) : 'Choose your date of birth'}
-                  </Text>
+          {step === 1 && (
+            <StepShell title="When's your birthday?" subtitle="We'll never show this to anyone else.">
+              {Platform.OS === 'android' && !showDatePicker && (
+                <FlowFieldButton
+                  width={contentWidth}
+                  value={dateOfBirth ? formatDob(dateOfBirth) : null}
+                  placeholder="Choose your date of birth"
+                  onPress={() => setShowDatePicker(true)}
+                />
+              )}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dateOfBirth ?? defaultDob()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  maximumDate={maxDobDate}
+                  onValueChange={handleDateValueChange}
+                  onDismiss={handleDateDismiss}
+                  themeVariant="dark"
+                />
+              )}
+            </StepShell>
+          )}
+
+          {step === 2 && (
+            <StepShell title="Which year are you in?">
+              <View style={{ gap: 14 }}>
+                {YEARS.map((year) => (
+                  <FlowPanel
+                    key={year.value}
+                    label={year.label}
+                    width={contentWidth}
+                    selected={yearOfStudy === year.value}
+                    dimmed={yearOfStudy !== null && yearOfStudy !== year.value}
+                    onPress={() => setYearOfStudy(year.value)}
+                  />
+                ))}
+              </View>
+            </StepShell>
+          )}
+
+          {step === 3 && (
+            <StepShell title="How do you define yourself?">
+              <View style={{ gap: 14 }}>
+                {GENDERS.map((g) => (
+                  <FlowPanel
+                    key={g}
+                    label={g}
+                    width={contentWidth}
+                    selected={gender === g}
+                    dimmed={gender !== '' && gender !== g}
+                    onPress={() => setGender(g)}
+                  />
+                ))}
+              </View>
+            </StepShell>
+          )}
+
+          {step === 4 && (
+            <StepShell title="What's your WhatsApp number?" subtitle="We'll use this to reach you about event details.">
+              <FlowField
+                width={contentWidth}
+                placeholder="9XXXXXXXXX"
+                value={phone}
+                onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
+                editable={!isLoading}
+                keyboardType="number-pad"
+                maxLength={10}
+                autoFocus
+              />
+            </StepShell>
+          )}
+
+          {step === 5 && (
+            <StepShell title="Add a photo">
+              <Pressable
+                onPress={handlePickImage}
+                disabled={isLoading}
+                accessibilityRole="button"
+                accessibilityLabel="Add a photo">
+                <View style={styles.photoPicker}>
+                  {photoUri ? (
+                    <Image
+                      source={{ uri: photoUri }}
+                      style={styles.photoPreview}
+                      accessibilityIgnoresInvertColors
+                    />
+                  ) : (
+                    <Text style={FlowText.panelLabel}>Upload</Text>
+                  )}
                 </View>
               </Pressable>
-            )}
-            {showDatePicker && (
-              <DateTimePicker
-                value={dateOfBirth ?? defaultDob()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={maxDobDate}
-                onValueChange={handleDateValueChange}
-                onDismiss={handleDateDismiss}
-                themeVariant="dark"
-              />
-            )}
-          </StepShell>
-        )}
+              <Text style={[FlowText.fine, styles.privacyLine]}>
+                This photo is seen only by our team, to help us craft the right group for you —
+                never by other members.
+              </Text>
+            </StepShell>
+          )}
 
-        {step === 2 && (
-          <StepShell title="Which year are you in?">
-            <View style={{ gap: 12 }}>
-              {YEARS.map((year) => (
-                <OptionPill
-                  key={year.value}
-                  label={year.label}
-                  selected={yearOfStudy === year.value}
-                  dimmed={yearOfStudy !== null && yearOfStudy !== year.value}
-                  onPress={() => setYearOfStudy(year.value)}
-                />
-              ))}
-            </View>
-          </StepShell>
-        )}
-
-        {step === 3 && (
-          <StepShell title="How do you define yourself?">
-            <View style={{ gap: 12 }}>
-              {GENDERS.map((g) => (
-                <OptionPill
-                  key={g}
-                  label={g}
-                  selected={gender === g}
-                  dimmed={gender !== '' && gender !== g}
-                  onPress={() => setGender(g)}
-                />
-              ))}
-            </View>
-          </StepShell>
-        )}
-
-        {step === 4 && (
-          <StepShell title="What's your WhatsApp number?" subtitle="We'll use this to reach you about event details.">
-            <TextInput
-              placeholder="9XXXXXXXXX"
-              placeholderTextColor={Palette.placeholder}
-              value={phone}
-              onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
-              editable={!isLoading}
-              keyboardType="number-pad"
-              maxLength={10}
-              autoFocus
-              style={styles.textInput}
-            />
-          </StepShell>
-        )}
-
-        {step === 5 && (
-          <StepShell title="Add a photo">
-            <Pressable onPress={handlePickImage} disabled={isLoading}>
-              <View style={styles.photoPicker}>
-                {photoUri ? (
-                  <Image source={{ uri: photoUri }} style={styles.photoPreview} />
-                ) : (
-                  <Text style={styles.photoPickerText}>{'Upload'}</Text>
-                )}
-              </View>
-            </Pressable>
-            <Text style={styles.privacyLine}>
-              This photo is seen only by our team, to help us craft the right group for you —
-              never by other members.
+          {error ? (
+            <Text style={[FlowText.error, styles.error]} accessibilityLiveRegion="polite">
+              {error}
             </Text>
-          </StepShell>
-        )}
+          ) : null}
+        </View>
 
-        {error ? (
-          <Text style={styles.error} accessibilityLiveRegion="polite">
-            {error}
-          </Text>
-        ) : null}
-      </View>
-
-      <View style={styles.footer}>
-        <AuthButton
-          label={isLoading ? 'Continue' : step === STEP_COUNT - 1 ? 'Continue  →' : 'Continue  →'}
-          onPress={handleNext}
-          loading={isLoading}
-          disabled={!canAdvance}
-        />
+        <View style={styles.footer}>
+          <FlowPillButton
+            label="Continue  →"
+            width={contentWidth}
+            onPress={handleNext}
+            loading={isLoading}
+            disabled={!canAdvance}
+          />
+        </View>
       </View>
     </View>
   );
@@ -423,10 +440,10 @@ function StepShell({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ gap: 24 }}>
-      <View style={{ gap: 6 }}>
-        <Text style={styles.title}>{title}</Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+    <View style={{ gap: 28 }}>
+      <View style={{ gap: 12 }}>
+        <Text style={FlowText.title}>{title}</Text>
+        {subtitle ? <Text style={FlowText.subtitle}>{subtitle}</Text> : null}
       </View>
       {children}
     </View>
@@ -436,21 +453,15 @@ function StepShell({
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
+    alignItems: 'center',
     paddingTop: 56,
-    paddingHorizontal: 20,
     paddingBottom: 28,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 36,
-  },
-  back: {
-    color: Palette.text,
-    fontSize: 22,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    marginBottom: 40,
   },
   body: {
     flex: 1,
@@ -458,57 +469,16 @@ const styles = StyleSheet.create({
   footer: {
     paddingTop: 12,
   },
-  title: {
-    color: Palette.text,
-    fontSize: 26,
-    lineHeight: 33,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: FontFamily.body.regular,
-  },
-  referralLabel: {
-    color: Palette.muted,
-    fontSize: 13,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-  },
-  textInput: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 28,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    fontSize: 16,
-    fontWeight: '500',
-    fontFamily: FontFamily.body.medium,
-    color: Palette.text,
-    backgroundColor: Palette.canvas,
-  },
-  dateField: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 28,
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-  },
-  dateFieldText: {
-    color: Palette.text,
-    fontSize: 16,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-  },
+  // A circle can't come from the row art (stretching a 902x154 box to a
+  // square distorts its corners), so this is one of the few coded surfaces —
+  // matched to the art's fill and stroke by value. See FlowSurface.
   photoPicker: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
@@ -518,27 +488,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  photoPickerText: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-  },
   privacyLine: {
-    color: Palette.muted,
-    fontSize: 12,
-    lineHeight: 18,
-    fontFamily: FontFamily.body.regular,
     textAlign: 'center',
-    marginTop: 16,
     paddingHorizontal: 8,
   },
   error: {
-    color: Palette.error,
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
-    marginTop: 16,
+    marginTop: 20,
   },
 });

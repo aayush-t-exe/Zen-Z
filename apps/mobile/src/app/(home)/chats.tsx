@@ -1,41 +1,76 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import {
+  FLOW_CONTENT_MAX,
+  FLOW_SIDE_PADDING,
+  FlowText,
+} from '@/constants/flow-theme';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
+import { FlowSurfaceBox } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { SummaryBadge } from '@/components/summary-card';
 import { fetchMyGroups, MyGroupDetails } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
 
+/** icon-chevron-right.png is 27x47. */
+const CHEVRON_ASPECT = 47 / 27;
+
 export default function ChatsScreen() {
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
+  // Same content column the rest of the redesign runs.
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
   const [groups, setGroups] = useState<MyGroupDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    const result = await fetchMyGroups();
+
+    if (result.error) {
+      setLoadError(result.error);
+      setIsLoading(false);
+      return;
+    }
+
+    setGroups(result.data);
+    setIsLoading(false);
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
-      let cancelled = false;
-
-      const load = async () => {
-        const data = await fetchMyGroups();
-        if (!cancelled) {
-          setGroups(data);
-          setIsLoading(false);
-        }
-      };
-
       load();
-
-      return () => {
-        cancelled = true;
-      };
-    }, [])
+    }, [load])
   );
 
   if (isLoading) {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color={Palette.text} />
+        <ActivityIndicator size="large" color={LOADER} />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
+        <Text style={[FlowText.titleCentred, { fontSize: 22 }]}>Couldn&apos;t load this.</Text>
+        <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
+          {loadError}
+        </Text>
+        <FlowPillButton label="Retry" width={contentWidth} onPress={load} />
       </View>
     );
   }
@@ -45,14 +80,27 @@ export default function ChatsScreen() {
       <ScrollView
         contentContainerStyle={[styles.scroll, groups.length === 0 && styles.scrollEmpty]}
         showsVerticalScrollIndicator={false}>
-        <Text style={styles.pageTitle}>Group Chats</Text>
+        {/* The scroll centres this column, so the heading and cards range
+            left against the same margin the rest of the redesign uses
+            instead of each centring on its own width. */}
+        <View style={[{ width: contentWidth }, groups.length === 0 && { flex: 1 }]}>
+        {/* "Messages", not "Group Chats": that is the label on the tab that
+            got you here (see (home)/_layout.tsx and the 2026-09-02 copy change
+            in docs/PRODUCT_SPEC.md §1.5), and the heading was still the old
+            wording. The route, store and notification routing all still key
+            off `chats`. */}
+        <Text style={styles.pageTitle}>Messages</Text>
 
         {groups.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, styles.emptyTextCentered]}>
               Once your group is matched, you&apos;ll chat here.
             </Text>
-            <AuthButton label="Back to home  →" onPress={() => router.push('/(home)')} />
+            <FlowPillButton
+              label="Back to home  →"
+              width={contentWidth}
+              onPress={() => router.push('/(home)')}
+            />
           </View>
         ) : (
           <View style={{ gap: 14 }}>
@@ -65,39 +113,64 @@ export default function ChatsScreen() {
                     params: { groupId: group.group_id },
                   })
                 }
-                style={styles.card}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.cardTitle}>
-                      {group.activity_emoji} {group.activity_name}
-                    </Text>
-                    <Text style={styles.cardSubtitle}>
-                      {group.is_revealed
-                        ? group.venue_name ?? formatSlotDateTime(group.slot_datetime, group.activity_name)
-                        : `Unlocks ${formatSlotDateTime(group.reveal_venue_at)}`}
-                    </Text>
+                <FlowSurfaceBox width={contentWidth}>
+                  <View style={styles.cardBody}>
+                    {/* The activity's own render on the summary card's badge,
+                        where the row used to prefix its title with
+                        activity_emoji and close with a 💬/🔒 pair — the
+                        redesign draws its marks rather than setting emoji. The
+                        locked state stays in the subtitle, which says outright
+                        when the chat unlocks; the row opens either way, so the
+                        chevron does not promise something the lock denied. */}
+                    <SummaryBadge
+                      cardWidth={contentWidth}
+                      icon={{ source: activityArt(group.activity_name), scale: ACTIVITY_ART_BADGE_SCALE }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {group.activity_name}
+                      </Text>
+                      <Text style={styles.cardSubtitle} numberOfLines={1}>
+                        {group.is_revealed
+                          ? group.venue_name ?? formatSlotDateTime(group.slot_datetime, group.activity_name)
+                          : `Unlocks ${formatSlotDateTime(group.reveal_venue_at)}`}
+                      </Text>
+                    </View>
+                    <Image
+                      source={require('@/assets/images/icon-chevron-right.png')}
+                      style={styles.chevron}
+                      resizeMode="contain"
+                      accessibilityIgnoresInvertColors
+                    />
                   </View>
-                  <Text style={{ fontSize: 18 }}>{group.is_revealed ? '💬' : '🔒'}</Text>
-                </View>
+                </FlowSurfaceBox>
               </Pressable>
             ))}
           </View>
         )}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
+/** Matches the primary pill's near-white, same as the progress bar's fill. */
+const LOADER = '#FFFDF8';
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
-    paddingBottom: 40,
+    alignItems: 'center',
+    paddingTop: 56,
+    // The floating pill tab bar (home/_layout.tsx) is position: 'absolute',
+    // so this screen has to reserve the space itself (bar height 66 + its own
+    // 33 bottom offset, plus breathing room) or the last card sits under it.
+    // Same allowance the Home screen makes.
+    paddingBottom: 116,
   },
   scrollEmpty: {
     flexGrow: 1,
@@ -112,34 +185,34 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pageTitle: {
-    color: Palette.text,
-    fontSize: 22,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    marginBottom: 20,
+    ...FlowText.title,
+    marginBottom: 24,
   },
   emptyText: {
-    color: Palette.muted,
+    ...FlowText.subtitle,
     fontSize: 15,
     lineHeight: 21,
-    fontFamily: FontFamily.body.regular,
   },
-  card: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 20,
-    padding: 18,
+  cardBody: {
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    // Badge to label at roughly the gap the summary card sets between the two.
+    gap: 13,
+  },
+  chevron: {
+    width: 9,
+    height: 9 * CHEVRON_ASPECT,
   },
   cardTitle: {
-    color: Palette.text,
+    ...FlowText.panelLabel,
     fontSize: 16,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
   },
   cardSubtitle: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.subtitle,
+    fontSize: 13,
     marginTop: 4,
   },
 });

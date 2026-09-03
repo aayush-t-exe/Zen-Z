@@ -103,17 +103,18 @@ Group Chat → Event Day → Feedback
 │   Ready for something?         │
 │   ┌──────────┐┌──────────┐   │
 │   │☕ Cafés   ││🍽 Dinners│   │
-│   │  Unlock a ││ Unlock a │   │
-│   │  table    ││ table    │   │
+│   │Unlock Your││Unlock Your│  │
+│   │  Table    ││  Table    │  │
 │   └──────────┘└──────────┘   │
 │   ┌──────────┐                │
 │   │🎬 Movies  │                │
-│   │  Unlock a  │                │
-│   │  seat      │                │
+│   │Unlock Your │                │
+│   │  Seat      │                │
 │   └──────────┘                │
 └─────────────────────────────┘
 ```
 - All three tappable and fully live from day one, per the new constraint — no locked/greyed states anywhere in this screen.
+- **[COPY CHANGE 2026-09-02]** Card taglines were "Unlock a table / a seat / a game"; the approved home redesign comp sets them as **"Unlock Your Table / Your Seat / Your Game"** and the founder confirmed the comp wins. The Chats tab is also labelled **"Messages"** in the UI from that comp — the route, store and notification routing all still key off `chats`, only the visible label changed.
 
 ### 1.5a Sports (added post-launch, founder request 2026-08-19)
 A fourth home-screen card, 🏆 Sports, sits alongside Cafés/Dinners/Movies. Unlike
@@ -139,6 +140,15 @@ step (1.6, Step 3) is skipped for Sports games — asking "what's your range?"
 doesn't make sense when there's only one price. The Day & Time and Group
 Preference steps are unchanged.
 
+- **[UI CHANGE 2026-09-03]** The games sub-menu is now drawn on the *same*
+  card as the Home grid (`components/activity-card.tsx`, from the UI PAGE 1
+  comp) rather than the cream frame it shipped with — it asks the same "pick
+  one of these" question one level down, and the founder's new 3D game renders
+  are made for that card's dark badge. Each card's second line carries the
+  game's price and length ("₹221 · 2 hrs"), which the assumption above says is
+  "shown up front" but which the screen never actually showed: it displayed
+  the game's name alone.
+
 Sports originally launched as a one-off trial for a single upcoming
 Saturday 6:00 PM slot per game, with no automatic re-seeding (0032). Per
 founder decision (2026-08-25), Sports now rolls over the same way
@@ -163,12 +173,12 @@ Step 2 — Day & Time:
 Step 3 — Budget:
 ┌─────────────────────────────┐
 │   What's your range?           │
-│   ○ Under ₹300  ○ ₹300–600    │
-│   ○ ₹600+                      │
+│   ○ Under ₹200  ○ ₹200 - ₹400 │
+│   ○ ₹400 +                     │
 └─────────────────────────────┘
 Step 4 — Group Preference:
 ┌─────────────────────────────┐
-│   Who's in the room?           │
+│   Who's in your room?          │
 │   ○ Surprise me (mixed)        │
 │   ○ Women only                 │
 └─────────────────────────────┘
@@ -181,7 +191,9 @@ Step 5 — Confirm:
 └─────────────────────────────┘
 ```
 - **[NEW DETAIL]** No area/venue/location field anywhere in the flow, per constraint — venue is decided entirely by the founder post-booking (Module 2) and revealed only at Match Reveal.
+- **[COPY CHANGE 2026-09-02]** Step 4's heading was "Who's in the room?"; the approved comp (UI PAGE 4) sets it as **"Who's in your room?"** and the comp wins. Step 3's bands are also written the comp's way — **"Under ₹200 / ₹200 - ₹400 / ₹400 +"**, repeating the rupee sign and spacing the plus. The Step 3 block above previously showed ₹300/₹600 tiers, which had never matched the shipped `budget_band` values (`under_200` / `200_400` / `400_plus`); those stored values are unchanged. Both comps carry a typo the UI does not: "bugets" (Step 3's subtitle) and "Suprise" (Step 4's first option) stay spelled in the app.
 - **[NEW DETAIL]** A student with an active no-show block (see §1.10 No-Show Policy) cannot start this flow at all — they see a paused-invitations message in place of Step 1 instead.
+- **[UI CHANGE 2026-09-03]** The payment screen that follows Step 5 is now on the redesign too, and shows the booking on the *same* four-row card the Confirm step draws (the UI PAGE 5 comp) instead of its own bordered receipt: activity, slot, group (with the +1's name under it), then the amount, with a referral credit explaining itself as that row's second line. It also shows the slot time, which it previously never fetched. Nothing on it is editable, so no row draws a chevron. Both this screen and the Confirm step's activity row now carry the founder's 3D activity render (`constants/activity-art.ts`) rather than the cream line illustrations the pre-redesign screens used — those are deleted, and Sports games have their own renders now, so no screen falls back to a generic mark.
 - **Booking cutoff (founder decision, 2026-08-25; revised twice same day):** a slot stops being bookable at midnight IST, 2 days before its date — the same calendar rule for every activity ("book by end of day, 2 days ahead"), chosen over a flat hour count so it's something a student can actually reason about. (0039 originally set this to a flat 24h before `slot_datetime`, which left a window where a student could book *after* that slot's reveal moment — `reveal_venue_at` (§1.8) — had already passed, making the group's venue/chat unlock all at once instead of via the intended slow reveal; 0043 tightened that to a flat 48h, matching `reveal_venue_at` exactly but landing at a different odd clock time per activity; 0044 replaced the flat-hour rule with this calendar rule, which still always lands safely before `reveal_venue_at` for every activity — by 17-20 hours' margin, since every activity's slot time is a PM hour and this cutoff is always midnight the same day.) Enforced on the `bookings` insert RLS policy (the only server-side checkpoint, since bookings are inserted directly from the mobile client) and mirrored client-side so a slot inside the window is never offered in Step 2 in the first place. See `supabase/migrations/0044_midnight_ist_booking_cutoff.sql`.
 - **Slot rollover:** Cafés/Dinners/Movies/Sports each keep exactly one upcoming slot (§1.5a). An hourly pg_cron job (`slot-rollover`, same pattern as the Module notifications cron) inserts the next weekly occurrence once the current one has no future slot left — this used to require a hand-written migration (0011, 0014) every time, and originally excluded Sports (0032) until the founder reversed that call (0041) so all four activities roll over the same way.
 
@@ -326,7 +338,7 @@ can never fully waive an expensive activity's real venue/equipment cost.
 │  Dinners · Wed 7 PM   (9 unmatched)          │
 │  ┌──────────────────────────────────────┐  │
 │  │ [📷] Ravi  ·  M  ·  2nd yr             │  │
-│  │  Budget: ₹300-600  ·  Mixed OK         │  │
+│  │  Budget: ₹200 - ₹400  ·  Mixed OK      │  │
 │  │  Vector: [Adventurous 0.8][Talker 0.7] │  │
 │  │          [Novelty-seeking 0.9]          │  │
 │  │  [ View Full Profile ]                  │  │

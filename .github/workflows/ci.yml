@@ -94,6 +94,26 @@ jobs:
       - run: npm ci
       - run: npm run test --workspace=apps/admin
 
+  # Lint + typecheck alone already missed a real production-only failure
+  # once (the React 19 hoisting incident, see docs/ARCHITECTURE.md) — a
+  # change can pass both and still fail to build. These are the dev
+  # project's publishable anon key/URL (safe to commit, matches the same
+  # values already hardcoded in apps/mobile/eas.json's preview profile) —
+  # this job only proves the build compiles, it deploys nothing.
+  build-admin:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://vsdztarpdmeaxfrtxtcz.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_h3JitSz-Jg36NvUzquQz4A_evcoAkIW
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=apps/admin
+
   test-mobile:
     runs-on: ubuntu-latest
     steps:

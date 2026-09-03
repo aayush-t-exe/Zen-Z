@@ -18,10 +18,17 @@
       },
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://vsdztarpdmeaxfrtxtcz.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_h3JitSz-Jg36NvUzquQz4A_evcoAkIW"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_h3JitSz-Jg36NvUzquQz4A_evcoAkIW",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6504a655c6f742dbcc4317d08374c5e6@o4512023597285376.ingest.us.sentry.io/4512023606788096"
       }
     },
-    "production": {}
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://hzydzyeyvfuokveujbki.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_in9PqwUIAa1OOmLErfFO2w_2fve-R4x",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://6504a655c6f742dbcc4317d08374c5e6@o4512023597285376.ingest.us.sentry.io/4512023606788096"
+      }
+    }
   },
   "submit": {
     "production": {}

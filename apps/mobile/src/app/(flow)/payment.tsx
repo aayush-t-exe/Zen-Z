@@ -1,12 +1,29 @@
 import { useState, useCallback, useRef } from 'react';
-import { View, Text, ScrollView, Pressable, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Image,
+  ActivityIndicator,
+  StyleSheet,
+  Alert,
+  useWindowDimensions,
+} from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
+import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
+import { FlowSurfaceBox } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { FlowBackButton } from '@/components/flow-back-button';
+import { SUMMARY_ICONS, SummaryCard } from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
+import { formatSlotDateTime } from '@/lib/format';
 
 interface BookingDetails {
   id: string;
@@ -28,26 +45,36 @@ const PAYMENT_POLL_DELAY_MS = 1500;
 // max) — "group of 4–4" reads as a typo, so collapse it to a single number.
 const formatGroupSize = (min: number, max: number) => (min === max ? `${min}` : `${min}–${max}`);
 
-const ACTIVITY_ICONS: Record<string, any> = {
-  Cafés: require('@/assets/images/icon-cafes.png'),
-  Dinners: require('@/assets/images/icon-dinners.png'),
-  Movies: require('@/assets/images/icon-movies.png'),
-  Sports: require('@/assets/images/icon-sports.png'),
-  // A Sports booking carries the specific game's name (not "Sports") —
-  // same gap that left the booking-flow summary icon blank for these.
-  'Box Cricket': require('@/assets/images/icon-cricket.png'),
-  Football: require('@/assets/images/icon-football.png'),
-  '8-Ball Pool': require('@/assets/images/icon-pool.png'),
-  Pickleball: require('@/assets/images/icon-pickleball.png'),
-};
+/** The comp's own tick (UI PAGE 5), standing in for a list bullet. */
+const TICK = require('@/assets/images/icon-tick.png');
+/** icon-tick.png is 42x31. */
+const TICK_ASPECT = 31 / 42;
+
+function IncludedLine({ label }: { label: string }) {
+  return (
+    <View style={styles.includedRow}>
+      <Image
+        source={TICK}
+        style={styles.includedTick}
+        resizeMode="contain"
+        accessibilityIgnoresInvertColors
+      />
+      <Text style={styles.includedLabel}>{label}</Text>
+    </View>
+  );
+}
 
 export default function PaymentScreen() {
   const router = useRouter();
   const { slotId } = useLocalSearchParams<{ slotId: string }>();
+  const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState('');
   const [isTestMode, setIsTestMode] = useState(false);
 
@@ -105,6 +132,7 @@ export default function PaymentScreen() {
           plus_one_name,
           slots:slot_id (
             activity_type_id,
+            slot_datetime,
             activity_types:activity_type_id (
               name,
               emoji,
@@ -272,6 +300,48 @@ export default function PaymentScreen() {
     setIsProcessing(false);
   };
 
+  // Loading this screen (via booking-flow.tsx's "resume an existing unpaid
+  // booking" redirect, see its loadActivityAndSlots) is a dead end otherwise
+  // — the only way back to slot selection was rediscovering Bookings and
+  // cancelling from there. cancel_unpaid_booking (0029, extended by 0075 to
+  // also restore a consumed referral credit) is the same RPC bookings.tsx
+  // already uses, so this stays consistent with that cancel path rather than
+  // inventing a second one.
+  const handleCancelAndChooseAgain = () => {
+    if (!booking) return;
+    const activityTypeId = booking.slots?.activity_type_id;
+
+    Alert.alert(
+      'Choose a different slot?',
+      "This cancels your unpaid booking for this slot so you can pick another. This can't be undone.",
+      [
+        { text: 'Keep it', style: 'cancel' },
+        {
+          text: 'Cancel & choose again',
+          style: 'destructive',
+          onPress: async () => {
+            setIsCancelling(true);
+            const { error: cancelError } = await supabase.rpc('cancel_unpaid_booking', {
+              p_booking_id: booking.id,
+            });
+            setIsCancelling(false);
+
+            if (cancelError) {
+              Alert.alert('Could not cancel', cancelError.message);
+              return;
+            }
+
+            router.replace(
+              activityTypeId
+                ? ({ pathname: '/booking-flow', params: { activityId: String(activityTypeId) } } as any)
+                : ('/(home)' as any)
+            );
+          },
+        },
+      ]
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={[styles.root, styles.centered]}>
@@ -283,10 +353,15 @@ export default function PaymentScreen() {
   if (!booking) {
     return (
       <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
-        <View style={{ gap: 14 }}>
-          <Text style={styles.title}>Booking Not Found</Text>
-          <Text style={styles.subtitle}>{error || 'Could not load your booking.'}</Text>
-          <AuthButton label="Go Back" onPress={() => router.push('/(home)')} />
+        <View style={{ width: contentWidth, gap: 14 }}>
+          <Text style={FlowText.titleCentred}>Booking not found</Text>
+          <Text style={styles.centredSubtitle}>{error || 'Could not load your booking.'}</Text>
+          <FlowPillButton
+            label="Go Back"
+            width={contentWidth}
+            onPress={() => router.push('/(home)')}
+            style={{ marginTop: 8 }}
+          />
         </View>
       </View>
     );
@@ -307,19 +382,31 @@ export default function PaymentScreen() {
   if (booking.payment_status === 'paid') {
     return (
       <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
-        <View style={{ alignItems: 'center', gap: 14 }}>
-          <Text style={{ fontSize: 44 }}>🔒</Text>
-          <Text style={[styles.title, { textAlign: 'center' }]}>
+        <View style={{ width: contentWidth, alignItems: 'center', gap: 14 }}>
+          {/* The comp's tick rather than a lock emoji: this screen is now on
+              the redesign, which draws its marks and never sets emoji. */}
+          <Image
+            source={TICK}
+            style={styles.sealedTick}
+            resizeMode="contain"
+            accessibilityIgnoresInvertColors
+          />
+          <Text style={FlowText.titleCentred}>
             {fullyCoveredByCredit ? 'Your invitation is sealed — on the house' : 'Your invitation is sealed'}
           </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+          <Text style={styles.centredSubtitle}>
             {fullyCoveredByCredit
               ? "A friend's invite made this one free. We'll let you know once your table is set."
               : discount > 0
                 ? `A friend's invite covered ₹${discount} of this one. We'll let you know once your table is set.`
                 : "We'll let you know once your table is set."}
           </Text>
-          <AuthButton label="Continue  →" onPress={() => router.push('/(home)')} style={{ marginTop: 8 }} />
+          <FlowPillButton
+            label="Continue  →"
+            width={contentWidth}
+            onPress={() => router.push('/(home)')}
+            style={{ marginTop: 8 }}
+          />
         </View>
       </View>
     );
@@ -328,83 +415,122 @@ export default function PaymentScreen() {
   return (
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={{ gap: 6, marginBottom: 20 }}>
-          <Text style={styles.title}>Unlock Your Adventure</Text>
-          <Text style={styles.subtitle}>Complete your payment to confirm your spot</Text>
+        <View style={{ width: contentWidth }}>
+          <Text style={FlowText.titleCentred}>Unlock your adventure</Text>
+          <Text style={styles.stepSubtitleCentred}>Complete your payment to confirm your spot</Text>
+
+          {/* The booking, on the same card the flow's own summary step uses
+              (UI PAGE 5) — this screen is the last thing a student sees before
+              paying, so it should read as that step confirmed, not as a
+              differently-drawn receipt. Nothing here is editable any more, so
+              no row takes an onPress and none draws a chevron. */}
+          <SummaryCard
+            width={contentWidth}
+            style={{ marginTop: 44 }}
+            rows={[
+              {
+                icon:
+                  activity?.name === 'Dinners'
+                    ? SUMMARY_ICONS.dinners
+                    : { source: activityArt(activity?.name), scale: ACTIVITY_ART_BADGE_SCALE },
+                label: activity?.name ?? '',
+              },
+              {
+                icon: SUMMARY_ICONS.slot,
+                label: booking.slots?.slot_datetime
+                  ? formatSlotDateTime(booking.slots.slot_datetime, activity?.name)
+                  : '',
+              },
+              {
+                icon: SUMMARY_ICONS.group,
+                label: `Group of ${formatGroupSize(activity?.min_group_size ?? 4, activity?.max_group_size ?? 5)}`,
+                detail: booking.plus_one ? `Bringing ${booking.plus_one_name}` : undefined,
+              },
+              {
+                icon: SUMMARY_ICONS.money,
+                label: `₹${fee}`,
+                // A referral credit is the one thing that makes the figure
+                // above differ from the sticker price, so it explains itself
+                // on the row rather than in a line of its own.
+                detail: discount > 0 ? `₹${stickerFee} − ₹${discount} referral credit` : undefined,
+              },
+            ]}
+          />
+
+          <View style={{ marginTop: 30, gap: 9 }}>
+            <IncludedLine label="Matched with a compatible group" />
+            <IncludedLine label="Venue revealed before the event" />
+            {booking.plus_one && <IncludedLine label={`A seat for your +1, ${booking.plus_one_name}`} />}
+          </View>
+
+          {hasAttemptedPayment && booking.payment_status !== 'paid' && (
+            <FlowSurfaceBox width={contentWidth} style={{ marginTop: 26 }}>
+              <View style={styles.notice}>
+                <Text style={styles.noticeTitle}>We haven&apos;t received your payment yet</Text>
+                <Text style={styles.noticeBody}>
+                  If you completed payment, give it a moment and check again.
+                </Text>
+              </View>
+            </FlowSurfaceBox>
+          )}
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
+          {isTestMode && (
+            <FlowSurfaceBox width={contentWidth} style={{ marginTop: 26 }}>
+              <View style={styles.notice}>
+                <Text style={styles.noticeBody}>
+                  Test mode: this is a simulated payment, no real money moves.
+                </Text>
+              </View>
+            </FlowSurfaceBox>
+          )}
         </View>
-
-        {/* Order Summary */}
-        <View style={styles.card}>
-          <View style={{ alignItems: 'center', gap: 10 }}>
-            <Image
-              source={ACTIVITY_ICONS[activity?.name]}
-              style={{ width: 40, height: 40 }}
-              resizeMode="contain"
-            />
-            <Text style={styles.activityName}>{activity?.name}</Text>
-          </View>
-
-          <View style={[styles.cardSection, { alignItems: 'center' }]}>
-            <Text style={styles.cardLabel}>Convenience fee</Text>
-            <Text style={styles.feeValue}>₹{fee}</Text>
-            {discount > 0 && (
-              <Text style={styles.discountLine}>
-                ₹{stickerFee} − ₹{discount} referral credit
-              </Text>
-            )}
-          </View>
-
-          <View style={styles.cardSection}>
-            <Text style={styles.includesTitle}>Your unlock includes:</Text>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.includesItem}>
-                ✓ Spot reserved in group of {formatGroupSize(activity?.min_group_size ?? 4, activity?.max_group_size ?? 5)}
-              </Text>
-              <Text style={styles.includesItem}>✓ Matched with compatible group</Text>
-              <Text style={styles.includesItem}>✓ Venue revealed before event</Text>
-              {booking.plus_one && (
-                <Text style={styles.includesItem}>✓ Bringing a +1: {booking.plus_one_name}</Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {hasAttemptedPayment && booking.payment_status !== 'paid' && (
-          <View style={[styles.noticeBox, { marginTop: 20 }]}>
-            <Text style={styles.noticeTitle}>We haven&apos;t received your payment yet</Text>
-            <Text style={styles.noticeBody}>
-              If you completed payment, give it a moment and check again.
-            </Text>
-          </View>
-        )}
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        {isTestMode && (
-          <View style={[styles.noticeBox, { marginTop: 20 }]}>
-            <Text style={styles.noticeBody}>
-              Test mode: this is a simulated payment, no real money moves.
-            </Text>
-          </View>
-        )}
       </ScrollView>
 
-      {/* Payment Button */}
-      <View style={{ paddingHorizontal: 24, paddingBottom: 32, gap: 14 }}>
+      {/* Footer holds the same shape as every other flow screen: the quiet way
+          out above the primary action, held clear of the device's safe area. */}
+      <View
+        style={{
+          width: contentWidth,
+          alignSelf: 'center',
+          paddingBottom: 40 + insets.bottom,
+          paddingTop: 12,
+        }}>
+        <FlowBackButton label="Maybe later" onPress={() => router.push('/(home)')} />
+
+        <View style={{ marginTop: 18 }}>
+          <FlowPillButton
+            label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
+            onPress={handlePay}
+            loading={isProcessing}
+            disabled={isCancelling}
+            width={contentWidth}
+          />
+        </View>
+
         {hasAttemptedPayment && booking.payment_status !== 'paid' && (
-          <Pressable onPress={handleCheckAgain} disabled={isProcessing} style={styles.secondaryButton}>
-            <Text style={styles.secondaryLabel}>Check Again</Text>
+          <Pressable
+            onPress={handleCheckAgain}
+            disabled={isProcessing || isCancelling}
+            hitSlop={8}
+            accessibilityRole="button"
+            style={{ marginTop: 18 }}>
+            <Text style={FlowText.link}>Check again</Text>
           </Pressable>
         )}
 
-        <AuthButton
-          label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
-          onPress={handlePay}
-          loading={isProcessing}
-        />
-
-        <Pressable onPress={() => router.push('/(home)')} disabled={isProcessing} style={styles.secondaryButton}>
-          <Text style={styles.secondaryLabel}>Maybe Later</Text>
+        <Pressable
+          onPress={handleCancelAndChooseAgain}
+          disabled={isProcessing || isCancelling}
+          hitSlop={8}
+          accessibilityRole="button"
+          style={{ marginTop: 16 }}>
+          {isCancelling ? (
+            <ActivityIndicator size="small" color={Palette.error} />
+          ) : (
+            <Text style={styles.cancelLink}>Choose a different slot</Text>
+          )}
         </Pressable>
       </View>
     </View>
@@ -421,106 +547,63 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    alignItems: 'center',
+    // Same header drop as the booking flow's own steps, so moving from the
+    // summary step to this screen doesn't shift the heading.
+    paddingTop: 88,
+    paddingHorizontal: 16,
     paddingBottom: 24,
   },
-  title: {
-    color: Palette.text,
-    fontSize: 24,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    color: Palette.muted,
-    fontSize: 15,
-    lineHeight: 21,
-    fontFamily: FontFamily.body.regular,
-  },
-  card: {
-    borderWidth: 2.5,
-    borderColor: Palette.ring,
-    borderRadius: 20,
-    padding: 20,
-    gap: 18,
-  },
-  cardSection: {
-    borderTopWidth: 1,
-    borderTopColor: Palette.ring,
-    paddingTop: 16,
-    gap: 6,
-  },
-  activityName: {
-    color: Palette.text,
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
-  },
-  cardLabel: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontFamily: FontFamily.body.regular,
-  },
-  feeValue: {
-    color: Palette.text,
-    fontSize: 30,
-    fontWeight: '800',
-    fontFamily: FontFamily.body.bold,
-  },
-  discountLine: {
-    color: Palette.muted,
-    fontSize: 12,
-    fontFamily: FontFamily.body.regular,
+  stepSubtitleCentred: {
+    ...FlowText.subtitleItalic,
     marginTop: 2,
+    textAlign: 'center',
   },
-  includesTitle: {
-    color: Palette.text,
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
+  centredSubtitle: {
+    ...FlowText.subtitle,
+    textAlign: 'center',
   },
-  includesItem: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.regular,
+  sealedTick: {
+    width: 34,
+    height: 34 * TICK_ASPECT,
+    marginBottom: 6,
   },
-  noticeBox: {
-    borderWidth: 2,
-    borderColor: Palette.ring,
-    borderRadius: 14,
-    padding: 14,
+  includedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingLeft: 4,
+  },
+  includedTick: {
+    width: 13,
+    height: 13 * TICK_ASPECT,
+  },
+  includedLabel: {
+    ...FlowText.fine,
+    flex: 1,
+  },
+  notice: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+    paddingVertical: 14,
     gap: 4,
   },
   noticeTitle: {
-    color: Palette.text,
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
+    ...FlowText.rowLabel,
   },
   noticeBody: {
-    color: Palette.muted,
-    fontSize: 13,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.fine,
   },
   error: {
+    ...FlowText.error,
+    marginTop: 20,
+    paddingHorizontal: 8,
+  },
+  cancelLink: {
     color: Palette.error,
     fontSize: 14,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    marginTop: 20,
-  },
-  secondaryButton: {
-    borderWidth: 2,
-    borderColor: Palette.ring,
-    borderRadius: 27,
-    paddingVertical: 14,
-  },
-  secondaryLabel: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
     textAlign: 'center',
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });

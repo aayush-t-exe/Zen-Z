@@ -11,10 +11,17 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
-import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { FlowText, flowTracking } from '@/constants/flow-theme';
+import { FlowPillButton } from '@/components/flow-pill-button';
 
-const MARK_RATIO = 211 / 301;
+/**
+ * onboarding-mark.png is 376x420. The new brand mark stands upright where the
+ * one it replaced lay on its side, so this is portrait now — which is why the
+ * width below shrank: it keeps the mark's drawn height roughly where it was,
+ * rather than letting a 110dp-wide portrait mark grow 46dp taller and eat into
+ * the slide art box.
+ */
+const MARK_RATIO = 420 / 376;
 
 /** How long each slide holds before the carousel moves itself along. */
 const AUTO_ADVANCE_MS = 4500;
@@ -71,7 +78,7 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  const markWidth = Math.min(110, screenWidth * 0.29);
+  const markWidth = Math.min(75, screenWidth * 0.2);
   // Every slide gets the same art box: full-bleed but for a small margin, and
   // tall enough for the tallest drawing. Each image then fits inside it, so the
   // copy underneath sits at the same height on every page instead of hopping
@@ -180,10 +187,10 @@ export default function OnboardingScreen() {
 
       {currentIndex === 0 ? (
         <View style={styles.footerSplash}>
-          <AuthButton label="Begin  →" onPress={handleNext} />
+          <FlowPillButton label="Begin  →" onPress={handleNext} />
           <Pressable onPress={handleContinue} hitSlop={12}>
             {({ pressed }) => (
-              <Text style={[styles.quietLink, pressed && styles.pressedText]}>
+              <Text style={[FlowText.link, pressed && styles.pressedText]}>
                 Already in? Continue
               </Text>
             )}
@@ -192,7 +199,7 @@ export default function OnboardingScreen() {
       ) : (
         <View style={styles.footerIntro}>
           <PageDots count={SLIDES.length - 1} active={currentIndex - 1} />
-          <AuthButton label={isLast ? 'Begin  →' : 'Next  →'} onPress={handleNext} />
+          <FlowPillButton label={isLast ? 'Begin  →' : 'Next  →'} onPress={handleNext} />
         </View>
       )}
     </View>
@@ -226,41 +233,36 @@ function PageDots({ count, active }: { count: number; active: number }) {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   page: {
     flex: 1,
     alignItems: 'center',
     paddingTop: 56,
   },
+  // The splash slide's poetic line is the one heading here that isn't a
+  // hard statement, so it takes the lighter centred weight the option steps
+  // use rather than the display cut.
   tagline: {
-    color: Palette.text,
+    ...FlowText.titleCentred,
     fontSize: 19.5,
     lineHeight: 29,
-    fontWeight: '600',
-    fontFamily: FontFamily.display.semiBold,
-    textAlign: 'center',
-    letterSpacing: -0.2,
+    letterSpacing: flowTracking(19.5),
     paddingHorizontal: 18,
     marginTop: 24,
   },
   title: {
-    color: Palette.text,
+    ...FlowText.display,
     fontSize: 28,
     lineHeight: 36,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    textAlign: 'center',
-    letterSpacing: -0.6,
+    letterSpacing: flowTracking(28),
     paddingHorizontal: 14,
     marginTop: 20,
   },
   subtitle: {
-    color: Palette.text,
+    ...FlowText.subtitle,
     fontSize: 19,
     lineHeight: 27,
-    fontWeight: '400',
-    fontFamily: FontFamily.display.regular,
     textAlign: 'center',
     paddingHorizontal: 14,
     marginTop: 2,
@@ -277,13 +279,6 @@ const styles = StyleSheet.create({
   },
   pressedText: {
     opacity: 0.6,
-  },
-  quietLink: {
-    color: Palette.text,
-    fontSize: 15,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-    textAlign: 'center',
   },
   dots: {
     flexDirection: 'row',

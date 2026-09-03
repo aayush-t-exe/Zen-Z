@@ -27,7 +27,7 @@ export default function ReferralsPage() {
       setLoading(true);
       setError('');
 
-      const [{ data: redemptionRows, error: redemptionError }, { data: creditRows }] = await Promise.all([
+      const [{ data: redemptionRows, error: redemptionError }, { data: creditRows, error: creditsError }] = await Promise.all([
         supabase
           .from('referral_redemptions')
           .select(
@@ -39,8 +39,8 @@ export default function ReferralsPage() {
         supabase.from('referral_credits').select('redemption_id, status'),
       ]);
 
-      if (redemptionError) {
-        console.error('Error loading referrals:', redemptionError);
+      if (redemptionError || creditsError) {
+        console.error('Error loading referrals:', redemptionError ?? creditsError);
         setError('Failed to load referrals');
         setLoading(false);
         return;

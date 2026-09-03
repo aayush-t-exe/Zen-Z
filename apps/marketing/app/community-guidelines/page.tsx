@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function CommunityGuidelinesPage() {
   return (
-    <LegalLayout title="Community Guidelines" updated="August 26, 2026">
+    <LegalLayout title="Community Guidelines" updated="September 1, 2026">
       <p>
         Zen-Z is designed to help people meet new people in a respectful,
         welcoming environment. Every participant is expected to contribute to
@@ -42,6 +42,10 @@ export default function CommunityGuidelinesPage() {
           <li>Do not intentionally damage property.</li>
           <li>No illegal activity.</li>
           <li>No alcohol, smoking, tobacco/nicotine products, or drugs at Zen-Z meetups.</li>
+          <li>
+            If you bring a &ldquo;+1&rdquo; companion, you&apos;re responsible
+            for making sure they follow these guidelines too.
+          </li>
         </ul>
       </div>
 
