@@ -2,6 +2,7 @@ import { Component, ReactNode } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
+import { Sentry } from '@/lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -28,6 +29,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: unknown, info: unknown) {
     console.error('Unhandled render error:', error, info);
+    Sentry.captureException(error, { extra: { componentStack: (info as any)?.componentStack } });
   }
 
   handleRetry = () => {

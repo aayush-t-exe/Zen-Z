@@ -30,8 +30,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { initSentry, Sentry } from '@/lib/sentry';
 
 SplashScreen.preventAutoHideAsync();
+initSentry();
 
 // Purely a dev-mode notice that the test device/browser has the OS-level
 // "reduce motion" accessibility setting on — animations still behave
@@ -117,7 +119,7 @@ function RootLayoutContent() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   const [fontsLoaded] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
@@ -162,3 +164,5 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+export default Sentry.wrap(RootLayout);
