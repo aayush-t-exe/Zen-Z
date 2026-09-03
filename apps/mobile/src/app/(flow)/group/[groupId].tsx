@@ -5,17 +5,23 @@ import {
   ScrollView,
   TextInput,
   Pressable,
+  Image,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Modal,
   Alert,
   StyleSheet,
+  useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
-import { AuthButton } from '@/components/auth-button';
+import { FlowSurface, FlowText } from '@/constants/flow-theme';
+import { activityArt } from '@/constants/activity-art';
+import { FlowPanel } from '@/components/flow-panel';
+import { FlowPillButton } from '@/components/flow-pill-button';
+import { FlowBackArrow } from '@/components/flow-back-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { useChatStore } from '@/store/chat';
@@ -39,11 +45,20 @@ interface ChatMessage {
   deleted_at: string | null;
 }
 
+/** Matches the primary pill's near-white, as the other redesigned screens set it. */
+const LOADER = '#FFFDF8';
+
 export default function GroupScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
+  const { width: screenWidth } = useWindowDimensions();
   const refreshUnreadCount = useChatStore((state) => state.refreshUnreadCount);
+
+  // The report sheet's own column: it is inset 24dp from each edge, and both
+  // the reason rows and its buttons are drawn art that has to be handed a
+  // width rather than stretching.
+  const sheetWidth = screenWidth - 48;
 
   const [group, setGroup] = useState<MyGroupDetails | null>(null);
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -295,16 +310,19 @@ export default function GroupScreen() {
   if (isLoading) {
     return (
       <View style={[styles.root, styles.centered]}>
-        <ActivityIndicator size="large" color={Palette.text} />
+        <ActivityIndicator size="large" color={LOADER} />
       </View>
     );
   }
 
   if (loadError) {
     return (
-      <View style={[styles.root, styles.centered, { paddingHorizontal: 24, gap: 16 }]}>
-        <Text style={styles.subtitle}>Couldn&apos;t load this. {loadError}</Text>
-        <AuthButton label="Retry" onPress={() => setRetryCount((n) => n + 1)} />
+      <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
+        <View style={{ width: sheetWidth, gap: 16 }}>
+          <Text style={[FlowText.titleCentred, { fontSize: 22 }]}>Couldn&apos;t load this.</Text>
+          <Text style={styles.centredSubtitle}>{loadError}</Text>
+          <FlowPillButton label="Retry" width={sheetWidth} onPress={() => setRetryCount((n) => n + 1)} />
+        </View>
       </View>
     );
   }
@@ -312,7 +330,7 @@ export default function GroupScreen() {
   if (!group) {
     return (
       <View style={[styles.root, styles.centered, { paddingHorizontal: 24 }]}>
-        <Text style={styles.subtitle}>This group could not be found.</Text>
+        <Text style={styles.centredSubtitle}>This group could not be found.</Text>
       </View>
     );
   }
@@ -333,19 +351,46 @@ export default function GroupScreen() {
             info, which scrolls away with the conversation. Tapping it opens
             Group Details rather than jumping straight into report, since
             that's now the general "who's in this group" home. */}
-        <Pressable onPress={openGroupDetails} style={styles.header}>
-          <Text style={styles.headerTitle}>{group.activity_name}</Text>
-          <Text style={styles.headerInfo}>ⓘ</Text>
-        </Pressable>
+        <View style={styles.header}>
+          {/* A back control the screen never had: pushed on top of the tabs,
+              iOS had only the swipe gesture to leave a chat with. */}
+          <FlowBackArrow onPress={() => router.back()} />
+          <Pressable onPress={openGroupDetails} style={styles.headerTap} hitSlop={6}>
+            {/* Coded circle rather than the summary card's badge art: that
+                badge sizes off a card width, and this header has no card —
+                matched to the row art's fill and stroke by value, the way
+                the profile tab's photo ring is. */}
+            <View style={styles.headerMark}>
+              <Image
+                source={activityArt(group.activity_name)}
+                style={styles.headerMarkArt}
+                resizeMode="contain"
+                accessibilityIgnoresInvertColors
+              />
+            </View>
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {group.activity_name}
+            </Text>
+            {/* Replaces a typed ⓘ — the redesign draws its marks. Points at
+                Group Details, which this row opens. */}
+            <Image
+              source={require('@/assets/images/icon-chevron-right.png')}
+              style={styles.headerChevron}
+              resizeMode="contain"
+              accessibilityIgnoresInvertColors
+            />
+          </Pressable>
+        </View>
         <View style={styles.divider} />
 
         {!group.is_revealed ? (
           <View style={[styles.flex, styles.centered, { paddingHorizontal: 24 }]}>
-            <Text style={styles.lockEmoji}>🔒</Text>
-            <Text style={[styles.title, { textAlign: 'center' }]}>
+            {/* The 🔒 that led this is gone: the redesign draws its marks and
+                has no lock among them, and the sentence carries the state. */}
+            <Text style={FlowText.titleCentred}>
               The venue and your group chat unlock 48 hours before the event.
             </Text>
-            <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>
+            <Text style={[styles.centredSubtitle, { marginTop: 10 }]}>
               Check back {formatSlotDateTime(group.reveal_venue_at)}.
             </Text>
           </View>
@@ -376,7 +421,7 @@ export default function GroupScreen() {
               </View>
 
               {messages.length === 0 ? (
-                <Text style={[styles.subtitle, { textAlign: 'center' }]}>Say hello to your group.</Text>
+                <Text style={styles.centredSubtitle}>Say hello to your group.</Text>
               ) : (
                 <View style={{ gap: 12 }}>
                   {messages.map((message) =>
@@ -454,7 +499,7 @@ export default function GroupScreen() {
               <>
                 <Text style={styles.sheetTitle}>Group Details</Text>
                 <Text style={styles.sheetSubtitle}>
-                  {group.activity_emoji} {group.activity_name}
+                  {group.activity_name}
                   {group.venue_name
                     ? ` · ${group.venue_name}${group.venue_address ? ' · ' + group.venue_address : ''}`
                     : ''}{' '}
@@ -508,21 +553,28 @@ export default function GroupScreen() {
                     <Text style={styles.memberRowText}>{reportMessage.content}</Text>
                   </View>
                 )}
-                <View style={{ gap: 8 }}>
+                {/* The flow's own single-select row, the same one the booking
+                    steps and the quiz pick from, rather than a second
+                    selection language invented for this sheet. Left-ranged:
+                    these read as sentences, not as "Under ₹200". */}
+                <View style={{ gap: 12 }}>
                   {REPORT_REASONS.map((reason) => (
-                    <Pressable
+                    <FlowPanel
                       key={reason}
+                      label={reason}
+                      align="left"
+                      selected={selectedReason === reason}
+                      dimmed={selectedReason !== null && selectedReason !== reason}
+                      width={sheetWidth}
                       onPress={() => setSelectedReason(reason)}
-                      style={[styles.reasonOption, selectedReason === reason && styles.reasonOptionSelected]}
-                    >
-                      <Text style={styles.reasonText}>{reason}</Text>
-                    </Pressable>
+                    />
                   ))}
                 </View>
                 {reportError ? <Text style={styles.errorText}>{reportError}</Text> : null}
                 <View style={{ marginTop: 24, gap: 12 }}>
-                  <AuthButton
+                  <FlowPillButton
                     label={submittingReport ? 'Sending…' : 'Send report'}
+                    width={sheetWidth}
                     onPress={handleSubmitReport}
                     loading={submittingReport}
                     disabled={!selectedReason}
@@ -543,7 +595,7 @@ export default function GroupScreen() {
                 <Text style={[styles.sheetSubtitle, { marginBottom: 24 }]}>
                   The founder will look into this. Thanks for telling us.
                 </Text>
-                <AuthButton label="Done" onPress={closeReportSheet} />
+                <FlowPillButton label="Done" width={sheetWidth} onPress={closeReportSheet} />
               </>
             )}
           </View>
@@ -553,10 +605,20 @@ export default function GroupScreen() {
   );
 }
 
+/**
+ * This screen is now on the redesign like the rest of the signed-in app: black
+ * canvas, the flow's type (Inter/SF Pro via FlowText) and its row surface.
+ *
+ * The chat's own furniture — bubbles, chips, the input, the report sheet — has
+ * no comp and can't use the drawn row art either: that art is a 902x154 box,
+ * and squeezing it into a chip or a bubble turns its rounded corners
+ * elliptical. So those are coded against FlowSurface's documented values,
+ * which is what that export exists for.
+ */
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
   },
   flex: {
     flex: 1,
@@ -565,54 +627,63 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  centredSubtitle: {
+    ...FlowText.subtitle,
+    textAlign: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    gap: 14,
+    paddingHorizontal: 22,
+    paddingTop: 54,
     paddingBottom: 16,
   },
-  headerTitle: {
-    color: Palette.text,
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
+  /** The tappable group row: everything but the back arrow opens Group Details. */
+  headerTap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
-  headerInfo: {
-    color: Palette.muted,
-    fontSize: 16,
+  headerMark: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  headerMarkArt: {
+    width: 34 * 0.66,
+    height: 34 * 0.66,
+  },
+  headerTitle: {
+    ...FlowText.rowLabel,
+    flex: 1,
+  },
+  headerChevron: {
+    width: 8,
+    // icon-chevron-right.png is 27x47.
+    height: 8 * (47 / 27),
   },
   divider: {
     height: 1,
-    backgroundColor: Palette.ring,
-    opacity: 0.4,
-  },
-  title: {
-    color: Palette.text,
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-  },
-  subtitle: {
-    color: Palette.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: FontFamily.body.regular,
-  },
-  lockEmoji: {
-    fontSize: 44,
-    marginBottom: 8,
+    backgroundColor: FlowSurface.stroke,
+    opacity: 0.5,
   },
   scrollContent: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingVertical: 16,
   },
   introBanner: {
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: Palette.ring,
+    borderBottomColor: FlowSurface.stroke,
   },
   memberChipsRow: {
     flexDirection: 'row',
@@ -620,23 +691,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
+  // Dark chips with a hairline, not the cream pills these were: a cream pill
+  // is this design's primary action, and a row of them read as a row of
+  // buttons rather than as who is in the room.
   memberChip: {
     borderRadius: 999,
-    backgroundColor: Palette.paper,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
   },
   memberChipText: {
-    color: Palette.line,
-    fontSize: 12,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
+    ...FlowText.fine,
+    color: '#FFFFFF',
   },
   systemMessage: {
-    color: Palette.muted,
-    fontSize: 12,
+    ...FlowText.fine,
     textAlign: 'center',
-    fontFamily: FontFamily.body.regular,
   },
   bubble: {
     maxWidth: '80%',
@@ -644,29 +716,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
+  // Own messages carry the primary action's near-white; everyone else's sit on
+  // the row surface, so the two stay legible against each other and the canvas.
   bubbleOwn: {
     alignSelf: 'flex-end',
-    backgroundColor: Palette.paper,
+    backgroundColor: '#FFFDF8',
   },
   bubbleOther: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1E2128',
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
   },
   bubbleSender: {
-    color: Palette.muted,
+    ...FlowText.fine,
     fontSize: 11,
     marginBottom: 2,
-    fontFamily: FontFamily.body.medium,
   },
   bubbleTextOwn: {
-    color: Palette.line,
-    fontSize: 15,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.rowLabel,
+    color: FlowSurface.ink,
   },
   bubbleTextOther: {
-    color: Palette.text,
-    fontSize: 15,
-    fontFamily: FontFamily.body.regular,
+    ...FlowText.rowLabel,
   },
   bubbleDeleted: {
     fontStyle: 'italic',
@@ -676,127 +748,100 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    paddingHorizontal: 24,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     borderTopWidth: 1,
-    borderTopColor: Palette.ring,
+    borderTopColor: FlowSurface.stroke,
   },
   input: {
     flex: 1,
     borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: Palette.ring,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    color: Palette.text,
-    fontFamily: FontFamily.body.regular,
+    paddingVertical: 11,
+    ...FlowText.fieldText,
     fontSize: 15,
   },
   sendButton: {
     borderRadius: 999,
-    backgroundColor: Palette.paper,
+    backgroundColor: '#FFFDF8',
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 11,
   },
   sendButtonDisabled: {
     opacity: 0.4,
   },
   sendButtonText: {
-    color: Palette.line,
-    fontWeight: '700',
-    fontFamily: FontFamily.body.bold,
+    ...FlowText.pillLabel,
+    fontSize: 15,
   },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
   },
   sheet: {
-    backgroundColor: Palette.canvas,
+    backgroundColor: '#000000',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    borderWidth: 2,
+    borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: Palette.ring,
+    borderColor: FlowSurface.stroke,
     paddingHorizontal: 24,
-    paddingTop: 24,
+    paddingTop: 26,
     paddingBottom: 40,
   },
   sheetTitle: {
-    color: Palette.text,
-    fontSize: 20,
-    fontWeight: '700',
-    fontFamily: FontFamily.display.bold,
-    marginBottom: 4,
+    ...FlowText.titleCompact,
+    marginBottom: 6,
   },
   sheetSubtitle: {
-    color: Palette.muted,
+    ...FlowText.subtitle,
     fontSize: 13,
-    fontFamily: FontFamily.body.regular,
-    marginBottom: 16,
+    marginBottom: 18,
   },
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderRadius: 14,
-    backgroundColor: '#1E2128',
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    backgroundColor: FlowSurface.fill,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   memberRowText: {
-    color: Palette.text,
-    fontSize: 15,
-    fontFamily: FontFamily.body.medium,
+    ...FlowText.rowLabel,
     flexShrink: 1,
   },
   reportLink: {
     fontSize: 12,
-    fontWeight: '600',
-    fontFamily: FontFamily.body.semiBold,
-  },
-  reasonOption: {
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: Palette.ring,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  reasonOptionSelected: {
-    borderColor: Palette.text,
-    backgroundColor: '#1E2128',
-  },
-  reasonText: {
-    color: Palette.text,
-    fontFamily: FontFamily.body.regular,
-    fontSize: 15,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
   errorText: {
-    color: Palette.error,
+    ...FlowText.error,
+    textAlign: 'left',
     fontSize: 13,
-    fontFamily: FontFamily.body.semiBold,
-    marginTop: 8,
+    marginTop: 10,
   },
   leaveButton: {
-    borderWidth: 2,
-    borderColor: Palette.error,
-    borderRadius: 14,
     paddingVertical: 12,
     alignItems: 'center',
     marginTop: 20,
   },
   leaveButtonText: {
     color: Palette.error,
-    fontFamily: FontFamily.body.semiBold,
     fontSize: 14,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
   secondaryButton: {
-    marginTop: 16,
+    marginTop: 18,
     alignItems: 'center',
   },
   secondaryLabel: {
-    color: Palette.muted,
-    fontSize: 14,
-    fontFamily: FontFamily.body.semiBold,
+    ...FlowText.link,
   },
 });
