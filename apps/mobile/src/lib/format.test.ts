@@ -1,4 +1,17 @@
-import { getOrdinalSuffix, formatSlotDateTime, formatEventTime } from './format';
+import { getOrdinalSuffix, formatSlotDay, formatSlotDateTime, formatEventTime } from './format';
+
+describe('formatSlotDay', () => {
+  it('formats a date as "Day, Nth" with no clock time', () => {
+    // 2026-08-09 is a Sunday.
+    expect(formatSlotDay('2026-08-09T19:30:00')).toBe('Sun, 9th');
+  });
+
+  it('takes no activity name — the day never depends on one', () => {
+    // What Booking Details relies on: it pairs this with formatEventTime, and
+    // would print the time twice if it used formatSlotDateTime instead.
+    expect(formatSlotDay('2026-08-11T19:30:00')).toBe('Tue, 11th');
+  });
+});
 
 describe('getOrdinalSuffix', () => {
   it('uses "st" for 1', () => {

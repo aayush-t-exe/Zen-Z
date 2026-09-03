@@ -8,7 +8,7 @@ import { FlowPillButton } from '@/components/flow-pill-button';
 import { FlowBackButton } from '@/components/flow-back-button';
 import { SummaryBadge } from '@/components/summary-card';
 import { fetchMyGroups, fetchGroupMembers, MyGroupDetails, GroupMember } from '@/lib/groups';
-import { formatSlotDateTime, formatEventTime } from '@/lib/format';
+import { formatSlotDateTime, formatSlotDay, formatEventTime } from '@/lib/format';
 
 /** Matches the primary pill's near-white, as the other redesigned screens set it. */
 const LOADER = '#FFFDF8';
@@ -162,9 +162,16 @@ export default function BookingDetailsScreen() {
                 detail={group.venue_address}
                 width={contentWidth}
               />
+              {/* Day plus formatEventTime, not formatSlotDateTime plus it:
+                  that already carries the clock time for every activity but
+                  Movies, so the two together printed it twice ("Sat, 5th ·
+                  07:00 pm · 07:00 pm"). formatEventTime is the right half to
+                  keep — once the venue is out, a matched student needs the
+                  exact hour even for a Movie, whose slot time is otherwise
+                  deliberately hidden. */}
               <DetailRow
                 label="When"
-                value={`${formatSlotDateTime(group.slot_datetime, group.activity_name)} · ${formatEventTime(group.slot_datetime)}`}
+                value={`${formatSlotDay(group.slot_datetime)} · ${formatEventTime(group.slot_datetime)}`}
                 width={contentWidth}
               />
 
