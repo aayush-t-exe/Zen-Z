@@ -195,7 +195,11 @@ export default function EmailInputScreen() {
           label="Continue  →"
           onPress={handleContinue}
           loading={isLoading}
-          style={{ width: fieldWidth, marginTop: 52 }}
+          // alignSelf overrides the `alignSelf: 'stretch'` FlowPillButton
+          // applies when it is given no `width` prop: stretch is not a
+          // centring value, so a pill handed a width through `style` instead
+          // fell back to flex-start and sat left of the field above it.
+          style={{ width: fieldWidth, alignSelf: 'center', marginTop: 52 }}
         />
       </ScrollView>
     </KeyboardAvoidingView>

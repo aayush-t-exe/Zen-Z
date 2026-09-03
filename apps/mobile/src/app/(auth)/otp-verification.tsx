@@ -195,7 +195,8 @@ export default function OTPVerificationScreen() {
           label="Verify  →"
           onPress={handleVerifyOTP}
           loading={isLoading}
-          style={{ width: contentWidth, marginTop: 40 }}
+          // Centred explicitly — see the note on email-input.tsx's pill.
+          style={{ width: contentWidth, alignSelf: 'center', marginTop: 40 }}
         />
 
         <Pressable
