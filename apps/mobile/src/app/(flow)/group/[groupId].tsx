@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
   Alert,
+  Linking,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
@@ -43,10 +44,17 @@ interface ChatMessage {
   is_system: boolean;
   created_at: string;
   deleted_at: string | null;
+  data: { mapsUrl?: string } | null;
 }
 
 /** Matches the primary pill's near-white, as the other redesigned screens set it. */
 const LOADER = '#FFFDF8';
+
+// Caps the per-load message fetch so an old, long-running group doesn't
+// slow re-opens down over time. No "load older messages" affordance yet —
+// out of scope for now, this just stops unbounded growth from being a
+// performance problem.
+const MESSAGE_FETCH_LIMIT = 100;
 
 export default function GroupScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
@@ -68,6 +76,23 @@ export default function GroupScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Tracks whether this screen is the one actually on top right now (not
+  // just mounted — Expo Router's native stack keeps screens pushed on top
+  // of this one mounted underneath). A ref, not state: it's read from
+  // inside the realtime callback below, never needs to trigger a render.
+  const isFocusedRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      isFocusedRef.current = true;
+      return () => {
+        isFocusedRef.current = false;
+      };
+    }, [])
+  );
+
+  const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [realtimeRetryCount, setRealtimeRetryCount] = useState(0);
 
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [reportStep, setReportStep] = useState<'members' | 'reason' | 'done' | null>(null);
@@ -108,12 +133,17 @@ export default function GroupScreen() {
         setReportedIds(new Set(reportedUserIds));
 
         if (thisGroup?.is_revealed) {
+          // Most recent MESSAGE_FETCH_LIMIT, oldest-first for display —
+          // fetched newest-first then reversed, rather than an offset from
+          // the start, so a long-running group's older history doesn't
+          // slow this query down as it grows.
           const { data } = await supabase
             .from('messages')
-            .select('id, sender_id, content, is_system, created_at, deleted_at')
+            .select('id, sender_id, content, is_system, created_at, deleted_at, data')
             .eq('group_id', groupId)
-            .order('created_at', { ascending: true });
-          if (!cancelled && data) setMessages(data as ChatMessage[]);
+            .order('created_at', { ascending: false })
+            .limit(MESSAGE_FETCH_LIMIT);
+          if (!cancelled && data) setMessages([...data].reverse() as ChatMessage[]);
 
           // Opening the chat is what "reading" it means — bump the read
           // marker and refresh the shared badge count immediately rather
@@ -153,7 +183,12 @@ export default function GroupScreen() {
           // This screen being open and receiving the message live IS the
           // user reading it — keep the read marker (and the shared badge)
           // current instead of only updating it on the next visit/poll.
-          if (incoming.sender_id !== user?.id && groupId) {
+          // Gated on isFocusedRef, not just "mounted": Expo Router's native
+          // stack keeps this screen mounted underneath anything pushed on
+          // top of it (e.g. Invite, Booking Details), so without this an
+          // incoming message could get silently marked read while the user
+          // is actually looking at a different screen.
+          if (incoming.sender_id !== user?.id && groupId && isFocusedRef.current) {
             markGroupRead(groupId).then(refreshUnreadCount);
           }
         }
@@ -166,12 +201,17 @@ export default function GroupScreen() {
           setMessages((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') setRealtimeStatus('connected');
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+          setRealtimeStatus('error');
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [groupId, group?.is_revealed, user?.id, refreshUnreadCount]);
+  }, [groupId, group?.is_revealed, user?.id, refreshUnreadCount, realtimeRetryCount]);
 
   const memberName = (senderId: string) =>
     members.find((m) => m.id === senderId)?.first_name ?? 'Someone';
@@ -181,18 +221,51 @@ export default function GroupScreen() {
     if (!content || !user?.id || !groupId) return;
 
     setInput('');
-    const { error } = await supabase
-      .from('messages')
-      .insert({ group_id: groupId, sender_id: user.id, content });
 
-    if (error) {
+    // Local echo: show the message immediately under a client-side temp
+    // id, rather than waiting for it to round-trip through realtime. Without
+    // this, a briefly disconnected/reconnecting socket at send time gave no
+    // feedback at all — the message could genuinely be sending while
+    // looking exactly like it wasn't, tempting a resend and a real
+    // duplicate once the socket caught up.
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        sender_id: user.id,
+        content,
+        is_system: false,
+        created_at: new Date().toISOString(),
+        deleted_at: null,
+        data: null,
+      },
+    ]);
+
+    const { data, error } = await supabase
+      .from('messages')
+      .insert({ group_id: groupId, sender_id: user.id, content })
+      .select('id, sender_id, content, is_system, created_at, deleted_at, data')
+      .single();
+
+    if (error || !data) {
       console.error('Failed to send message:', error);
-      // No optimistic insert happens above, so a failure here means the
-      // message never appeared anywhere — restore it to the input instead
-      // of letting it vanish silently (the old, since-fixed behavior).
+      setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(content);
       Alert.alert("Couldn't send", 'Your message wasn’t sent. Give it another try.');
+      return;
     }
+
+    // Swap the temp placeholder for the real row. The realtime INSERT
+    // handler dedupes by id, so if it already delivered this same row
+    // (race between the socket and this request's own response), drop the
+    // placeholder without adding a second copy rather than blindly
+    // appending.
+    setMessages((prev) => {
+      const withoutPlaceholder = prev.filter((m) => m.id !== tempId);
+      if (withoutPlaceholder.some((m) => m.id === data.id)) return withoutPlaceholder;
+      return [...withoutPlaceholder, data as ChatMessage];
+    });
   };
 
   const handleDeleteMessage = (messageId: string) => {
@@ -426,9 +499,19 @@ export default function GroupScreen() {
                 <View style={{ gap: 12 }}>
                   {messages.map((message) =>
                     message.is_system ? (
-                      <Text key={message.id} style={styles.systemMessage}>
-                        {message.content}
-                      </Text>
+                      message.data?.mapsUrl ? (
+                        <Pressable
+                          key={message.id}
+                          onPress={() => Linking.openURL(message.data!.mapsUrl!)}
+                        >
+                          <Text style={styles.systemMessage}>{message.content}</Text>
+                          <Text style={styles.systemMessageLink}>Open in Google Maps →</Text>
+                        </Pressable>
+                      ) : (
+                        <Text key={message.id} style={styles.systemMessage}>
+                          {message.content}
+                        </Text>
+                      )
                     ) : (
                       <Pressable
                         key={message.id}
@@ -468,6 +551,18 @@ export default function GroupScreen() {
                 </View>
               )}
             </ScrollView>
+
+            {realtimeStatus === 'error' && (
+              <Pressable
+                style={styles.reconnectBanner}
+                onPress={() => {
+                  setRealtimeStatus('connecting');
+                  setRealtimeRetryCount((c) => c + 1);
+                }}
+              >
+                <Text style={styles.reconnectBannerText}>Connection lost — tap to reconnect</Text>
+              </Pressable>
+            )}
 
             <View style={styles.inputRow}>
               <TextInput
@@ -709,6 +804,23 @@ const styles = StyleSheet.create({
   systemMessage: {
     ...FlowText.fine,
     textAlign: 'center',
+  },
+  systemMessageLink: {
+    ...FlowText.fine,
+    textAlign: 'center',
+    color: Palette.paper,
+    textDecorationLine: 'underline',
+    marginTop: 4,
+  },
+  reconnectBanner: {
+    backgroundColor: Palette.error,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  reconnectBannerText: {
+    ...FlowText.fine,
+    color: Palette.line,
+    fontWeight: '600',
   },
   bubble: {
     maxWidth: '80%',

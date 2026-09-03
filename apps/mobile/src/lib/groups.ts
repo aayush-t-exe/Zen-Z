@@ -20,6 +20,7 @@ export interface MyGroupDetails {
   activity_emoji: string;
   venue_name: string | null;
   venue_address: string | null;
+  venue_maps_url: string | null;
 }
 
 export interface GroupMember {

@@ -1,6 +1,16 @@
 import { useCallback, useState } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, useWindowDimensions } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  ActivityIndicator,
+  Pressable,
+  Linking,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import { FlowSurfaceBox } from '@/components/flow-panel';
@@ -20,6 +30,8 @@ function DetailRow({
   detail,
   width,
   art,
+  onPress,
+  actionLabel,
 }: {
   label: string;
   value: string;
@@ -27,12 +39,16 @@ function DetailRow({
   width: number;
   /** Activity name, when the row should carry that activity's render. */
   art?: string;
+  /** When set, the row becomes tappable (e.g. opening the venue in Maps). */
+  onPress?: () => void;
+  /** Shown under `detail` only when `onPress` is set. */
+  actionLabel?: string;
 }) {
   return (
     <View style={{ gap: 14 }}>
       <Text style={FlowText.sectionLabel}>{label}</Text>
       <FlowSurfaceBox width={width}>
-        <View style={styles.rowContent}>
+        <Pressable style={styles.rowContent} onPress={onPress} disabled={!onPress}>
           {art ? (
             <SummaryBadge
               cardWidth={width}
@@ -42,8 +58,9 @@ function DetailRow({
           <View style={{ flex: 1 }}>
             <Text style={FlowText.panelLabel}>{value}</Text>
             {detail ? <Text style={styles.rowDetail}>{detail}</Text> : null}
+            {onPress && actionLabel ? <Text style={styles.rowLink}>{actionLabel}</Text> : null}
           </View>
-        </View>
+        </Pressable>
       </FlowSurfaceBox>
     </View>
   );
@@ -161,6 +178,8 @@ export default function BookingDetailsScreen() {
                 value={group.venue_name ?? ''}
                 detail={group.venue_address}
                 width={contentWidth}
+                onPress={group.venue_maps_url ? () => Linking.openURL(group.venue_maps_url!) : undefined}
+                actionLabel="Open in Google Maps →"
               />
               {/* Day plus formatEventTime, not formatSlotDateTime plus it:
                   that already carries the clock time for every activity but
@@ -256,5 +275,12 @@ const styles = StyleSheet.create({
     ...FlowText.subtitle,
     fontSize: 13,
     marginTop: 3,
+  },
+  rowLink: {
+    ...FlowText.subtitle,
+    fontSize: 13,
+    marginTop: 6,
+    color: Palette.paper,
+    textDecorationLine: 'underline',
   },
 });

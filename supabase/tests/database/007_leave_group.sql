@@ -15,7 +15,7 @@ begin;
 create temp table pgtap_output (line text);
 grant insert, select on pgtap_output to authenticated, anon;
 
-insert into pgtap_output select plan(7);
+insert into pgtap_output select plan(8);
 
 -- ---- fixtures ----
 insert into auth.users (id, email) values
@@ -84,6 +84,12 @@ insert into pgtap_output select is(
   (select count(*)::int from messages where group_id = 'd7000000-0000-0000-0000-000000000002'),
   0,
   'the leaver can no longer read messages in that group (RLS filters them out)'
+);
+
+insert into pgtap_output select throws_ok(
+  $$insert into messages (group_id, sender_id, content) values ('d7000000-0000-0000-0000-000000000002', 'a7000000-0000-0000-0000-000000000001', 'still trying to talk')$$,
+  null, null,
+  'the leaver can no longer send messages into that group either (0081 regression)'
 );
 
 -- ---- Student B (still a member, never left) is unaffected ----

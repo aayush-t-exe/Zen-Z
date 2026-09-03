@@ -16,6 +16,7 @@ interface Venue {
   name: string;
   activity_type_id: number | null;
   address: string | null;
+  maps_url: string | null;
   capacity: number | null;
   commission_pct: number | null;
   contact_info: string | null;
@@ -27,6 +28,7 @@ interface VenueFormState {
   name: string;
   activity_type_id: string;
   address: string;
+  maps_url: string;
   capacity: string;
   commission_pct: string;
   contact_info: string;
@@ -37,6 +39,7 @@ const EMPTY_FORM: VenueFormState = {
   name: '',
   activity_type_id: '',
   address: '',
+  maps_url: '',
   capacity: '',
   commission_pct: '',
   contact_info: '',
@@ -90,6 +93,7 @@ export default function VenuesPage() {
     name: form.name.trim(),
     activity_type_id: form.activity_type_id ? Number(form.activity_type_id) : null,
     address: form.address.trim() || null,
+    maps_url: form.maps_url.trim() || null,
     capacity: form.capacity ? Number(form.capacity) : null,
     commission_pct: form.commission_pct ? Number(form.commission_pct) : 0,
     contact_info: form.contact_info.trim() || null,
@@ -123,6 +127,7 @@ export default function VenuesPage() {
       name: venue.name,
       activity_type_id: venue.activity_type_id ? String(venue.activity_type_id) : '',
       address: venue.address ?? '',
+      maps_url: venue.maps_url ?? '',
       capacity: venue.capacity !== null ? String(venue.capacity) : '',
       commission_pct: venue.commission_pct !== null ? String(venue.commission_pct) : '',
       contact_info: venue.contact_info ?? '',
@@ -244,6 +249,13 @@ export default function VenuesPage() {
               className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
             />
             <input
+              type="url"
+              placeholder="Google Maps link (paste from Maps' Share button)"
+              value={newVenue.maps_url}
+              onChange={(e) => setNewVenue({ ...newVenue, maps_url: e.target.value })}
+              className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
+            />
+            <input
               type="number"
               placeholder="Capacity"
               value={newVenue.capacity}
@@ -323,6 +335,13 @@ export default function VenuesPage() {
                         className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
                       />
                       <input
+                        type="url"
+                        placeholder="Google Maps link (paste from Maps' Share button)"
+                        value={editForm.maps_url}
+                        onChange={(e) => setEditForm({ ...editForm, maps_url: e.target.value })}
+                        className="border rounded-lg px-3 py-2 text-sm md:col-span-2"
+                      />
+                      <input
                         type="number"
                         placeholder="Capacity"
                         value={editForm.capacity}
@@ -378,6 +397,22 @@ export default function VenuesPage() {
                         {venue.address && ` · ${venue.address}`}
                         {venue.capacity !== null && ` · Capacity ${venue.capacity}`}
                       </p>
+                      {venue.maps_url ? (
+                        <p className="text-sm mt-1">
+                          <a
+                            href={venue.maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Google Maps link ↗
+                          </a>
+                        </p>
+                      ) : (
+                        <p className="text-sm text-gray-400 mt-1">
+                          No Maps link — students get an auto-generated search link instead.
+                        </p>
+                      )}
                       {venue.contact_info && (
                         <p className="text-sm text-gray-500 mt-1">Contact: {venue.contact_info}</p>
                       )}
