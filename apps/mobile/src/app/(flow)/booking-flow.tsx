@@ -13,6 +13,7 @@ import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
+import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import {
   FLOW_CHECK_ASPECT,
   FLOW_CHECK_RIGHT,
@@ -99,29 +100,20 @@ const GROUP_PREFERENCES = [
 ];
 
 /**
- * Feeds the summary card's activity row, which now sits in a dark badge
- * rather than on the old cream bubble — so these are the light-on-black
- * variants, not the dark-outlined ones.
+ * Feeds the summary card's activity row, which sits in a dark badge — the
+ * same badge the Home grid puts the founder's 3D activity renders on, so this
+ * row carries that render rather than the cream line illustration it used to.
+ * A Sports booking carries the specific game's name (not "Sports"), which
+ * constants/activity-art.ts keys for.
  *
- * [ASSUMPTION] The UI PAGE 5 comp only shipped a line-art glyph for Dinners
- * (icon-dinners-line.png), which is the one used at the comp's own scale
- * below. Every other activity falls back to its existing illustration at a
- * smaller scale so it still sits inside the badge — those read as a different
- * icon language than the crisp white marks on the other three rows, and want
- * replacing with matching line art when the founder draws it. Sports
- * bookings carry the specific game's name (not "Sports"), so this map needs
- * an entry per game or the row's icon comes up empty.
+ * The UI PAGE 5 comp's own example is a Dinner and it drew that row's glyph as
+ * line art (icon-dinners-line.png) — kept for Dinners at the comp's scale, so
+ * the one row the founder actually approved still looks like the comp.
  */
-const ACTIVITY_ICONS: Record<string, SummaryIcon> = {
-  Dinners: SUMMARY_ICONS.dinners,
-  Cafés: { source: require('@/assets/images/icon-cafes.png'), scale: 0.62 },
-  Movies: { source: require('@/assets/images/icon-movies.png'), scale: 0.62 },
-  Sports: { source: require('@/assets/images/icon-sports.png'), scale: 0.62 },
-  'Box Cricket': { source: require('@/assets/images/icon-cricket.png'), scale: 0.62 },
-  Football: { source: require('@/assets/images/icon-football.png'), scale: 0.62 },
-  '8-Ball Pool': { source: require('@/assets/images/icon-pool.png'), scale: 0.62 },
-  Pickleball: { source: require('@/assets/images/icon-pickleball.png'), scale: 0.62 },
-};
+const activityIconFor = (name: string): SummaryIcon =>
+  name === 'Dinners'
+    ? SUMMARY_ICONS.dinners
+    : { source: activityArt(name), scale: ACTIVITY_ART_BADGE_SCALE };
 
 // Games like 8-Ball Pool and Pickleball have a fixed group size (min ===
 // max) — "Group of 4–4" reads as a typo, so collapse it to a single number.
@@ -507,7 +499,7 @@ export default function BookingFlowScreen() {
     );
   }
 
-  const activityIcon = (activity && ACTIVITY_ICONS[activity.name]) || SUMMARY_ICONS.slot;
+  const activityIcon = activity ? activityIconFor(activity.name) : SUMMARY_ICONS.slot;
   const selectedSlotRow = slots.find((slot) => slot.id === selectedSlot) ?? null;
   const totalFee = activity ? (plusOne ? activity.convenience_fee * 2 : activity.convenience_fee) : 0;
 
