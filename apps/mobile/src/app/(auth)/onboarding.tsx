@@ -14,7 +14,14 @@ import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FlowText, flowTracking } from '@/constants/flow-theme';
 import { FlowPillButton } from '@/components/flow-pill-button';
 
-const MARK_RATIO = 211 / 301;
+/**
+ * onboarding-mark.png is 376x420. The new brand mark stands upright where the
+ * one it replaced lay on its side, so this is portrait now — which is why the
+ * width below shrank: it keeps the mark's drawn height roughly where it was,
+ * rather than letting a 110dp-wide portrait mark grow 46dp taller and eat into
+ * the slide art box.
+ */
+const MARK_RATIO = 420 / 376;
 
 /** How long each slide holds before the carousel moves itself along. */
 const AUTO_ADVANCE_MS = 4500;
@@ -71,7 +78,7 @@ export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
-  const markWidth = Math.min(110, screenWidth * 0.29);
+  const markWidth = Math.min(75, screenWidth * 0.2);
   // Every slide gets the same art box: full-bleed but for a small margin, and
   // tall enough for the tallest drawing. Each image then fits inside it, so the
   // copy underneath sits at the same height on every page instead of hopping
