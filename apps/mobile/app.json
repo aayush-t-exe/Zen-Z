@@ -11,7 +11,7 @@
       "url": "https://u.expo.dev/bcbe7680-a554-4d8e-9a8c-4904b5da95ff"
     },
     "runtimeVersion": {
-      "policy": "fingerprint"
+      "policy": "appVersion"
     },
     "ios": {
       "bundleIdentifier": "com.campussocial.app"
