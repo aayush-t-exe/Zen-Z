@@ -7,8 +7,22 @@ import { hasSeenJaipurIntro } from '@/lib/launch-intro';
 export default function Index() {
   const router = useRouter();
   const session = useAuthStore((state) => state.session);
+  const isLoading = useAuthStore((state) => state.isLoading);
 
   useEffect(() => {
+    // _layout.tsx's boot effect restores the session asynchronously (with
+    // retries that can take a few seconds on a cold relaunch) and only
+    // flips isLoading to false once that's settled. Reacting to `session`
+    // before then means this effect fires with the store's untouched
+    // initial value — session: null — and immediately routes to the auth
+    // flow even when a valid session is about to load a moment later.
+    // Since this screen replaces itself out of the navigation stack, that
+    // send-to-auth never gets corrected once the real session arrives:
+    // a fully logged-in student ends up stuck looking at the login screen.
+    if (isLoading) {
+      return;
+    }
+
     let cancelled = false;
 
     const route = async () => {
@@ -48,7 +62,7 @@ export default function Index() {
     return () => {
       cancelled = true;
     };
-  }, [session, router]);
+  }, [isLoading, session, router]);
 
   return null;
 }
