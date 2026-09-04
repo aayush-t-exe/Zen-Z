@@ -3,6 +3,7 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as aesjs from 'aes-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Sentry } from '@/lib/sentry';
 
 // Supabase's session payload (access + refresh token, user metadata) is
 // larger than SecureStore's ~2048-byte per-value limit on Android, so the
@@ -49,7 +50,19 @@ class LargeSecureStore {
 
   private async decrypt(key: string, value: string): Promise<string | null> {
     const encryptionKeyHex = await SecureStore.getItemAsync(key);
-    if (!encryptionKeyHex) return null;
+    if (!encryptionKeyHex) {
+      // TEMPORARY diagnostic (2026-09-04): pinpoints whether the reported
+      // "logged out after closing from recents" bug is SecureStore
+      // (Android Keystore) losing the encryption key specifically, as
+      // opposed to AsyncStorage losing the ciphertext (see the getItem
+      // breadcrumb below) or something entirely outside this storage
+      // layer. Remove once the real cause is confirmed from Sentry data.
+      Sentry.captureMessage('secureSessionStorage: ciphertext present but SecureStore key missing', {
+        level: 'warning',
+        tags: { diagnostic: 'session-persistence-2026-09-04' },
+      });
+      return null;
+    }
 
     const separatorIndex = value.indexOf(':');
     // Falls back to the old fixed-counter format for a value written
@@ -69,9 +82,26 @@ class LargeSecureStore {
 
   async getItem(key: string): Promise<string | null> {
     const encrypted = await AsyncStorage.getItem(key);
-    if (!encrypted) return null;
+    if (!encrypted) {
+      // TEMPORARY diagnostic (2026-09-04) — see the matching note in
+      // decrypt(). This is the other half: AsyncStorage itself has
+      // nothing for this key, meaning the ciphertext was never written or
+      // didn't survive, rather than the key being the missing half.
+      Sentry.captureMessage('secureSessionStorage: AsyncStorage has no stored session for this key', {
+        level: 'warning',
+        tags: { diagnostic: 'session-persistence-2026-09-04' },
+      });
+      return null;
+    }
 
-    return this.decrypt(key, encrypted);
+    const result = await this.decrypt(key, encrypted);
+    // TEMPORARY diagnostic (2026-09-04): both stores had something, but
+    // did decrypt() actually produce a usable session back out?
+    Sentry.captureMessage(
+      result ? 'secureSessionStorage: session restored successfully' : 'secureSessionStorage: decrypt returned null despite both stores having data',
+      { level: result ? 'info' : 'warning', tags: { diagnostic: 'session-persistence-2026-09-04' } }
+    );
+    return result;
   }
 
   async removeItem(key: string): Promise<void> {

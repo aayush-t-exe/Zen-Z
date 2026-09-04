@@ -74,6 +74,19 @@ function RootLayoutContent() {
             data: { session },
           } = await supabase.auth.getSession();
 
+          // TEMPORARY diagnostic (2026-09-04): the earlier storage and
+          // retry fixes didn't resolve a live "logged out after closing
+          // from recents" report, so this pinpoints whether getSession()
+          // itself is returning null (a session/token problem, separate
+          // from the storage-layer diagnostics in secureSessionStorage.ts)
+          // versus something further down the routing chain being at
+          // fault instead. Remove once the real cause is confirmed.
+          Sentry.captureMessage(session ? 'auth boot: getSession returned a session' : 'auth boot: getSession returned null', {
+            level: session ? 'info' : 'warning',
+            tags: { diagnostic: 'session-persistence-2026-09-04' },
+            extra: { attempt: attempt + 1, hasUser: !!session?.user, expiresAt: session?.expires_at },
+          });
+
           if (mounted) {
             setSession(session);
             if (session?.user) {
@@ -89,6 +102,14 @@ function RootLayoutContent() {
             `Failed to restore session on boot (attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}):`,
             err
           );
+          // console.warn alone never reaches Sentry without an explicit
+          // capture — this is what actually makes a boot-time getSession()
+          // failure visible in the dashboard instead of only existing in a
+          // device log nobody's watching.
+          Sentry.captureException(err, {
+            tags: { diagnostic: 'session-persistence-2026-09-04' },
+            extra: { attempt: attempt + 1, isLastAttempt },
+          });
           if (isLastAttempt) {
             // Swallowing this silently makes "the persisted session failed
             // to load" indistinguishable from "there never was a session"
