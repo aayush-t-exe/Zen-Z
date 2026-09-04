@@ -54,29 +54,54 @@ function RootLayoutContent() {
   useEffect(() => {
     let mounted = true;
 
-    const setupAuth = async () => {
-      try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+    // getSession() only hits the network when the stored access token has
+    // already expired and needs refreshing — reopening the app shortly
+    // after closing it usually skips that path entirely, but a cold
+    // relaunch (task-switcher close, not just backgrounding) can beat the
+    // device's network stack reconnecting, especially on the flakier
+    // reassociation some Android radios do after a full app kill. Without
+    // a retry, that transient failure looked identical to "no session
+    // exists" and dropped a genuinely logged-in student back to the email
+    // screen — reported live across multiple different phones, not one
+    // OEM's battery manager, which is what pointed at this rather than a
+    // storage issue.
+    const RETRY_DELAYS_MS = [500, 1000, 2000];
 
-        if (mounted) {
-          setSession(session);
-          if (session?.user) {
-            setUser(session.user);
+    const setupAuth = async () => {
+      for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+        try {
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+
+          if (mounted) {
+            setSession(session);
+            if (session?.user) {
+              setUser(session.user);
+            }
+            setLoading(false);
+            setIsReady(true);
           }
-          setLoading(false);
-          setIsReady(true);
-        }
-      } catch (err) {
-        // Swallowing this silently makes "the persisted session failed to
-        // load" indistinguishable from "there never was a session" — both
-        // land the student back on the logged-out onboarding splash with no
-        // trace of which one actually happened. Surface it.
-        console.warn('Failed to restore session on boot:', err);
-        if (mounted) {
-          setLoading(false);
-          setIsReady(true);
+          return;
+        } catch (err) {
+          const isLastAttempt = attempt === RETRY_DELAYS_MS.length;
+          console.warn(
+            `Failed to restore session on boot (attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}):`,
+            err
+          );
+          if (isLastAttempt) {
+            // Swallowing this silently makes "the persisted session failed
+            // to load" indistinguishable from "there never was a session"
+            // — both land the student back on the logged-out onboarding
+            // splash with no trace of which one actually happened. Surfaced
+            // above via console.warn on every attempt, not just this one.
+            if (mounted) {
+              setLoading(false);
+              setIsReady(true);
+            }
+            return;
+          }
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAYS_MS[attempt]));
         }
       }
     };

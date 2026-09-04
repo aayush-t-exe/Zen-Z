@@ -24,9 +24,22 @@ export default function Index() {
         return;
       }
 
-      const nextRoute = await getPostAuthRoute(session.user.id);
-      if (!cancelled) {
-        router.replace(nextRoute);
+      try {
+        const nextRoute = await getPostAuthRoute(session.user.id);
+        if (!cancelled) {
+          router.replace(nextRoute);
+        }
+      } catch (err) {
+        // getPostAuthRoute already retries transient failures internally —
+        // this only fires once that's exhausted. A valid session exists
+        // (checked above), so failing toward (home) rather than leaving
+        // this screen blank forever (its render is null) is the safer
+        // default: worst case the profile/quiz gate needs a manual retry,
+        // rather than the session appearing lost entirely.
+        console.warn('Failed to resolve post-auth route:', err);
+        if (!cancelled) {
+          router.replace('/(home)');
+        }
       }
     };
 

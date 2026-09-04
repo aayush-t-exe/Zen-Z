@@ -13,6 +13,7 @@
     },
     "preview": {
       "distribution": "internal",
+      "channel": "preview",
       "android": {
         "buildType": "apk"
       },
@@ -24,6 +25,7 @@
       }
     },
     "production": {
+      "channel": "production",
       "env": {
         "EXPO_PUBLIC_SUPABASE_URL": "https://hzydzyeyvfuokveujbki.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_in9PqwUIAa1OOmLErfFO2w_2fve-R4x",
@@ -34,6 +36,7 @@
     "production-apk": {
       "extends": "production",
       "distribution": "internal",
+      "channel": "production",
       "android": {
         "buildType": "apk"
       }
