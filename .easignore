@@ -8,3 +8,12 @@
 agent/
 .impeccable/
 skills-lock.json
+
+# EAS reinstalls dependencies on its own servers, and these workspaces
+# aren't needed for the mobile build — excluding them cut the uploaded
+# tarball from 385MB (root node_modules alone was 1.3GB, apps/admin 1.8GB)
+# down drastically, making uploads faster and less likely to hit
+# mid-transfer network errors.
+node_modules/
+apps/admin/
+apps/marketing/

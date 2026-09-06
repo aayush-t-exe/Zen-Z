@@ -12,6 +12,7 @@ const footerLinks = [
   { href: '/terms', label: 'Terms' },
   { href: '/refund', label: 'Refunds' },
   { href: '/community-guidelines', label: 'Community Guidelines' },
+  { href: '/delete-account', label: 'Delete Account' },
 ];
 
 export default function LegalLayout({
