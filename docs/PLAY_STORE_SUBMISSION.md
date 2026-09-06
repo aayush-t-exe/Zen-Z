@@ -63,40 +63,47 @@ policy consequences and this draft is a best-effort mapping from
   featured (Home, Match Reveal, Group Chat, and the Personality Quiz are
   the obvious ones given the product's own pitch).
 
-## Store listing copy (draft — matches the established Zen-Z voice: no "book
-now"/"confirm"/"slot"/"limited spots", no em dashes, no venue-picker
-framing, no "verified students" claim)
+## Store listing copy (rewritten 2026-09-06 to match the Content Constitution's
+honest/observational voice, approved 2026-09-05 — this supersedes the original
+draft below, which used the older mysterious/invitation tone that's now
+retired for anything outside in-app microcopy)
 
 **Short description** (80 char max):
-> A weekly invitation into a story you didn't see coming.
-(74 chars)
+> You have friends. You just haven't found your people here yet.
+(62 chars)
 
 **Full description** (4000 char max):
-> Every table has a story before anyone sits down.
+> You have friends. You just haven't found your people here yet.
 >
-> Zen-Z is a campus-first way to meet people you'd never have crossed
-> paths with otherwise. No swiping. No browsing profiles. No choosing who
-> to meet.
+> Everyone around you seems fine. You've got a group, you sit with them
+> every day. But nobody's into the one specific thing you actually love,
+> so you end up going alone, or you just don't go. And honestly, not much
+> happens around here anyway.
 >
-> Once a week, you're invited into a Café, Dinner, or Movie evening.
-> You'll be placed into a small group of fellow students, matched using a
-> short personality quiz, not a photo. Your group is revealed to you
-> together. The where and when unlock as the evening gets closer.
+> Zen-Z is a once-a-week table for people in exactly that spot.
 >
-> What Zen-Z is:
-> - A once-a-week social invitation, not another dating app
-> - Small groups of 4-5, matched on personality, not looks
-> - A group chat to coordinate, once your evening is revealed
-> - Built for one campus community at a time
+> Here's how it works. You answer a short quiz, not a dating profile. A
+> real person reads it and builds your group of four strangers by hand.
+> No algorithm, no swiping, no browsing, no picking who you sit with.
 >
-> What Zen-Z isn't:
-> - It's not for browsing or choosing who you meet
-> - Your photo is never shown to anyone you're matched with, under any
->   circumstance
-> - It's not a place to find a date
+> Choose a Cafe, a Dinner, a Movie, or a sport slot when one's running:
+> cricket, football, pool, pickleball. Your photo is seen only by the
+> person building your table, never by the people you're matched with.
+> You don't pick the venue either. That gets revealed once your evening
+> is locked in.
 >
-> Your invitation is sealed the moment you claim your evening. The story
-> begins when your group is revealed.
+> Ask for a men-only, women-only, or mixed group. If you don't want to
+> walk in alone, bring a +1.
+>
+> A movie night is Rs 126, nothing more to pay. Eight-ball is Rs 70 an
+> hour. If your group falls through, you get a full refund and your next
+> evening is free.
+>
+> This isn't a dating app. There's nobody to swipe on and no profiles to
+> browse. Just people who happen to be into the same specific things you
+> are, and haven't sat across from you yet.
+>
+> One evening. Four strangers. A table somebody actually built for you.
 
 **Category:** Social
 
