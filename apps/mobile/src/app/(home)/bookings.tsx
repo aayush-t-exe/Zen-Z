@@ -110,12 +110,12 @@ export default function BookingsScreen() {
 
   const handleCancelBooking = (booking: MyBooking) => {
     Alert.alert(
-      'Cancel this booking?',
-      `You'll lose your spot for ${booking.activity_name}. This can't be undone.`,
+      'Remove this from Your Events?',
+      `You haven't paid for ${booking.activity_name} yet, but you'll lose this slot. This can't be undone.`,
       [
         { text: 'Keep it', style: 'cancel' },
         {
-          text: 'Cancel booking',
+          text: 'Remove',
           style: 'destructive',
           onPress: async () => {
             setCancellingId(booking.id);
@@ -214,7 +214,7 @@ export default function BookingsScreen() {
                         {isCancelling ? (
                           <ActivityIndicator size="small" color={Palette.error} />
                         ) : (
-                          <Text style={styles.cancelText}>Cancel booking</Text>
+                          <Text style={styles.cancelText}>Remove this</Text>
                         )}
                       </Pressable>
                     </View>

@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   Image,
-  Platform,
   Alert,
   StyleSheet,
   useWindowDimensions,
@@ -12,7 +11,6 @@ import {
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   FLOW_CONTENT_MAX,
   FLOW_SIDE_PADDING,
@@ -20,7 +18,8 @@ import {
   FlowText,
 } from '@/constants/flow-theme';
 import { FlowBackArrow } from '@/components/flow-back-button';
-import { FlowField, FlowFieldButton, FlowPanel } from '@/components/flow-panel';
+import { DobField } from '@/components/dob-field';
+import { FlowField, FlowPanel } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
 import { QuizProgressBar } from '@/components/quiz-progress-bar';
 import { supabase } from '@/lib/supabase';
@@ -52,16 +51,6 @@ function isValidName(value: string): boolean {
   return trimmed.length > 0 && !/\d/.test(trimmed);
 }
 
-function defaultDob() {
-  const date = new Date();
-  date.setFullYear(date.getFullYear() - 18);
-  return date;
-}
-
-function formatDob(date: Date) {
-  return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-}
-
 export default function ProfileCreationScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -75,7 +64,6 @@ export default function ProfileCreationScreen() {
   const [step, setStep] = useState(0);
   const [fullName, setFullName] = useState('');
   const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
   const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
   const [gender, setGender] = useState('');
   const [phone, setPhone] = useState('');
@@ -123,16 +111,6 @@ export default function ProfileCreationScreen() {
     }
   };
 
-  const handleDateValueChange = (_event: any, selected: Date) => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-    setDateOfBirth(selected);
-    setError('');
-  };
-
-  const handleDateDismiss = () => {
-    if (Platform.OS === 'android') setShowDatePicker(false);
-  };
-
   const handleBack = () => {
     if (step === 0) {
       router.back();
@@ -141,12 +119,35 @@ export default function ProfileCreationScreen() {
     setStep(step - 1);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!canAdvance) return;
 
     if (step === 0 && !isValidName(fullName)) {
       setError('Enter your full name without any numbers.');
       return;
+    }
+
+    // Previously this only surfaced as a cryptic FK error at final submit,
+    // in handleCreateProfile — well past DOB/year/gender/phone/photo, and
+    // by then it read as the whole profile failing rather than one wrong
+    // code. Checking right here, on the step it's actually typed, catches
+    // it immediately instead.
+    if (step === 0 && referralCode.trim()) {
+      setIsLoading(true);
+      setError('');
+      const { data: isValid, error: validateError } = await supabase.rpc('validate_referral_code', {
+        p_code: referralCode.trim(),
+      });
+      setIsLoading(false);
+
+      if (validateError) {
+        setError('Could not check that invite code — try again.');
+        return;
+      }
+      if (!isValid) {
+        setError("That invite code doesn't look right.");
+        return;
+      }
     }
 
     // maximumDate on the native picker (below) is the first line of
@@ -312,25 +313,15 @@ export default function ProfileCreationScreen() {
 
           {step === 1 && (
             <StepShell title="When's your birthday?" subtitle="We'll never show this to anyone else.">
-              {Platform.OS === 'android' && !showDatePicker && (
-                <FlowFieldButton
-                  width={contentWidth}
-                  value={dateOfBirth ? formatDob(dateOfBirth) : null}
-                  placeholder="Choose your date of birth"
-                  onPress={() => setShowDatePicker(true)}
-                />
-              )}
-              {showDatePicker && (
-                <DateTimePicker
-                  value={dateOfBirth ?? defaultDob()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  maximumDate={maxDobDate}
-                  onValueChange={handleDateValueChange}
-                  onDismiss={handleDateDismiss}
-                  themeVariant="dark"
-                />
-              )}
+              <DobField
+                value={dateOfBirth}
+                onChange={(selected) => {
+                  setDateOfBirth(selected);
+                  setError('');
+                }}
+                maxDate={maxDobDate}
+                contentWidth={contentWidth}
+              />
             </StepShell>
           )}
 

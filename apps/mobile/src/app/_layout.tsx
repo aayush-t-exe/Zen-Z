@@ -35,6 +35,10 @@ import { initSentry, Sentry } from '@/lib/sentry';
 SplashScreen.preventAutoHideAsync();
 initSentry();
 
+// Temporary — see secureSessionStorage.ts for why. Remove alongside that
+// file's instrumentation once the real cause is confirmed from live data.
+const DIAGNOSTIC_TAG = 'session-persistence-2026-09-11';
+
 // Purely a dev-mode notice that the test device/browser has the OS-level
 // "reduce motion" accessibility setting on — animations still behave
 // correctly (per-animation `ReduceMotion.Never` overrides still work, and
@@ -74,6 +78,18 @@ function RootLayoutContent() {
             data: { session },
           } = await supabase.auth.getSession();
 
+          // The real fork this whole file's history has been chasing: did
+          // getSession() actually resolve with no session (the persisted
+          // one is genuinely gone/unrefreshable), or did it only look that
+          // way because every retry attempt below threw? Both currently
+          // land the student on the login screen identically — this is
+          // what tells them apart.
+          Sentry.captureMessage(`diagnostic:${DIAGNOSTIC_TAG} getSession resolved`, {
+            level: session ? 'info' : 'warning',
+            tags: { diagnostic: DIAGNOSTIC_TAG },
+            extra: { attempt, hasSession: !!session },
+          });
+
           if (mounted) {
             setSession(session);
             if (session?.user) {
@@ -89,6 +105,10 @@ function RootLayoutContent() {
             `Failed to restore session on boot (attempt ${attempt + 1}/${RETRY_DELAYS_MS.length + 1}):`,
             err
           );
+          Sentry.captureException(err, {
+            tags: { diagnostic: DIAGNOSTIC_TAG, phase: 'boot-retry' },
+            extra: { attempt: attempt + 1, isLastAttempt },
+          });
           if (isLastAttempt) {
             // Swallowing this silently makes "the persisted session failed
             // to load" indistinguishable from "there never was a session"
@@ -111,6 +131,15 @@ function RootLayoutContent() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
+      // Unlike the boot path above, this fires for the lifetime of the app
+      // — including a background token-refresh failure well after a
+      // successful boot, which would silently sign someone out mid-session
+      // with nothing in the retry logic above ever seeing it.
+      Sentry.captureMessage(`diagnostic:${DIAGNOSTIC_TAG} auth state change: ${_event}`, {
+        level: session ? 'info' : 'warning',
+        tags: { diagnostic: DIAGNOSTIC_TAG },
+        extra: { event: _event, hasSession: !!session },
+      });
       if (mounted) {
         setSession(session);
         if (session?.user) {

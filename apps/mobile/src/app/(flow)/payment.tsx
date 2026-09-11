@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Platform,
+  BackHandler,
   useWindowDimensions,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
@@ -70,6 +72,24 @@ export default function PaymentScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
+
+  // This screen is reached two different ways — pushed on top of
+  // booking-flow.tsx for a fresh booking, or *replacing* it outright when
+  // there's already a pending booking for that slot (see the existingBooking
+  // branch this screen's caller uses) — so the back stack underneath it
+  // isn't always the same depth. Android's hardware back button defaults to
+  // popping that stack directly, and with nothing left under it that pop
+  // closes the app to the home screen instead of landing anywhere in Zen-Z.
+  // Matching "Maybe later" below (an explicit push to home, not a `back()`)
+  // makes the hardware button behave the same regardless of how this screen
+  // was reached.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      router.push('/(home)');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [router]);
 
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -268,6 +288,22 @@ export default function PaymentScreen() {
       }
 
       setIsTestMode(!!data.is_test_mode);
+
+      if (Platform.OS === 'web') {
+        // There's no native "in-app browser that hands control back"
+        // concept on web, and redirectUrl is already a real https URL here
+        // (expo-linking's createURL resolves to the current page's origin
+        // on web) — a full-page redirect there and back is simpler and far
+        // more reliable than WebBrowser's web shim, which opens a popup via
+        // window.open() and relies on postMessage: iOS Safari in particular
+        // blocks that popup once it's opened after an awaited network call
+        // above rather than synchronously inside the tap handler.
+        // payment-callback.tsx (and this screen's own useFocusEffect
+        // refetch on remount) picks the flow back up once PayU redirects
+        // here.
+        window.location.href = data.payment_link_url;
+        return;
+      }
 
       await WebBrowser.openAuthSessionAsync(data.payment_link_url, redirectUrl);
 

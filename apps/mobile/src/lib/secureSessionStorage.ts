@@ -3,6 +3,15 @@ import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import * as aesjs from 'aes-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Sentry } from '@/lib/sentry';
+
+// Temporary — chasing the still-unresolved "asks for login again" bug
+// (reported live on multiple phones, not one). Two prior fixes already
+// shipped for this same symptom (see git history on this file and on
+// _layout.tsx/index.tsx) and it's still happening, so this instruments the
+// restore path itself rather than guessing a fourth cause. Remove once the
+// real cause is confirmed from live Sentry data.
+const DIAGNOSTIC_TAG = 'session-persistence-2026-09-11';
 
 // Supabase's session payload (access + refresh token, user metadata) is
 // larger than SecureStore's ~2048-byte per-value limit on Android, so the
@@ -72,20 +81,55 @@ class LargeSecureStore {
   async getItem(key: string): Promise<string | null> {
     const encrypted = await AsyncStorage.getItem(key);
     if (!encrypted) {
+      Sentry.captureMessage(`diagnostic:${DIAGNOSTIC_TAG} AsyncStorage has no stored session`, {
+        level: 'info',
+        tags: { diagnostic: DIAGNOSTIC_TAG },
+      });
       return null;
     }
 
-    return this.decrypt(key, encrypted);
+    const decrypted = await this.decrypt(key, encrypted);
+    if (decrypted === null) {
+      // decrypt() returns null specifically when the AES key in SecureStore
+      // is missing while AsyncStorage still has the encrypted blob — the
+      // exact corruption fix #1 (key-reuse) targeted. Seeing this again
+      // would mean that fix didn't fully hold, or there's a second way to
+      // reach the same split.
+      Sentry.captureMessage(
+        `diagnostic:${DIAGNOSTIC_TAG} encrypted session present but SecureStore key missing`,
+        { level: 'warning', tags: { diagnostic: DIAGNOSTIC_TAG } }
+      );
+    }
+    return decrypted;
   }
 
   async removeItem(key: string): Promise<void> {
+    // Every read so far has come back empty, with getSession() never once
+    // throwing — meaning either the session is never actually written, or
+    // something clears it before the next launch. This is the other half
+    // of that split: is this ever called when it shouldn't be?
+    Sentry.captureMessage(`diagnostic:${DIAGNOSTIC_TAG} session removeItem called`, {
+      level: 'warning',
+      tags: { diagnostic: DIAGNOSTIC_TAG },
+    });
     await AsyncStorage.removeItem(key);
     await SecureStore.deleteItemAsync(key);
   }
 
   async setItem(key: string, value: string): Promise<void> {
-    const encrypted = await this.encrypt(key, value);
-    await AsyncStorage.setItem(key, encrypted);
+    try {
+      const encrypted = await this.encrypt(key, value);
+      await AsyncStorage.setItem(key, encrypted);
+      Sentry.captureMessage(`diagnostic:${DIAGNOSTIC_TAG} session setItem succeeded`, {
+        level: 'info',
+        tags: { diagnostic: DIAGNOSTIC_TAG },
+      });
+    } catch (err) {
+      Sentry.captureException(err, {
+        tags: { diagnostic: DIAGNOSTIC_TAG, phase: 'setItem' },
+      });
+      throw err;
+    }
   }
 }
 

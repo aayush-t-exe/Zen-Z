@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -246,6 +246,7 @@ export default function BookingFlowScreen() {
   const [blockedUntil, setBlockedUntil] = useState<string | null>(null);
   const [profileGender, setProfileGender] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const activityNumId = parseInt(activityId || '0');
   const steps = activity?.duration_minutes
@@ -526,7 +527,10 @@ export default function BookingFlowScreen() {
       // what was being typed.
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollViewRef}
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}>
 
         {/* Day & Time Selection */}
         {currentStep === 'time' && (
@@ -730,8 +734,18 @@ export default function BookingFlowScreen() {
               width={contentWidth}
               style={{ marginTop: 35 }}
               onPress={() => {
-                setPlusOne(!plusOne);
-                if (plusOne) setFriendName('');
+                const turningOn = !plusOne;
+                setPlusOne(turningOn);
+                if (!turningOn) setFriendName('');
+                if (turningOn) {
+                  // The "Their Name" field only mounts once this flips true,
+                  // below whatever's already on screen — without this,
+                  // students who don't think to scroll never see it, then
+                  // hit "required" on Next with no idea why.
+                  requestAnimationFrame(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  });
+                }
               }}
             />
 

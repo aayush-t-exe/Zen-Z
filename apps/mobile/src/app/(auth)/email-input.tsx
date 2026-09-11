@@ -115,7 +115,12 @@ export default function EmailInputScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.root}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      // 'undefined' on Android meant the keyboard had nothing pushing it
+      // back into view — normally not noticeable, but a large system font
+      // scale grows the title enough that the field can end up sitting
+      // right where the keyboard now covers it. 'height' is the same fix
+      // already used for this on booking-flow.tsx and group/[groupId].tsx.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"

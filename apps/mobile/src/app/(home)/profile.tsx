@@ -26,6 +26,30 @@ import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/
 const ANDROID_PACKAGE = 'com.campussocial.app';
 const INSTAGRAM_HANDLE = 'zen_z.app';
 
+// Mirrors profile-creation.tsx's YEARS options — year_of_study is stored as
+// this same 1-5 int, so display just reverses that mapping.
+const YEAR_LABELS: Record<number, string> = {
+  1: '1st year',
+  2: '2nd year',
+  3: '3rd year',
+  4: '4th year',
+  5: 'Other',
+};
+
+function formatYear(value: number | null): string {
+  if (value === null) return 'Not set';
+  return YEAR_LABELS[value] ?? 'Not set';
+}
+
+// profiles.gender is stored snake_case ('prefer_not_to_say') per the
+// profiles_gender_check constraint — this just reverses that formatting,
+// not a separate source of truth for the allowed values.
+function formatGender(value: string | null): string {
+  if (!value) return 'Not set';
+  const spaced = value.replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
 export default function ProfileScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -40,9 +64,13 @@ export default function ProfileScreen() {
   const [photoLoading, setPhotoLoading] = useState(true);
   const [isDialing, setIsDialing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [fullName, setFullName] = useState<string | null>(null);
+  const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
+  const [gender, setGender] = useState<string | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadPhoto = async () => {
+    const loadProfile = async () => {
       if (!user?.id) {
         setPhotoLoading(false);
         return;
@@ -50,9 +78,14 @@ export default function ProfileScreen() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('photo_url')
+        .select('photo_url, full_name, year_of_study, gender, phone')
         .eq('id', user.id)
         .single();
+
+      setFullName(profile?.full_name ?? null);
+      setYearOfStudy(profile?.year_of_study ?? null);
+      setGender(profile?.gender ?? null);
+      setPhone(profile?.phone ?? null);
 
       // profiles.photo_url is a storage path, not a usable URL — the
       // bucket is private, so it has to be exchanged for a signed URL.
@@ -68,7 +101,7 @@ export default function ProfileScreen() {
       setPhotoLoading(false);
     };
 
-    loadPhoto();
+    loadProfile();
   }, [user?.id]);
 
   const dialEmergencyContact = async (fetchPhone: () => Promise<string | null>) => {
@@ -219,6 +252,30 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.group}>
+            <Text style={FlowText.sectionLabel}>About You</Text>
+            <FlowSurfaceBox width={contentWidth}>
+              <View style={styles.rowContent}>
+                <Text style={FlowText.panelLabel}>{fullName || 'Not set'}</Text>
+              </View>
+            </FlowSurfaceBox>
+            <FlowSurfaceBox width={contentWidth}>
+              <View style={styles.rowContent}>
+                <Text style={FlowText.panelLabel}>{formatYear(yearOfStudy)}</Text>
+              </View>
+            </FlowSurfaceBox>
+            <FlowSurfaceBox width={contentWidth}>
+              <View style={styles.rowContent}>
+                <Text style={FlowText.panelLabel}>{formatGender(gender)}</Text>
+              </View>
+            </FlowSurfaceBox>
+            <FlowSurfaceBox width={contentWidth}>
+              <View style={styles.rowContent}>
+                <Text style={FlowText.panelLabel}>{phone || 'Not set'}</Text>
+              </View>
+            </FlowSurfaceBox>
+          </View>
+
+          <View style={styles.group}>
             <Text style={FlowText.sectionLabel}>Email</Text>
             <FlowSurfaceBox width={contentWidth}>
               <View style={styles.rowContent}>
@@ -233,12 +290,14 @@ export default function ProfileScreen() {
               label="Need help now"
               width={contentWidth}
               disabled={isDialing}
+              icon={require('@/assets/images/icon-call.png')}
               onPress={() => dialEmergencyContact(fetchEmergencyContactPhone)}
             />
             <FlowActionRow
               label="Need help now (backup)"
               width={contentWidth}
               disabled={isDialing}
+              icon={require('@/assets/images/icon-call.png')}
               onPress={() => dialEmergencyContact(fetchEmergencyContactPhoneBackup)}
             />
           </View>

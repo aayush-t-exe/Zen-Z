@@ -210,12 +210,15 @@ export function FlowActionRow({
   width,
   tone = 'default',
   disabled = false,
+  icon,
 }: {
   label: string;
   onPress: () => void;
   width: number;
   tone?: 'default' | 'danger';
   disabled?: boolean;
+  /** Pre-tinted for the row's own label color — swapped alongside `tone`, not recolored here. */
+  icon?: number;
 }) {
   const [pressed, setPressed] = useState(false);
   return (
@@ -229,7 +232,10 @@ export function FlowActionRow({
       accessibilityLabel={label}
       style={{ opacity: disabled ? 0.5 : pressed ? 0.82 : 1 }}>
       <FlowSurfaceBox width={width}>
-        <View style={styles.centredContent}>
+        <View style={[styles.centredContent, icon ? styles.centredContentWithIcon : null]}>
+          {icon ? (
+            <Image source={icon} style={styles.actionIcon} resizeMode="contain" accessibilityIgnoresInvertColors />
+          ) : null}
           <Text style={[FlowText.panelLabel, tone === 'danger' && { color: Palette.error }]}>
             {label}
           </Text>
@@ -330,6 +336,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 54,
     paddingVertical: 14,
+  },
+  centredContentWithIcon: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionIcon: {
+    width: 18,
+    height: 18,
   },
   // Sentence-length labels keep the full left margin for their first
   // character, and drop to the slot row's smaller size so a typical answer
