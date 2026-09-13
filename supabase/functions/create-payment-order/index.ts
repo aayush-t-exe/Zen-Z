@@ -82,6 +82,8 @@ serve(async (req) => {
         payment_id,
         plus_one,
         referral_discount_amount,
+        movie_choice_type,
+        movie:movie_id ( price ),
         slots:slot_id (
           activity_type_id,
           activity_types:activity_type_id (
@@ -121,8 +123,17 @@ serve(async (req) => {
 
     const slot = booking.slots as any;
     const activity = slot?.activity_types as any;
+    const movie = booking.movie as any;
+    // A choose_movie booking is charged against that specific title's own
+    // price (a new release can cost more than the usual flat fee, see
+    // 0088_movie_price.sql) — surprise_me always pays the flat activity
+    // fee since it never learns which movie it'll get until the founder
+    // assigns one post-match. This is the actual amount PayU charges, so
+    // it must be derived here server-side, never trusted from the client.
+    const baseFee =
+      booking.movie_choice_type === 'choose_movie' && movie ? movie.price : activity?.convenience_fee;
     const amountRupees = computeOrderAmountRupees(
-      activity?.convenience_fee,
+      baseFee,
       booking.plus_one,
       booking.referral_discount_amount
     );

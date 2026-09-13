@@ -122,6 +122,7 @@ export default function AnalyticsPage() {
             .from('bookings')
             .select(
               `id, user_id, status, payment_status, created_at, referral_discount_amount, plus_one,
+               movie_choice_type, movie:movie_id ( price ),
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee, profit_amount ) )`
             )
             // A cancelled booking isn't an active reservation — counting
@@ -173,7 +174,19 @@ export default function AnalyticsPage() {
           // on it double along with the extra seat, so both figures here
           // need the same doubling or a +1 silently under-counts revenue
           // and profit by half.
-          convenience_fee: (b.slots?.activity_types?.convenience_fee ?? 0) * (b.plus_one ? 2 : 1),
+          //
+          // A choose_movie booking is actually charged the movie's own
+          // price, not the flat activity fee (0088_movie_price.sql) — used
+          // here for revenue so a new release priced above ₹126 isn't
+          // silently undercounted. profit_amount stays the flat per-activity
+          // figure regardless: whether a pricier movie's extra revenue is
+          // pure margin or gets eaten by a pricier ticket is a real business
+          // question this doesn't answer, so profit isn't adjusted per movie
+          // — [ASSUMPTION] flag this if per-movie profit tracking matters.
+          convenience_fee:
+            (b.movie_choice_type === 'choose_movie' && b.movie
+              ? b.movie.price
+              : (b.slots?.activity_types?.convenience_fee ?? 0)) * (b.plus_one ? 2 : 1),
           profit_amount: (b.slots?.activity_types?.profit_amount ?? 0) * (b.plus_one ? 2 : 1),
           referral_discount_amount: b.referral_discount_amount ?? 0,
         }))

@@ -47,6 +47,7 @@ interface Slot {
 interface Movie {
   id: string;
   title: string;
+  price: number;
 }
 
 interface Activity {
@@ -341,7 +342,7 @@ export default function BookingFlowScreen() {
       if (actData?.name === 'Movies') {
         const { data: movieData, error: movieError } = await supabase
           .from('movies')
-          .select('id, title')
+          .select('id, title, price')
           .eq('activity_type_id', activityNumId)
           .eq('is_available', true)
           .order('title', { ascending: true });
@@ -556,7 +557,16 @@ export default function BookingFlowScreen() {
 
   const activityIcon = activity ? activityIconFor(activity.name) : SUMMARY_ICONS.slot;
   const selectedSlotRow = slots.find((slot) => slot.id === selectedSlot) ?? null;
-  const totalFee = activity ? (plusOne ? activity.convenience_fee * 2 : activity.convenience_fee) : 0;
+  // A choose_movie pick prices against that specific title (a new release
+  // can cost more than the usual flat fee, see 0088_movie_price.sql) —
+  // surprise_me never learns which movie it'll get until the founder
+  // assigns one post-match, so it always pays the flat activity fee.
+  const selectedMovie = movies.find((m) => m.id === selectedMovieId) ?? null;
+  const baseFee =
+    selectedMovieChoiceType === 'choose_movie' && selectedMovie
+      ? selectedMovie.price
+      : (activity?.convenience_fee ?? 0);
+  const totalFee = plusOne ? baseFee * 2 : baseFee;
 
   /**
    * Jumps back to an earlier step from the summary card's chevrons. Every

@@ -36,6 +36,8 @@ interface BookingDetails {
   referral_discount_amount: number;
   plus_one: boolean;
   plus_one_name: string | null;
+  movie_choice_type: string | null;
+  movie: any;
   slots: any;
 }
 
@@ -148,6 +150,8 @@ export default function PaymentScreen() {
           referral_discount_amount,
           plus_one,
           plus_one_name,
+          movie_choice_type,
+          movie:movie_id ( title, price ),
           slots:slot_id (
             activity_type_id,
             slot_datetime,
@@ -402,7 +406,17 @@ export default function PaymentScreen() {
   }
 
   const activity = booking.slots?.activity_types;
-  const baseFee = activity?.convenience_fee || 21;
+  // A choose_movie booking prices against that specific title (a new
+  // release can cost more than the usual flat fee, see
+  // 0088_movie_price.sql) — surprise_me pays the flat activity fee since
+  // it never learns which movie it'll get until the founder assigns one
+  // post-match. This must exactly match how create-payment-order (the
+  // Edge Function that actually charges PayU) derives its own amount, or
+  // this screen would show one figure while a different one gets charged.
+  const baseFee =
+    booking.movie_choice_type === 'choose_movie' && booking.movie
+      ? booking.movie.price
+      : activity?.convenience_fee || 21;
   const stickerFee = booking.plus_one ? baseFee * 2 : baseFee;
   const discount = booking.referral_discount_amount || 0;
   // A credit is capped at ₹21 (0075_referral_partial_credits.sql) — it
@@ -468,6 +482,11 @@ export default function PaymentScreen() {
                     ? SUMMARY_ICONS.dinners
                     : { source: activityArt(activity?.name), scale: ACTIVITY_ART_BADGE_SCALE },
                 label: activity?.name ?? '',
+                detail: booking.movie_choice_type
+                  ? booking.movie_choice_type === 'choose_movie'
+                    ? booking.movie?.title
+                    : 'Surprise me'
+                  : undefined,
               },
               {
                 icon: SUMMARY_ICONS.slot,

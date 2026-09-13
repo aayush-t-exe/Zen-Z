@@ -15,6 +15,7 @@ interface Movie {
   id: string;
   title: string;
   activity_type_id: number | null;
+  price: number;
   is_available: boolean;
   notes: string | null;
   activity_types: { name: string; emoji: string } | null;
@@ -23,13 +24,20 @@ interface Movie {
 interface MovieFormState {
   title: string;
   activity_type_id: string;
+  price: string;
   is_available: boolean;
   notes: string;
 }
 
+// Matches Movies' own convenience_fee (0040_hardcode_movie_price.sql) — a
+// new release can cost more, but everything else still starts at the
+// flat rate the founder already charges.
+const DEFAULT_MOVIE_PRICE = '126';
+
 const EMPTY_FORM: MovieFormState = {
   title: '',
   activity_type_id: '',
+  price: DEFAULT_MOVIE_PRICE,
   is_available: true,
   notes: '',
 };
@@ -81,6 +89,7 @@ export default function MoviesPage() {
   const toInsertPayload = (form: MovieFormState) => ({
     title: form.title.trim(),
     activity_type_id: form.activity_type_id ? Number(form.activity_type_id) : null,
+    price: Number(form.price),
     is_available: form.is_available,
     notes: form.notes.trim() || null,
   });
@@ -88,6 +97,10 @@ export default function MoviesPage() {
   const handleCreate = async () => {
     if (!newMovie.title.trim() || !newMovie.activity_type_id) {
       setError('Title and activity are required.');
+      return;
+    }
+    if (!newMovie.price || Number(newMovie.price) <= 0) {
+      setError('Price must be a positive number.');
       return;
     }
 
@@ -111,6 +124,7 @@ export default function MoviesPage() {
     setEditForm({
       title: movie.title,
       activity_type_id: movie.activity_type_id ? String(movie.activity_type_id) : '',
+      price: String(movie.price),
       is_available: movie.is_available,
       notes: movie.notes ?? '',
     });
@@ -126,6 +140,10 @@ export default function MoviesPage() {
     if (!editingId) return;
     if (!editForm.title.trim() || !editForm.activity_type_id) {
       setError('Title and activity are required.');
+      return;
+    }
+    if (!editForm.price || Number(editForm.price) <= 0) {
+      setError('Price must be a positive number.');
       return;
     }
 
@@ -245,6 +263,17 @@ export default function MoviesPage() {
                 </option>
               ))}
             </select>
+            <label className="flex flex-col gap-1 text-sm text-gray-700">
+              Price (₹) — a new release can cost more than the usual ₹126
+              <input
+                type="number"
+                min={1}
+                placeholder="Price"
+                value={newMovie.price}
+                onChange={(e) => setNewMovie({ ...newMovie, price: e.target.value })}
+                className="border rounded-lg px-3 py-2 text-sm"
+              />
+            </label>
             <input
               type="text"
               placeholder="Notes (genre, language, showtime…)"
@@ -304,6 +333,17 @@ export default function MoviesPage() {
                           </option>
                         ))}
                       </select>
+                      <label className="flex flex-col gap-1 text-sm text-gray-700">
+                        Price (₹)
+                        <input
+                          type="number"
+                          min={1}
+                          placeholder="Price"
+                          value={editForm.price}
+                          onChange={(e) => setEditForm({ ...editForm, price: e.target.value })}
+                          className="border rounded-lg px-3 py-2 text-sm"
+                        />
+                      </label>
                       <input
                         type="text"
                         placeholder="Notes (genre, language, showtime…)"
@@ -348,7 +388,7 @@ export default function MoviesPage() {
                         )}
                       </p>
                       <p className="text-sm text-gray-600">
-                        {movie.activity_types?.name ?? 'No activity set'}
+                        {movie.activity_types?.name ?? 'No activity set'} · ₹{movie.price}
                       </p>
                       {movie.notes && <p className="text-sm text-gray-500 mt-1">{movie.notes}</p>}
                     </div>
