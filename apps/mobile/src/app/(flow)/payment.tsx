@@ -22,7 +22,6 @@ import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art'
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
-import { FlowBackButton } from '@/components/flow-back-button';
 import { SUMMARY_ICONS, SummaryCard } from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
 import { formatSlotDateTime } from '@/lib/format';
@@ -80,9 +79,8 @@ export default function PaymentScreen() {
   // isn't always the same depth. Android's hardware back button defaults to
   // popping that stack directly, and with nothing left under it that pop
   // closes the app to the home screen instead of landing anywhere in Zen-Z.
-  // Matching "Maybe later" below (an explicit push to home, not a `back()`)
-  // makes the hardware button behave the same regardless of how this screen
-  // was reached.
+  // Pushing to home explicitly (not `back()`) keeps the hardware button
+  // behaving the same regardless of how this screen was reached.
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       router.push('/(home)');
@@ -348,12 +346,12 @@ export default function PaymentScreen() {
     const activityTypeId = booking.slots?.activity_type_id;
 
     Alert.alert(
-      'Choose a different slot?',
-      "This cancels your unpaid booking for this slot so you can pick another. This can't be undone.",
+      'Book again?',
+      "You haven't paid yet, so nothing's booked — but you'll give up this spot to redo your booking (slot, budget, group), and can't get it back.",
       [
-        { text: 'Keep it', style: 'cancel' },
+        { text: 'Keep this spot', style: 'cancel' },
         {
-          text: 'Cancel & choose again',
+          text: 'Yes, book again',
           style: 'destructive',
           onPress: async () => {
             setIsCancelling(true);
@@ -363,7 +361,7 @@ export default function PaymentScreen() {
             setIsCancelling(false);
 
             if (cancelError) {
-              Alert.alert('Could not cancel', cancelError.message);
+              Alert.alert('Could not restart your booking', cancelError.message);
               return;
             }
 
@@ -524,8 +522,9 @@ export default function PaymentScreen() {
         </View>
       </ScrollView>
 
-      {/* Footer holds the same shape as every other flow screen: the quiet way
-          out above the primary action, held clear of the device's safe area. */}
+      {/* Footer: payment is mandatory to hold the slot, so this is just the
+          primary action, held clear of the device's safe area — no
+          skip-for-now option. */}
       <View
         style={{
           width: contentWidth,
@@ -533,17 +532,13 @@ export default function PaymentScreen() {
           paddingBottom: 40 + insets.bottom,
           paddingTop: 12,
         }}>
-        <FlowBackButton label="Maybe later" onPress={() => router.push('/(home)')} />
-
-        <View style={{ marginTop: 18 }}>
-          <FlowPillButton
-            label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
-            onPress={handlePay}
-            loading={isProcessing}
-            disabled={isCancelling}
-            width={contentWidth}
-          />
-        </View>
+        <FlowPillButton
+          label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
+          onPress={handlePay}
+          loading={isProcessing}
+          disabled={isCancelling}
+          width={contentWidth}
+        />
 
         {hasAttemptedPayment && booking.payment_status !== 'paid' && (
           <Pressable
@@ -563,9 +558,9 @@ export default function PaymentScreen() {
           accessibilityRole="button"
           style={{ marginTop: 16 }}>
           {isCancelling ? (
-            <ActivityIndicator size="small" color={Palette.error} />
+            <ActivityIndicator size="small" color={Palette.muted} />
           ) : (
-            <Text style={styles.cancelLink}>Choose a different slot</Text>
+            <Text style={styles.cancelLink}>Not quite right? Book again</Text>
           )}
         </Pressable>
       </View>
@@ -637,9 +632,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   cancelLink: {
-    color: Palette.error,
+    color: Palette.muted,
     fontSize: 14,
     textAlign: 'center',
+    textDecorationLine: 'underline',
     fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });
