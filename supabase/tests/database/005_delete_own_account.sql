@@ -19,7 +19,7 @@ begin;
 create temp table pgtap_output (line text);
 grant insert, select on pgtap_output to authenticated, anon;
 
-insert into pgtap_output select plan(5);
+insert into pgtap_output select plan(6);
 
 -- ---- fixtures ----
 insert into auth.users (id, email) values
@@ -86,6 +86,16 @@ insert into pgtap_output select is(
   (select status from bookings where id = 'e5000000-0000-0000-0000-000000000002'),
   'cancelled',
   'the leftover unpaid booking is cancelled on deletion'
+);
+
+-- auth.users.email must also be scrubbed, not just profiles.email — the
+-- original address needs to be free for a brand-new signup, and GoTrue
+-- enforces uniqueness on auth.users.email regardless of ban status
+-- (0085_delete_account_scrub_auth_email.sql).
+insert into pgtap_output select is(
+  (select email from auth.users where id = 'a5000000-0000-0000-0000-000000000002'),
+  'deleted-a5000000-0000-0000-0000-000000000002@deleted.zen-z.internal',
+  'auth.users.email is scrubbed so the real address can be reused'
 );
 
 insert into pgtap_output select * from finish();
