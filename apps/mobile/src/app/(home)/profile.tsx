@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,7 @@ import {
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import * as Linking from 'expo-linking';
 import {
   FLOW_CONTENT_MAX,
@@ -69,40 +69,54 @@ export default function ProfileScreen() {
   const [gender, setGender] = useState<string | null>(null);
   const [phone, setPhone] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadProfile = async () => {
-      if (!user?.id) {
+  // useFocusEffect (not a plain effect) so coming back from edit-profile.tsx
+  // re-fetches the just-saved values — this screen's tab stays mounted in
+  // the background between visits, and user?.id never changes across an
+  // edit, so a plain effect keyed on it would otherwise keep showing the
+  // stale pre-edit data until the app fully reloads.
+  useFocusEffect(
+    useCallback(() => {
+      const loadProfile = async () => {
+        if (!user?.id) {
+          setPhotoLoading(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('photo_url, full_name, year_of_study, gender, phone')
+          .eq('id', user.id)
+          .single();
+
+        setFullName(profile?.full_name ?? null);
+        setYearOfStudy(profile?.year_of_study ?? null);
+        setGender(profile?.gender ?? null);
+        setPhone(profile?.phone ?? null);
+
+        // profiles.photo_url is a storage path, not a usable URL — the
+        // bucket is private, so it has to be exchanged for a signed URL.
+        // The "self read own photo" RLS policy is what makes this succeed
+        // for a student's own path (and only their own).
+        if (profile?.photo_url) {
+          const { data } = await supabase.storage
+            .from('profile-photos')
+            .createSignedUrl(profile.photo_url, 3600);
+          setPhotoUrl(data?.signedUrl ?? null);
+        } else {
+          setPhotoUrl(null);
+        }
+
         setPhotoLoading(false);
-        return;
-      }
+      };
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('photo_url, full_name, year_of_study, gender, phone')
-        .eq('id', user.id)
-        .single();
-
-      setFullName(profile?.full_name ?? null);
-      setYearOfStudy(profile?.year_of_study ?? null);
-      setGender(profile?.gender ?? null);
-      setPhone(profile?.phone ?? null);
-
-      // profiles.photo_url is a storage path, not a usable URL — the
-      // bucket is private, so it has to be exchanged for a signed URL.
-      // The "self read own photo" RLS policy is what makes this succeed
-      // for a student's own path (and only their own).
-      if (profile?.photo_url) {
-        const { data } = await supabase.storage
-          .from('profile-photos')
-          .createSignedUrl(profile.photo_url, 3600);
-        setPhotoUrl(data?.signedUrl ?? null);
-      }
-
-      setPhotoLoading(false);
-    };
-
-    loadProfile();
-  }, [user?.id]);
+      loadProfile();
+      // Depends on the whole `user` object, not `user?.id` — matches
+      // booking-flow.tsx's loadActivityAndSlots useCallback, which the
+      // React Compiler already accepts; keying on just `.id` here made its
+      // own inferred dependency mismatch the declared one and skipped
+      // optimizing this component (react-hooks/preserve-manual-memoization).
+    }, [user])
+  );
 
   const dialEmergencyContact = async (fetchPhone: () => Promise<string | null>) => {
     if (isDialing) return;
@@ -273,6 +287,14 @@ export default function ProfileScreen() {
                 <Text style={FlowText.panelLabel}>{phone || 'Not set'}</Text>
               </View>
             </FlowSurfaceBox>
+            {/* Gender has no edit row here on purpose — it's a hard
+                matching filter (women_only/men_only), so it stays founder-
+                only to change, not something a student can flip themselves. */}
+            <FlowActionRow
+              label="Edit Profile"
+              width={contentWidth}
+              onPress={() => router.push('/(flow)/edit-profile')}
+            />
           </View>
 
           <View style={styles.group}>
