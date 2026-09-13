@@ -13,6 +13,9 @@ function makeBooking(
     group_preference: 'mixed',
     plus_one: false,
     plus_one_name: null,
+    movie_choice_type: null,
+    movie_id: null,
+    movie: null,
     ...rest,
     profile: { ...defaultProfile, ...profile },
   };
@@ -92,6 +95,32 @@ describe('placementViolation', () => {
   it('allows a compatible candidate with no gender conflict or blocklist hit', () => {
     const candidate = makeBooking({ user_id: 'a', group_preference: 'mixed' });
     const members = [makeBooking({ user_id: 'b', group_preference: 'mixed' })];
+    expect(placementViolation(candidate, members, new Set())).toBeNull();
+  });
+
+  // 0086_movies.sql: a choose_movie booking's movie_id is a hard constraint
+  // the same way group_preference already is.
+  it('rejects a candidate who chose a different movie than an existing member', () => {
+    const candidate = makeBooking({ user_id: 'a', movie_choice_type: 'choose_movie', movie_id: 'movie-1' });
+    const members = [makeBooking({ user_id: 'b', movie_choice_type: 'choose_movie', movie_id: 'movie-2' })];
+    expect(placementViolation(candidate, members, new Set())).toMatch(/different movie/);
+  });
+
+  it('allows a candidate who chose the same movie as an existing member', () => {
+    const candidate = makeBooking({ user_id: 'a', movie_choice_type: 'choose_movie', movie_id: 'movie-1' });
+    const members = [makeBooking({ user_id: 'b', movie_choice_type: 'choose_movie', movie_id: 'movie-1' })];
+    expect(placementViolation(candidate, members, new Set())).toBeNull();
+  });
+
+  it('allows a surprise_me candidate to join a group with a movie already chosen', () => {
+    const candidate = makeBooking({ user_id: 'a', movie_choice_type: 'surprise_me', movie_id: null });
+    const members = [makeBooking({ user_id: 'b', movie_choice_type: 'choose_movie', movie_id: 'movie-1' })];
+    expect(placementViolation(candidate, members, new Set())).toBeNull();
+  });
+
+  it('allows a candidate who chose a movie to join an all-surprise_me group', () => {
+    const candidate = makeBooking({ user_id: 'a', movie_choice_type: 'choose_movie', movie_id: 'movie-1' });
+    const members = [makeBooking({ user_id: 'b', movie_choice_type: 'surprise_me', movie_id: null })];
     expect(placementViolation(candidate, members, new Set())).toBeNull();
   });
 });

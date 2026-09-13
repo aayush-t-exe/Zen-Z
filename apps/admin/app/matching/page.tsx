@@ -285,6 +285,7 @@ export default function MatchingPage() {
             key={selectedSlotId}
             slotId={selectedSlotId}
             activityTypeId={selectedActivity.id}
+            activityName={selectedActivity.name}
             minGroupSize={selectedActivity.min_group_size}
             maxGroupSize={selectedActivity.max_group_size}
           />

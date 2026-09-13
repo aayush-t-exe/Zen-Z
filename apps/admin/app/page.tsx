@@ -167,6 +167,10 @@ export default function Dashboard() {
               Manage venues
             </Link>
             {' · '}
+            <Link href="/movies" className="text-sm text-blue-600 hover:text-blue-800">
+              Manage movies
+            </Link>
+            {' · '}
             <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
               Reports
             </Link>

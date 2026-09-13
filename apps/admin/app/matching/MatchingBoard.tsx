@@ -28,6 +28,9 @@ export interface Booking {
   group_preference: string;
   plus_one: boolean;
   plus_one_name: string | null;
+  movie_choice_type: string | null;
+  movie_id: string | null;
+  movie: { title: string; is_available: boolean } | null;
   profile: {
     id: string;
     full_name: string;
@@ -86,6 +89,20 @@ export function placementViolation(
     return `This group is ${required === 'female' ? 'women' : 'men'}-only.`;
   }
 
+  // A choose_movie booking's movie_id is a hard constraint the same way
+  // group_preference is — but only between two non-null choices that
+  // differ. A surprise_me booking (movie_id null) never conflicts, and can
+  // join a group that already has a movie picked; that shared pick is what
+  // the group ends up with (0086_movies.sql).
+  if (candidate.movie_id) {
+    const conflictingMember = members.find(
+      (m) => m.movie_id && m.movie_id !== candidate.movie_id
+    );
+    if (conflictingMember) {
+      return `${candidate.profile.full_name} chose a different movie than ${conflictingMember.profile.full_name}.`;
+    }
+  }
+
   // Mirrors the permanent reporter/reported blocklist hard-gated in
   // confirm_group() (0021_reports_moderation.sql), so a founder sees why
   // a placement is impossible before dragging it in rather than only on
@@ -106,22 +123,31 @@ interface Venue {
   name: string;
 }
 
+interface Movie {
+  id: string;
+  title: string;
+}
+
 interface GroupDraft {
   localId: string;
   venueId: string | null;
+  movieId: string | null;
 }
 
 export default function MatchingBoard({
   slotId,
   activityTypeId,
+  activityName,
   minGroupSize,
   maxGroupSize,
 }: {
   slotId: string;
   activityTypeId: number;
+  activityName: string;
   minGroupSize: number;
   maxGroupSize: number;
 }) {
+  const isMovies = activityName === 'Movies';
   const [unmatched, setUnmatched] = useState<Booking[]>([]);
   const [openReportedUserIds, setOpenReportedUserIds] = useState<Set<string>>(new Set());
   const [blockedPairs, setBlockedPairs] = useState<Set<string>>(new Set());
@@ -129,6 +155,7 @@ export default function MatchingBoard({
   const [photoUrls, setPhotoUrls] = useState<Record<string, string>>({});
   const [dimensionIds, setDimensionIds] = useState<number[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [movies, setMovies] = useState<Movie[]>([]);
   const [groups, setGroups] = useState<GroupDraft[]>([]);
   const [placements, setPlacements] = useState<Record<string, string | null>>({});
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -153,12 +180,14 @@ export default function MatchingBoard({
         { data: bookings, error: bookingsError },
         { data: dims, error: dimsError },
         { data: venuesData, error: venuesError },
+        { data: moviesData, error: moviesError },
         { data: reportsData, error: reportsError },
       ] = await Promise.all([
         supabase
           .from('bookings')
           .select(
             `id, user_id, budget_band, group_preference, plus_one, plus_one_name,
+             movie_choice_type, movie_id, movie:movie_id ( title, is_available ),
              profile:user_id ( id, full_name, gender, year_of_study, photo_url )`
           )
           .eq('slot_id', slotId)
@@ -172,6 +201,15 @@ export default function MatchingBoard({
           .eq('payment_status', 'paid'),
         supabase.from('personality_dimensions').select('id'),
         supabase.from('venues').select('id, name').eq('activity_type_id', activityTypeId),
+        // Only currently-showing titles are offerable at confirm time — a
+        // booking that picked one since marked unavailable still carries it
+        // (booking.movie, unfiltered) so the founder can see what was
+        // originally chosen even though it's no longer a pickable option.
+        supabase
+          .from('movies')
+          .select('id, title')
+          .eq('activity_type_id', activityTypeId)
+          .eq('is_available', true),
         // reported_user_id/status feeds the open-report warning badge
         // (informational only — no auto-pause, founder decision
         // 2026-08-14); reporter_id+reported_user_id feeds the
@@ -185,7 +223,7 @@ export default function MatchingBoard({
       // get placed into groups. Silently defaulting to an empty pool could
       // make the founder think a slot has no one left to match when the
       // query just failed.
-      const loadError = bookingsError || dimsError || venuesError || reportsError;
+      const loadError = bookingsError || dimsError || venuesError || moviesError || reportsError;
       if (loadError) {
         setBoardError(`Failed to load the matching board: ${loadError.message}`);
         setLoading(false);
@@ -196,6 +234,7 @@ export default function MatchingBoard({
       setUnmatched(bookingsList);
       setDimensionIds((dims ?? []).map((d: any) => d.id));
       setVenues(venuesData ?? []);
+      setMovies(moviesData ?? []);
 
       setOpenReportedUserIds(
         new Set(
@@ -244,7 +283,7 @@ export default function MatchingBoard({
 
   const addGroup = () => {
     groupCounter.current += 1;
-    setGroups((prev) => [...prev, { localId: `g${groupCounter.current}`, venueId: null }]);
+    setGroups((prev) => [...prev, { localId: `g${groupCounter.current}`, venueId: null, movieId: null }]);
   };
 
   const removeGroup = (localId: string) => {
@@ -263,6 +302,32 @@ export default function MatchingBoard({
       prev.map((g) => (g.localId === localId ? { ...g, venueId: venueId || null } : g))
     );
   };
+
+  const setGroupMovie = (localId: string, movieId: string) => {
+    setGroups((prev) =>
+      prev.map((g) => (g.localId === localId ? { ...g, movieId: movieId || null } : g))
+    );
+  };
+
+  // Members already agree on a movie before the founder touches the select
+  // at all — a choose_movie booking's movie_id is a hard filter enforced by
+  // placementViolation, so any two non-null values already in one group are
+  // guaranteed equal. Surprise-me members (movie_id null) don't count.
+  const impliedMovieId = (groupLocalId: string): string | null => {
+    const ids = Array.from(
+      new Set(
+        membersOf(groupLocalId)
+          .map((m) => m.movie_id)
+          .filter((id): id is string => !!id)
+      )
+    );
+    return ids.length === 1 ? ids[0] : null;
+  };
+
+  // The founder's explicit pick always wins; otherwise this falls back to
+  // whatever the group's choose_movie members already agreed on.
+  const resolvedMovieId = (group: GroupDraft): string | null =>
+    group.movieId ?? impliedMovieId(group.localId);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -340,6 +405,7 @@ export default function MatchingBoard({
         p_slot_id: slotId,
         p_venue_id: group.venueId,
         p_booking_ids: members.map((m) => m.id),
+        p_movie_id: isMovies ? resolvedMovieId(group) : null,
       });
 
       if (error) throw error;
@@ -423,6 +489,7 @@ export default function MatchingBoard({
                       photoUrl={photoFor(booking)}
                       compatibilityBadge={fit}
                       hasOpenReport={openReportedUserIds.has(booking.user_id)}
+                      hasMovieUnavailable={booking.movie_id !== null && booking.movie?.is_available === false}
                       onCancel={() => handleCancelBooking(booking)}
                       cancelling={cancellingId === booking.id}
                     />
@@ -454,9 +521,21 @@ export default function MatchingBoard({
                 const members = membersOf(group.localId);
                 const seats = seatCount(members);
                 const sizeOk = seats >= minGroupSize && seats <= maxGroupSize;
-                const canBook = sizeOk && !!group.venueId && confirmingGroupId === null;
+                const groupMovieId = resolvedMovieId(group);
+                const canBook =
+                  sizeOk &&
+                  !!group.venueId &&
+                  (!isMovies || !!groupMovieId) &&
+                  confirmingGroupId === null;
                 const score = groupScore(group.localId);
                 const genderConstraint = requiredGenderForGroup(members);
+                // Members might already agree on a movie (choose_movie, hard
+                // filter guarantees they agree) even before the founder has
+                // touched the select — surfaced as plain text so it's clear
+                // why the dropdown below shows a pre-filled value, and so it
+                // still says what was picked even if that title has since
+                // been marked unavailable and dropped from the options.
+                const originalPick = members.find((m) => m.movie_id)?.movie?.title ?? null;
 
                 return (
                   <DropZone
@@ -497,6 +576,7 @@ export default function MatchingBoard({
                               booking={booking}
                               photoUrl={photoFor(booking)}
                               compact
+                              hasMovieUnavailable={booking.movie_id !== null && booking.movie?.is_available === false}
                               onCancel={() => handleCancelBooking(booking)}
                               cancelling={cancellingId === booking.id}
                             />
@@ -518,6 +598,29 @@ export default function MatchingBoard({
                           </option>
                         ))}
                       </select>
+                      {isMovies && (
+                        <>
+                          <select
+                            value={groupMovieId ?? ''}
+                            onChange={(e) => setGroupMovie(group.localId, e.target.value)}
+                            className="w-full border rounded-lg px-3 py-2 text-sm"
+                          >
+                            <option value="">Select movie…</option>
+                            {movies.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.title}
+                              </option>
+                            ))}
+                          </select>
+                          {originalPick && (
+                            <p className="text-xs text-gray-500">
+                              Originally picked: {originalPick}
+                              {!movies.some((m) => m.id === groupMovieId) &&
+                                ' — no longer showing, pick another'}
+                            </p>
+                          )}
+                        </>
+                      )}
                       {!sizeOk && members.length > 0 && (
                         <p className="text-xs text-orange-600">
                           Needs {minGroupSize}–{maxGroupSize} students to book.
@@ -596,6 +699,7 @@ function StudentCard({
   dragging = false,
   compatibilityBadge = null,
   hasOpenReport = false,
+  hasMovieUnavailable = false,
   onCancel,
   cancelling = false,
 }: {
@@ -605,6 +709,7 @@ function StudentCard({
   dragging?: boolean;
   compatibilityBadge?: { groupNumber: number; score: number } | null;
   hasOpenReport?: boolean;
+  hasMovieUnavailable?: boolean;
   onCancel?: () => void;
   cancelling?: boolean;
 }) {
@@ -618,6 +723,11 @@ function StudentCard({
     >
       {hasOpenReport && (
         <p className="text-xs font-medium text-red-600 mb-1">⚠️ Open report — review before matching</p>
+      )}
+      {hasMovieUnavailable && (
+        <p className="text-xs font-medium text-orange-600 mb-1">
+          ⚠️ Chose a movie that&apos;s no longer showing — reassign at confirm
+        </p>
       )}
       <div className="flex gap-3 items-center">
         {photoUrl ? (
@@ -642,6 +752,11 @@ function StudentCard({
           {booking.group_preference !== 'mixed' && (
             <p className="text-xs font-medium text-gray-700 mt-0.5">
               {booking.group_preference === 'women_only' ? 'Women only' : 'Men only'}
+            </p>
+          )}
+          {booking.movie_choice_type && (
+            <p className="text-xs font-medium text-gray-700 mt-0.5">
+              🎬 {booking.movie_choice_type === 'choose_movie' ? booking.movie?.title ?? 'Choose your movie' : 'Surprise me'}
             </p>
           )}
           {booking.plus_one && (

@@ -44,6 +44,11 @@ interface Slot {
   activity_type_id: number;
 }
 
+interface Movie {
+  id: string;
+  title: string;
+}
+
 interface Activity {
   id: number;
   name: string;
@@ -89,16 +94,25 @@ const BUDGET_BANDS = [
 // 'mixed' for these bookings without asking.
 // Movies also charges a fixed price (hardcoded convenience_fee, see
 // migration 0040) but still gender-filters groups like Cafés/Dinners, so it
-// skips only the budget step, not preference.
-type BookingStep = 'time' | 'budget' | 'preference' | 'summary';
+// skips only the budget step, not preference. Movies alone also asks one
+// more thing: whether the founder should just pick the film (the default —
+// the founder's safety valve for matching, see 0086_movies.sql) or the
+// student wants to choose from what's currently showing, which becomes a
+// hard matching constraint the same way group_preference already is.
+type BookingStep = 'time' | 'budget' | 'preference' | 'movie_choice' | 'summary';
 const STEPS_WITH_BUDGET: BookingStep[] = ['time', 'budget', 'preference', 'summary'];
 const STEPS_FIXED_PRICE: BookingStep[] = ['time', 'summary'];
-const STEPS_FIXED_PRICE_WITH_PREFERENCE: BookingStep[] = ['time', 'preference', 'summary'];
+const STEPS_MOVIES: BookingStep[] = ['time', 'preference', 'movie_choice', 'summary'];
 
 const GROUP_PREFERENCES = [
   { value: 'mixed', label: 'Surprise me (mixed)' },
   { value: 'women_only', label: 'Women only' },
   { value: 'men_only', label: 'Men only' },
+];
+
+const MOVIE_CHOICE_TYPES = [
+  { value: 'surprise_me', label: 'Surprise me' },
+  { value: 'choose_movie', label: 'Choose your movie' },
 ];
 
 /**
@@ -239,6 +253,11 @@ export default function BookingFlowScreen() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
   const [selectedPreference, setSelectedPreference] = useState<string | null>(null);
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [selectedMovieChoiceType, setSelectedMovieChoiceType] = useState<
+    'surprise_me' | 'choose_movie' | null
+  >(null);
+  const [selectedMovieId, setSelectedMovieId] = useState<string | null>(null);
   const [plusOne, setPlusOne] = useState(false);
   const [friendName, setFriendName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -252,7 +271,7 @@ export default function BookingFlowScreen() {
   const steps = activity?.duration_minutes
     ? STEPS_FIXED_PRICE
     : activity?.name === 'Movies'
-    ? STEPS_FIXED_PRICE_WITH_PREFERENCE
+    ? STEPS_MOVIES
     : STEPS_WITH_BUDGET;
   const currentStep = steps[stepIndex];
 
@@ -271,6 +290,9 @@ export default function BookingFlowScreen() {
     setSelectedSlot(null);
     setSelectedBudget(null);
     setSelectedPreference(null);
+    setMovies([]);
+    setSelectedMovieChoiceType(null);
+    setSelectedMovieId(null);
     setPlusOne(false);
     setFriendName('');
     setError('');
@@ -315,6 +337,22 @@ export default function BookingFlowScreen() {
       }
 
       if (actData) setActivity(actData);
+
+      if (actData?.name === 'Movies') {
+        const { data: movieData, error: movieError } = await supabase
+          .from('movies')
+          .select('id, title')
+          .eq('activity_type_id', activityNumId)
+          .eq('is_available', true)
+          .order('title', { ascending: true });
+
+        if (movieError) {
+          setLoadError(movieError.message);
+          return;
+        }
+
+        setMovies(movieData ?? []);
+      }
 
       // Only the single nearest open slot — offering weeks of Tuesdays to
       // choose from read like a duplicate ("2 slots for Movies") when really
@@ -382,10 +420,14 @@ export default function BookingFlowScreen() {
   const handleCreateBooking = async () => {
     const budgetRequired = steps.includes('budget');
     const preferenceRequired = steps.includes('preference');
+    const movieChoiceStepRequired = steps.includes('movie_choice');
     if (
       !selectedSlot ||
       (budgetRequired && !selectedBudget) ||
       (preferenceRequired && !selectedPreference) ||
+      (movieChoiceStepRequired &&
+        (!selectedMovieChoiceType ||
+          (selectedMovieChoiceType === 'choose_movie' && !selectedMovieId))) ||
       !user
     ) {
       setError('Please select all options');
@@ -409,6 +451,11 @@ export default function BookingFlowScreen() {
         status: 'pending_match',
         plus_one: plusOne,
         plus_one_name: plusOne ? friendName.trim() : null,
+        movie_choice_type: movieChoiceStepRequired ? selectedMovieChoiceType : null,
+        movie_id:
+          movieChoiceStepRequired && selectedMovieChoiceType === 'choose_movie'
+            ? selectedMovieId
+            : null,
       });
 
       if (bookingError) {
@@ -449,6 +496,11 @@ export default function BookingFlowScreen() {
     if (currentStep === 'time') return slots.some((s) => s.id === selectedSlot);
     if (currentStep === 'budget') return !!selectedBudget;
     if (currentStep === 'preference') return !!selectedPreference;
+    if (currentStep === 'movie_choice') {
+      return selectedMovieChoiceType === 'surprise_me'
+        ? true
+        : selectedMovieChoiceType === 'choose_movie' && !!selectedMovieId;
+    }
     return true;
   };
 
@@ -661,12 +713,65 @@ export default function BookingFlowScreen() {
           </View>
         )}
 
+        {/* Movie Choice Selection — Movies only, see 0086_movies.sql. Surprise
+            me is drawn first (and reads as the plain, safe choice) since it's
+            the founder's safety valve for matching a thin pool of students. */}
+        {currentStep === 'movie_choice' && (
+          <View style={{ width: contentWidth }}>
+            <Text style={styles.stepTitleCentred}>Know what you want to watch?</Text>
+            <Text style={styles.stepSubtitleCentred}>Leave it to us, or pick the film yourself</Text>
+
+            <View style={{ marginTop: 32, gap: 30 }}>
+              {MOVIE_CHOICE_TYPES.map((choice) => (
+                <FlowPanel
+                  key={choice.value}
+                  label={choice.label}
+                  selected={selectedMovieChoiceType === choice.value}
+                  onPress={() => {
+                    setError('');
+                    setSelectedMovieChoiceType(choice.value as 'surprise_me' | 'choose_movie');
+                    if (choice.value === 'surprise_me') setSelectedMovieId(null);
+                  }}
+                  width={contentWidth}
+                />
+              ))}
+            </View>
+
+            {selectedMovieChoiceType === 'choose_movie' && (
+              <View style={{ marginTop: 30, gap: 16 }}>
+                <Text style={styles.fieldLabel}>Now showing</Text>
+                {movies.length === 0 ? (
+                  <Text style={styles.stepSubtitleCentred}>
+                    Nothing listed yet — try Surprise me instead for this one.
+                  </Text>
+                ) : (
+                  <View style={{ gap: 14 }}>
+                    {movies.map((movie) => (
+                      <FlowPanel
+                        key={movie.id}
+                        label={movie.title}
+                        selected={selectedMovieId === movie.id}
+                        onPress={() => {
+                          setError('');
+                          setSelectedMovieId(movie.id);
+                        }}
+                        width={contentWidth}
+                      />
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Confirmation */}
         {currentStep === 'summary' &&
           activity &&
           selectedSlot &&
           (steps.includes('budget') ? selectedBudget : true) &&
-          (steps.includes('preference') ? selectedPreference : true) && (
+          (steps.includes('preference') ? selectedPreference : true) &&
+          (steps.includes('movie_choice') ? !!selectedMovieChoiceType : true) && (
           <View style={{ width: contentWidth }}>
             {/* Comp reads "Your new adventure awaits" / "Unlock your new
                 adventure". Kept as "next": that is the wording in
@@ -684,6 +789,16 @@ export default function BookingFlowScreen() {
                 {
                   icon: activityIcon,
                   label: activity.name,
+                  // The card has no spare row for this (see SummaryCard —
+                  // exactly four, art-locked), and this row is otherwise the
+                  // only one with a free detail line, so the movie choice
+                  // rides on it instead of getting its own.
+                  detail: steps.includes('movie_choice')
+                    ? selectedMovieChoiceType === 'choose_movie'
+                      ? movies.find((m) => m.id === selectedMovieId)?.title
+                      : 'Surprise me'
+                    : undefined,
+                  onPress: steps.includes('movie_choice') ? () => goToStep('movie_choice') : undefined,
                 },
                 {
                   icon: SUMMARY_ICONS.slot,
