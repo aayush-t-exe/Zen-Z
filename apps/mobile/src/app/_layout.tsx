@@ -48,7 +48,7 @@ LogBox.ignoreLogs(['[Reanimated] Reduced motion setting is enabled on this devic
 
 const queryClient = new QueryClient();
 
-function RootLayoutContent() {
+function RootLayoutContent({ onReady }: { onReady: () => void }) {
   const [isReady, setIsReady] = useState(false);
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
@@ -156,12 +156,20 @@ function RootLayoutContent() {
     };
   }, [setSession, setUser, setLoading]);
 
+  useEffect(() => {
+    if (isReady) {
+      onReady();
+    }
+  }, [isReady, onReady]);
+
+  const screenOptions = { headerShown: false, contentStyle: { backgroundColor: '#000000' } };
+
   if (!isReady) {
-    return <Stack screenOptions={{ headerShown: false }} />;
+    return <Stack screenOptions={screenOptions} />;
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack screenOptions={screenOptions}>
       {!session ? (
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       ) : (
@@ -174,6 +182,7 @@ function RootLayoutContent() {
 }
 
 function RootLayout() {
+  const [authReady, setAuthReady] = useState(false);
   const [fontsLoaded] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
@@ -198,10 +207,15 @@ function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    // Hiding the splash as soon as fonts load (before auth restore below has
+    // finished) exposed the navigator's default white background for the
+    // rest of the boot sequence — up to ~3.5s on a cold relaunch, since
+    // RootLayoutContent's session restore retries. Keeping the (black)
+    // splash up until both are ready removes that white flash entirely.
+    if (fontsLoaded && authReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, authReady]);
 
   if (!fontsLoaded) {
     return null;
@@ -211,7 +225,7 @@ function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <RootLayoutContent />
+          <RootLayoutContent onReady={() => setAuthReady(true)} />
           <NetworkStatusOverlay />
         </QueryClientProvider>
       </ErrorBoundary>
