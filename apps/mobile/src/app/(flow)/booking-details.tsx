@@ -191,6 +191,11 @@ export default function BookingDetailsScreen() {
               <DetailRow
                 label="When"
                 value={`${formatSlotDay(group.slot_datetime)} · ${formatEventTime(group.slot_datetime)}`}
+                detail={
+                  group.activity_name === 'Movies'
+                    ? 'Movie tickets are shared one day before the event.'
+                    : undefined
+                }
                 width={contentWidth}
               />
 

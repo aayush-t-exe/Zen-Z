@@ -513,6 +513,9 @@ export default function PaymentScreen() {
           <View style={{ marginTop: 30, gap: 9 }}>
             <IncludedLine label="Matched with a compatible group" />
             <IncludedLine label="Venue revealed before the event" />
+            {activity?.name === 'Movies' && (
+              <IncludedLine label="Movie tickets shared one day before the event" />
+            )}
             {booking.plus_one && <IncludedLine label={`A seat for your +1, ${booking.plus_one_name}`} />}
           </View>
 
