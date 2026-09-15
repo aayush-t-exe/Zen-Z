@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import {
   FLOW_CONTENT_MAX,
   FLOW_SIDE_PADDING,
@@ -19,8 +20,10 @@ import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art'
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
 import { SummaryBadge } from '@/components/summary-card';
-import { fetchMyGroups, MyGroupDetails } from '@/lib/groups';
+import { fetchMyGroups } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+import { useAuthStore } from '@/store/auth';
+import { myGroupsKey } from '@/lib/queryKeys';
 
 /** icon-chevron-right.png is 27x47. */
 const CHEVRON_ASPECT = 47 / 27;
@@ -28,31 +31,39 @@ const CHEVRON_ASPECT = 47 / 27;
 export default function ChatsScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const userId = useAuthStore((state) => state.user?.id);
   // Same content column the rest of the redesign runs.
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
-  const [groups, setGroups] = useState<MyGroupDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setLoadError(null);
-    const result = await fetchMyGroups();
+  // Cached rather than local useState + a fetch-on-focus effect — this tab
+  // stays mounted between visits, so switching back to it used to always
+  // show a blank/spinner reset while it refetched from scratch. Kept on
+  // the same query key bookings.tsx uses for groups, so whichever screen
+  // fetched most recently warms the other's cache too.
+  const {
+    data: groups = [],
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: myGroupsKey(userId ?? ''),
+    queryFn: async () => {
+      const result = await fetchMyGroups();
+      if (result.error) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: !!userId,
+  });
+  const loadError = error instanceof Error ? error.message : null;
 
-    if (result.error) {
-      setLoadError(result.error);
-      setIsLoading(false);
-      return;
-    }
-
-    setGroups(result.data);
-    setIsLoading(false);
-  }, []);
-
+  // Still refetches every focus — a group can get matched, revealed or
+  // paid for from another screen — but now it's a background refresh
+  // behind the cached list rather than a full loading-state reset each
+  // time, since `data` holds the previous result until the new one lands.
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      if (userId) refetch();
+    }, [userId, refetch])
   );
 
   if (isLoading) {
@@ -70,7 +81,7 @@ export default function ChatsScreen() {
         <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
           {loadError}
         </Text>
-        <FlowPillButton label="Retry" width={contentWidth} onPress={load} />
+        <FlowPillButton label="Retry" width={contentWidth} onPress={() => refetch()} />
       </View>
     );
   }

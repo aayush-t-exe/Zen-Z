@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
 import {
   FLOW_CONTENT_MAX,
@@ -22,9 +23,17 @@ import { FlowActionRow, FlowSurfaceBox } from '@/components/flow-panel';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
+import {
+  fetchProfileFields,
+  fetchSignedPhotoUrl,
+  profileFieldsKey,
+  profilePhotoKey,
+} from '@/lib/profile';
 
 const ANDROID_PACKAGE = 'com.campussocial.app';
 const INSTAGRAM_HANDLE = 'zen_z.app';
+/** Comfortably inside the storage-signed URL's 3600s expiry (see lib/profile.ts). */
+const PHOTO_URL_REFRESH_MS = 50 * 60 * 1000;
 
 // Mirrors profile-creation.tsx's YEARS options — year_of_study is stored as
 // this same 1-5 int, so display just reverses that mapping.
@@ -56,66 +65,54 @@ export default function ProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const setSession = useAuthStore((state) => state.setSession);
   const setUser = useAuthStore((state) => state.setUser);
+  const queryClient = useQueryClient();
 
   // Same content column the rest of the redesign runs.
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  const [photoLoading, setPhotoLoading] = useState(true);
   const [isDialing, setIsDialing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [fullName, setFullName] = useState<string | null>(null);
-  const [yearOfStudy, setYearOfStudy] = useState<number | null>(null);
-  const [gender, setGender] = useState<string | null>(null);
-  const [phone, setPhone] = useState<string | null>(null);
 
-  // useFocusEffect (not a plain effect) so coming back from edit-profile.tsx
-  // re-fetches the just-saved values — this screen's tab stays mounted in
-  // the background between visits, and user?.id never changes across an
-  // edit, so a plain effect keyed on it would otherwise keep showing the
-  // stale pre-edit data until the app fully reloads.
+  const userId = user?.id;
+
+  // Cached rather than local useState + a fetch-on-focus effect — this
+  // screen's tab stays mounted between visits, so a plain state fetch used
+  // to hit Postgres and re-sign the photo URL on every single tab switch.
+  // edit-profile.tsx invalidates this same key on save, so this only
+  // actually refetches when there's something new to show, not on every
+  // focus.
+  const { data: profile, refetch: refetchProfile } = useQuery({
+    queryKey: profileFieldsKey(userId ?? ''),
+    queryFn: () => fetchProfileFields(userId!),
+    enabled: !!userId,
+  });
+
+  const photoPath = profile?.photo_url ?? null;
+
+  // Split out from the fields query and keyed by the photo's storage path,
+  // not by focus/time — createSignedUrl mints a new token every call, and
+  // feeding <Image> a new uri each focus was what made the photo visibly
+  // re-download/flash every time you switched back to this tab. This only
+  // re-runs when the photo path actually changes, or (refetchInterval)
+  // shortly before the signed URL's own 3600s expiry.
+  const { data: photoUrl } = useQuery({
+    queryKey: profilePhotoKey(photoPath ?? ''),
+    queryFn: () => fetchSignedPhotoUrl(photoPath!),
+    enabled: !!photoPath,
+    staleTime: PHOTO_URL_REFRESH_MS,
+    refetchInterval: PHOTO_URL_REFRESH_MS,
+  });
+
+  const photoLoading = !profile || (!!photoPath && photoUrl === undefined);
+
+  // Still worth a refetch on focus (e.g. coming back from edit-profile.tsx
+  // without a network round trip in between) — cheap now that it's a
+  // background refresh behind cached data rather than a blank/spinner
+  // reset every time.
   useFocusEffect(
     useCallback(() => {
-      const loadProfile = async () => {
-        if (!user?.id) {
-          setPhotoLoading(false);
-          return;
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('photo_url, full_name, year_of_study, gender, phone')
-          .eq('id', user.id)
-          .single();
-
-        setFullName(profile?.full_name ?? null);
-        setYearOfStudy(profile?.year_of_study ?? null);
-        setGender(profile?.gender ?? null);
-        setPhone(profile?.phone ?? null);
-
-        // profiles.photo_url is a storage path, not a usable URL — the
-        // bucket is private, so it has to be exchanged for a signed URL.
-        // The "self read own photo" RLS policy is what makes this succeed
-        // for a student's own path (and only their own).
-        if (profile?.photo_url) {
-          const { data } = await supabase.storage
-            .from('profile-photos')
-            .createSignedUrl(profile.photo_url, 3600);
-          setPhotoUrl(data?.signedUrl ?? null);
-        } else {
-          setPhotoUrl(null);
-        }
-
-        setPhotoLoading(false);
-      };
-
-      loadProfile();
-      // Depends on the whole `user` object, not `user?.id` — matches
-      // booking-flow.tsx's loadActivityAndSlots useCallback, which the
-      // React Compiler already accepts; keying on just `.id` here made its
-      // own inferred dependency mismatch the declared one and skipped
-      // optimizing this component (react-hooks/preserve-manual-memoization).
-    }, [user])
+      if (userId) refetchProfile();
+    }, [userId, refetchProfile])
   );
 
   const dialEmergencyContact = async (fetchPhone: () => Promise<string | null>) => {
@@ -149,6 +146,7 @@ export default function ProfileScreen() {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
+      queryClient.clear();
       setSession(null);
       setUser(null);
       router.replace('/(auth)/onboarding');
@@ -223,6 +221,7 @@ export default function ProfileScreen() {
             }
 
             await supabase.auth.signOut();
+            queryClient.clear();
             setSession(null);
             setUser(null);
             router.replace('/(auth)/onboarding');
@@ -269,22 +268,22 @@ export default function ProfileScreen() {
             <Text style={FlowText.sectionLabel}>About You</Text>
             <FlowSurfaceBox width={contentWidth}>
               <View style={styles.rowContent}>
-                <Text style={FlowText.panelLabel}>{fullName || 'Not set'}</Text>
+                <Text style={FlowText.panelLabel}>{profile?.full_name || 'Not set'}</Text>
               </View>
             </FlowSurfaceBox>
             <FlowSurfaceBox width={contentWidth}>
               <View style={styles.rowContent}>
-                <Text style={FlowText.panelLabel}>{formatYear(yearOfStudy)}</Text>
+                <Text style={FlowText.panelLabel}>{formatYear(profile?.year_of_study ?? null)}</Text>
               </View>
             </FlowSurfaceBox>
             <FlowSurfaceBox width={contentWidth}>
               <View style={styles.rowContent}>
-                <Text style={FlowText.panelLabel}>{formatGender(gender)}</Text>
+                <Text style={FlowText.panelLabel}>{formatGender(profile?.gender ?? null)}</Text>
               </View>
             </FlowSurfaceBox>
             <FlowSurfaceBox width={contentWidth}>
               <View style={styles.rowContent}>
-                <Text style={FlowText.panelLabel}>{phone || 'Not set'}</Text>
+                <Text style={FlowText.panelLabel}>{profile?.phone || 'Not set'}</Text>
               </View>
             </FlowSurfaceBox>
             {/* Gender has no edit row here on purpose — it's a hard

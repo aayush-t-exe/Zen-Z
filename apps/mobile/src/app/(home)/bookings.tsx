@@ -6,15 +6,18 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
+  Modal,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import {
   FLOW_CONTENT_MAX,
   FLOW_SIDE_PADDING,
+  FlowSurface,
   FlowText,
 } from '@/constants/flow-theme';
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
@@ -23,11 +26,17 @@ import { FlowPillButton } from '@/components/flow-pill-button';
 import { SummaryBadge, summaryBadgeSize } from '@/components/summary-card';
 import { useAuthStore } from '@/store/auth';
 import { supabase } from '@/lib/supabase';
-import { fetchMyBookings, fetchMyGroups, MyBooking, MyGroupDetails } from '@/lib/groups';
+import { fetchMyBookings, fetchMyGroups, MyBooking } from '@/lib/groups';
 import { formatSlotDateTime } from '@/lib/format';
+import { myBookingsKey, myGroupsKey } from '@/lib/queryKeys';
 
 /** Gap from the badge to the label, at roughly the summary card's own. */
 const ACTIVITY_ROW_GAP = 13;
+
+/** Side margin the remove-booking confirm dialog sits within. */
+const CONFIRM_OVERLAY_PADDING = 28;
+/** Confirm dialog's own inset, on all four sides. */
+const CONFIRM_CARD_PADDING = 24;
 
 /** Where a card's label column starts, for anything that has to line up with it. */
 const activityLabelColumn = (cardWidth: number) =>
@@ -66,73 +75,90 @@ export default function BookingsScreen() {
 
   // Same content column the rest of the redesign runs.
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
+  // The confirm dialog sits narrower than the page column, on its own margin.
+  const confirmCardWidth = Math.min(320, screenWidth - CONFIRM_OVERLAY_PADDING * 2);
 
-  const [bookings, setBookings] = useState<MyBooking[]>([]);
-  const [groups, setGroups] = useState<MyGroupDetails[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const userId = user?.id;
+  const queryClient = useQueryClient();
+
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<MyBooking | null>(null);
 
-  const load = useCallback(async () => {
-    if (!user?.id) {
-      setIsLoading(false);
-      return;
-    }
+  // Cached rather than local useState + a fetch-on-focus effect — this tab
+  // stays mounted between visits, so switching back to it used to always
+  // show a blank/spinner reset while it refetched from scratch. The groups
+  // query shares its key with chats.tsx, so whichever tab fetched most
+  // recently warms the other one's cache too.
+  const bookingsQuery = useQuery({
+    queryKey: myBookingsKey(userId ?? ''),
+    queryFn: async () => {
+      const result = await fetchMyBookings(userId!);
+      if (result.error) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: !!userId,
+  });
 
-    setIsLoading(true);
-    setLoadError(null);
+  const groupsQuery = useQuery({
+    queryKey: myGroupsKey(userId ?? ''),
+    queryFn: async () => {
+      const result = await fetchMyGroups();
+      if (result.error) throw new Error(result.error);
+      return result.data;
+    },
+    enabled: !!userId,
+  });
 
-    const [bookingsResult, groupsResult] = await Promise.all([
-      fetchMyBookings(user.id),
-      fetchMyGroups(),
-    ]);
+  const bookings = bookingsQuery.data ?? [];
+  const groups = groupsQuery.data ?? [];
+  // A failure here can't just fall back to an empty list — an already
+  // paid, already matched booking would silently vanish from this screen
+  // (the group lookup below returns null for it), indistinguishable from
+  // never having booked anything. Surface it instead.
+  const isLoading = bookingsQuery.isLoading || groupsQuery.isLoading;
+  const loadError =
+    (bookingsQuery.error instanceof Error ? bookingsQuery.error.message : null) ??
+    (groupsQuery.error instanceof Error ? groupsQuery.error.message : null);
 
-    // A failure here can't just fall back to an empty list — an already
-    // paid, already matched booking would silently vanish from this screen
-    // (the group lookup below returns null for it), indistinguishable from
-    // never having booked anything. Surface it instead.
-    if (bookingsResult.error || groupsResult.error) {
-      setLoadError(bookingsResult.error ?? groupsResult.error);
-      setIsLoading(false);
-      return;
-    }
+  const { refetch: refetchBookings } = bookingsQuery;
+  const { refetch: refetchGroups } = groupsQuery;
+  const refetch = useCallback(() => {
+    refetchBookings();
+    refetchGroups();
+  }, [refetchBookings, refetchGroups]);
 
-    setBookings(bookingsResult.data);
-    setGroups(groupsResult.data);
-    setIsLoading(false);
-  }, [user]);
-
+  // Still refetches every focus — landing here right after paying or
+  // getting matched needs to show that immediately — but now it's a
+  // background refresh behind the cached list rather than a full
+  // loading-state reset each time.
   useFocusEffect(
     useCallback(() => {
-      load();
-    }, [load])
+      if (userId) refetch();
+    }, [userId, refetch])
   );
 
   const handleCancelBooking = (booking: MyBooking) => {
-    Alert.alert(
-      'Remove this from Your Events?',
-      `You haven't paid for ${booking.activity_name} yet, but you'll lose this slot. This can't be undone.`,
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            setCancellingId(booking.id);
-            const { error } = await supabase.rpc('cancel_unpaid_booking', {
-              p_booking_id: booking.id,
-            });
-            setCancellingId(null);
+    setConfirmCancel(booking);
+  };
 
-            if (error) {
-              Alert.alert('Could not cancel', error.message);
-              return;
-            }
+  const handleConfirmCancel = async () => {
+    const booking = confirmCancel;
+    if (!booking) return;
 
-            setBookings((prev) => prev.filter((b) => b.id !== booking.id));
-          },
-        },
-      ]
+    setCancellingId(booking.id);
+    const { error } = await supabase.rpc('cancel_unpaid_booking', {
+      p_booking_id: booking.id,
+    });
+    setCancellingId(null);
+    setConfirmCancel(null);
+
+    if (error) {
+      Alert.alert('Could not cancel', error.message);
+      return;
+    }
+
+    queryClient.setQueryData(myBookingsKey(userId ?? ''), (prev: MyBooking[] | undefined) =>
+      prev ? prev.filter((b) => b.id !== booking.id) : prev
     );
   };
 
@@ -151,7 +177,7 @@ export default function BookingsScreen() {
         <Text style={[styles.emptyText, styles.emptyTextCentered, { marginTop: 8, marginBottom: 24 }]}>
           {loadError}
         </Text>
-        <FlowPillButton label="Retry" width={contentWidth} onPress={load} />
+        <FlowPillButton label="Retry" width={contentWidth} onPress={refetch} />
       </View>
     );
   }
@@ -274,6 +300,43 @@ export default function BookingsScreen() {
         )}
         </View>
       </ScrollView>
+
+      <Modal
+        visible={confirmCancel !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConfirmCancel(null)}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmCard, { width: confirmCardWidth }]}>
+            <Text style={styles.confirmTitle}>Remove this from Your Events?</Text>
+            <Text style={styles.confirmMessage}>
+              You haven&apos;t paid for {confirmCancel?.activity_name} yet, but you&apos;ll lose this
+              slot. This can&apos;t be undone.
+            </Text>
+            <View style={styles.confirmActions}>
+              <FlowPillButton
+                label="Keep it"
+                width={confirmCardWidth - CONFIRM_CARD_PADDING * 2}
+                onPress={() => setConfirmCancel(null)}
+                disabled={cancellingId !== null}
+              />
+              <Pressable
+                onPress={handleConfirmCancel}
+                disabled={cancellingId !== null}
+                style={styles.confirmRemoveButton}
+                hitSlop={8}
+              >
+                {cancellingId !== null ? (
+                  <ActivityIndicator size="small" color={Palette.error} />
+                ) : (
+                  <Text style={styles.confirmRemoveText}>Remove it</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -341,6 +404,44 @@ const styles = StyleSheet.create({
   cancelText: {
     color: Palette.error,
     fontSize: 14,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
+  },
+  confirmOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    paddingHorizontal: CONFIRM_OVERLAY_PADDING,
+  },
+  confirmCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    padding: CONFIRM_CARD_PADDING,
+  },
+  confirmTitle: {
+    ...FlowText.titleCompact,
+    fontSize: 20,
+    lineHeight: 24,
+    marginBottom: 10,
+  },
+  confirmMessage: {
+    ...FlowText.subtitle,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    marginTop: 24,
+    gap: 16,
+  },
+  confirmRemoveButton: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  confirmRemoveText: {
+    color: Palette.error,
+    fontSize: 15,
     fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });

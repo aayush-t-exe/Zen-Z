@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import {
@@ -24,6 +25,12 @@ import { FlowField, FlowPanel } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
+import {
+  fetchProfileFields,
+  fetchSignedPhotoUrl,
+  profileFieldsKey,
+  profilePhotoKey,
+} from '@/lib/profile';
 
 // Mirrors profile-creation.tsx's own YEARS/validation exactly — same
 // stored representation (1-5 int), same WhatsApp number format. Gender is
@@ -53,9 +60,9 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
+  const queryClient = useQueryClient();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -67,45 +74,47 @@ export default function EditProfileScreen() {
   // whether there's anything to show before a new pick); photoUri/Base64
   // hold a freshly-picked replacement, which is only uploaded if the
   // student actually changes it — most edits won't touch the photo at all.
-  const [existingPhotoUrl, setExistingPhotoUrl] = useState<string | null>(null);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
 
+  const userId = user?.id;
+
+  // Same cache profile.tsx reads/writes — arriving here from that tab
+  // usually means this data is already warm, so the form can render
+  // instantly instead of showing its own separate loading spinner.
+  const {
+    data: profile,
+    isLoading: isProfileLoading,
+    isError: isProfileError,
+  } = useQuery({
+    queryKey: profileFieldsKey(userId ?? ''),
+    queryFn: () => fetchProfileFields(userId!),
+    enabled: !!userId,
+  });
+
+  const existingPhotoPath = profile?.photo_url ?? null;
+
+  const { data: existingPhotoUrl } = useQuery({
+    queryKey: profilePhotoKey(existingPhotoPath ?? ''),
+    queryFn: () => fetchSignedPhotoUrl(existingPhotoPath!),
+    enabled: !!existingPhotoPath,
+    staleTime: 50 * 60 * 1000,
+  });
+
+  const isLoading = isProfileLoading;
+  const seededRef = useRef(false);
+
+  // Seeds the editable fields once, the first time the cached/fetched
+  // profile actually arrives — not on every render, so it doesn't clobber
+  // an in-progress edit if this query happens to refetch in the background
+  // while the student is still typing.
   useEffect(() => {
-    const loadProfile = async () => {
-      if (!user?.id) {
-        setIsLoading(false);
-        return;
-      }
-
-      const { data: profile, error: fetchError } = await supabase
-        .from('profiles')
-        .select('full_name, year_of_study, phone, photo_url')
-        .eq('id', user.id)
-        .single();
-
-      if (fetchError || !profile) {
-        setError('Could not load your profile');
-        setIsLoading(false);
-        return;
-      }
-
-      setFullName(profile.full_name ?? '');
-      setYearOfStudy(profile.year_of_study ?? null);
-      setPhone(profile.phone ?? '');
-
-      if (profile.photo_url) {
-        const { data } = await supabase.storage
-          .from('profile-photos')
-          .createSignedUrl(profile.photo_url, 3600);
-        setExistingPhotoUrl(data?.signedUrl ?? null);
-      }
-
-      setIsLoading(false);
-    };
-
-    loadProfile();
-  }, [user?.id]);
+    if (!profile || seededRef.current) return;
+    seededRef.current = true;
+    setFullName(profile.full_name ?? '');
+    setYearOfStudy(profile.year_of_study ?? null);
+    setPhone(profile.phone ?? '');
+  }, [profile]);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -164,6 +173,8 @@ export default function EditProfileScreen() {
         return;
       }
 
+      let uploadedPhotoPath: string | null = null;
+
       if (photoUri && photoBase64) {
         // Same fixed path/upsert pattern as profile-creation.tsx — the
         // storage UPDATE policy for this exact path (0038_profile_photo_
@@ -180,7 +191,30 @@ export default function EditProfileScreen() {
         }
 
         await supabase.from('profiles').update({ photo_url: fileName }).eq('id', user.id);
+        uploadedPhotoPath = fileName;
       }
+
+      // Updates the cache profile.tsx reads directly, so it shows the new
+      // values the instant you navigate back, and invalidates the photo
+      // query too — the storage path is a fixed per-user file, so a
+      // re-upload needs a fresh signed URL (a new token) or the <Image>
+      // there would keep the old cached bytes under the unchanged path.
+      queryClient.setQueryData(profileFieldsKey(user.id), (old: typeof profile) => ({
+        ...(old ?? { photo_url: null, gender: null }),
+        full_name: fullName.trim(),
+        year_of_study: yearOfStudy,
+        phone: phone.trim(),
+        photo_url: uploadedPhotoPath ?? old?.photo_url ?? null,
+      }));
+      if (uploadedPhotoPath) {
+        queryClient.invalidateQueries({ queryKey: profilePhotoKey(uploadedPhotoPath) });
+      }
+      // Reconciles with the server in the background (profile.tsx's own
+      // query observer is what's mounted at this point) — the setQueryData
+      // above already made the just-saved values visible immediately, this
+      // just confirms them rather than trusting the client-side merge
+      // indefinitely.
+      queryClient.invalidateQueries({ queryKey: profileFieldsKey(user.id) });
 
       router.back();
     } catch (err: any) {
@@ -267,7 +301,11 @@ export default function EditProfileScreen() {
             />
           </View>
 
-          {error ? <Text style={[FlowText.error, styles.error]}>{error}</Text> : null}
+          {error || isProfileError ? (
+            <Text style={[FlowText.error, styles.error]}>
+              {error || 'Could not load your profile'}
+            </Text>
+          ) : null}
 
           <View style={{ marginTop: 36 }}>
             <FlowPillButton
