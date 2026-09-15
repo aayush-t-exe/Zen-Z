@@ -305,79 +305,84 @@ export default function BookingFlowScreen() {
       setBlockedUntil(null);
       setLoadError(null);
 
-      if (user) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('booking_blocked_until, gender')
-          .eq('id', user.id)
-          .single();
-
-        if (profileError) {
-          setLoadError(profileError.message);
-          return;
-        }
-
-        setProfileGender(profile?.gender ?? null);
-
-        if (profile?.booking_blocked_until && new Date(profile.booking_blocked_until) > new Date()) {
-          setBlockedUntil(profile.booking_blocked_until);
-          return;
-        }
-      }
-
-      // Fetch activity
-      const { data: actData, error: actError } = await supabase
-        .from('activity_types')
-        .select('*')
-        .eq('id', activityNumId)
-        .single();
-
-      if (actError) {
-        setLoadError(actError.message);
-        return;
-      }
-
-      if (actData) setActivity(actData);
-
-      if (actData?.name === 'Movies') {
-        const { data: movieData, error: movieError } = await supabase
+      // These four reads don't depend on each other's results — movies and
+      // slots only need activityNumId, already known from the route params,
+      // not anything from the activity row itself — so firing them together
+      // turns this screen's load into one round trip instead of three or
+      // four sequential ones (profile, then activity, then movies, then
+      // slots) stacked back to back. The movies query runs unconditionally
+      // even for a non-Movies activity; it just comes back empty for that
+      // activity_type_id, which is cheap and simpler than gating it on a
+      // result (actData.name) this batch doesn't have yet.
+      const [profileResult, activityResult, moviesResult, slotsResult] = await Promise.all([
+        user
+          ? supabase
+              .from('profiles')
+              .select('booking_blocked_until, gender')
+              .eq('id', user.id)
+              .single()
+          : Promise.resolve(null),
+        supabase.from('activity_types').select('*').eq('id', activityNumId).single(),
+        supabase
           .from('movies')
           .select('id, title, price')
           .eq('activity_type_id', activityNumId)
           .eq('is_available', true)
-          .order('title', { ascending: true });
+          .order('title', { ascending: true }),
+        // Only the single nearest open slot — offering weeks of Tuesdays to
+        // choose from read like a duplicate ("2 slots for Movies") when
+        // really it was next week's slot opening early. One fixed weekly
+        // slot at a time matches the actual product model.
+        //
+        // The lower bound mirrors the midnight-IST cutoff enforced by the
+        // "own bookings insert" RLS policy — a slot inside that window
+        // would fail on submit anyway, so it's excluded here rather than
+        // shown and then rejected.
+        supabase
+          .from('slots')
+          .select('*')
+          .eq('activity_type_id', activityNumId)
+          .eq('status', 'open')
+          .gte('slot_datetime', getBookingCutoffInstant().toISOString())
+          .lt('slot_datetime', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
+          .order('slot_datetime', { ascending: true })
+          .limit(1),
+      ]);
 
-        if (movieError) {
-          setLoadError(movieError.message);
-          return;
-        }
-
-        setMovies(movieData ?? []);
-      }
-
-      // Only the single nearest open slot — offering weeks of Tuesdays to
-      // choose from read like a duplicate ("2 slots for Movies") when really
-      // it was next week's slot opening early. One fixed weekly slot at a
-      // time matches the actual product model.
-      //
-      // The lower bound mirrors the midnight-IST cutoff enforced by the "own
-      // bookings insert" RLS policy — a slot inside that window would fail
-      // on submit anyway, so it's excluded here rather than shown and then
-      // rejected.
-      const { data: slotData, error: slotError } = await supabase
-        .from('slots')
-        .select('*')
-        .eq('activity_type_id', activityNumId)
-        .eq('status', 'open')
-        .gte('slot_datetime', getBookingCutoffInstant().toISOString())
-        .lt('slot_datetime', new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('slot_datetime', { ascending: true })
-        .limit(1);
-
-      if (slotError) {
-        setLoadError(slotError.message);
+      if (profileResult?.error) {
+        setLoadError(profileResult.error.message);
         return;
       }
+
+      const profile = profileResult?.data;
+      setProfileGender(profile?.gender ?? null);
+
+      if (profile?.booking_blocked_until && new Date(profile.booking_blocked_until) > new Date()) {
+        setBlockedUntil(profile.booking_blocked_until);
+        return;
+      }
+
+      if (activityResult.error) {
+        setLoadError(activityResult.error.message);
+        return;
+      }
+
+      const actData = activityResult.data;
+      if (actData) setActivity(actData);
+
+      if (actData?.name === 'Movies') {
+        if (moviesResult.error) {
+          setLoadError(moviesResult.error.message);
+          return;
+        }
+        setMovies(moviesResult.data ?? []);
+      }
+
+      if (slotsResult.error) {
+        setLoadError(slotsResult.error.message);
+        return;
+      }
+      const slotData = slotsResult.data;
 
       // A student re-opening this activity after starting (but not
       // finishing) a booking for its slot would otherwise click through
