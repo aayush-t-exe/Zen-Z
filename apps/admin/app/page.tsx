@@ -179,36 +179,12 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold">Campus Social</h1>
           <div className="text-right">
             <p className="text-sm text-gray-600">Founder: {founder}</p>
-            <Link href="/students" className="text-sm text-blue-600 hover:text-blue-800">
-              Students
-            </Link>
-            {' · '}
-            <Link href="/groups" className="text-sm text-blue-600 hover:text-blue-800">
-              View groups
-            </Link>
-            {' · '}
             <Link href="/venues" className="text-sm text-blue-600 hover:text-blue-800">
               Manage venues
             </Link>
             {' · '}
             <Link href="/movies" className="text-sm text-blue-600 hover:text-blue-800">
               Manage movies
-            </Link>
-            {' · '}
-            <Link href="/reports" className="text-sm text-blue-600 hover:text-blue-800">
-              Reports
-            </Link>
-            {' · '}
-            <Link href="/referrals" className="text-sm text-blue-600 hover:text-blue-800">
-              Referrals
-            </Link>
-            {' · '}
-            <Link href="/feedback" className="text-sm text-blue-600 hover:text-blue-800">
-              Feedback
-            </Link>
-            {' · '}
-            <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
-              Analytics
             </Link>
             {' · '}
             <button
