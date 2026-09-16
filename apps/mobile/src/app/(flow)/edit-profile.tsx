@@ -7,6 +7,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  Modal,
   StyleSheet,
   useWindowDimensions,
   KeyboardAvoidingView,
@@ -16,6 +17,8 @@ import { useNavigation, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
+import { AuthPalette as Palette } from '@/constants/auth-palette';
+import { FontFamily } from '@/constants/fonts';
 import {
   FLOW_CONTENT_MAX,
   FLOW_SIDE_PADDING,
@@ -49,6 +52,11 @@ const YEARS: { label: string; value: number }[] = [
   { label: 'Other', value: 5 },
 ];
 
+/** Side margin the leave-without-saving confirm dialog sits within — same as bookings.tsx/payment.tsx's own confirm cards. */
+const CONFIRM_OVERLAY_PADDING = 28;
+/** Confirm dialog's own inset, on all four sides. */
+const CONFIRM_CARD_PADDING = 24;
+
 const PHONE_PATTERN = /^\d{10}$/;
 function isValidPhone(value: string): boolean {
   return PHONE_PATTERN.test(value);
@@ -65,6 +73,7 @@ export default function EditProfileScreen() {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
+  const confirmCardWidth = Math.min(320, screenWidth - CONFIRM_OVERLAY_PADDING * 2);
 
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -144,6 +153,11 @@ export default function EditProfileScreen() {
   // (a successful save, or "Discard" inside the confirm below) so that
   // follow-up doesn't re-trigger the same guard on its own way out.
   const bypassLeaveGuardRef = useRef(false);
+  // The navigator action that was about to run when the guard caught it —
+  // dispatched as-is if the student chooses to discard, so it goes back
+  // exactly where it would have (a header back, a hardware back, a swipe).
+  const pendingLeaveActionRef = useRef<any>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -262,36 +276,35 @@ export default function EditProfileScreen() {
   // back arrow, Android's hardware back button, and the iOS swipe-back
   // gesture — since they all resolve to the same navigator "go back"
   // action under the hood. Catching it here means there's one guard
-  // instead of three separate ones to keep in sync.
+  // instead of three separate ones to keep in sync. The confirm itself is
+  // a themed Modal below rather than the native Alert.alert (matching the
+  // app's own dialogs, not the platform's), so its buttons are ordinary
+  // JSX props — always closing over this render's handleSave/canSave,
+  // never a stale copy from whenever this effect last happened to rerun.
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       if (!isDirty || bypassLeaveGuardRef.current) return;
       e.preventDefault();
-
-      const buttons: any[] = [
-        { text: 'Keep editing', style: 'cancel' },
-        {
-          text: "Don't save",
-          style: 'destructive',
-          onPress: () => {
-            bypassLeaveGuardRef.current = true;
-            navigation.dispatch(e.data.action);
-          },
-        },
-      ];
-      if (canSave) {
-        buttons.push({ text: 'Save', onPress: () => handleSave() });
-      }
-
-      Alert.alert(
-        'Save your changes?',
-        "You've edited your profile but haven't saved yet.",
-        buttons
-      );
+      pendingLeaveActionRef.current = e.data.action;
+      setShowLeaveConfirm(true);
     });
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigation, isDirty, canSave]);
+  }, [navigation, isDirty]);
+
+  const handleKeepEditing = () => setShowLeaveConfirm(false);
+
+  const handleDiscardChanges = () => {
+    setShowLeaveConfirm(false);
+    bypassLeaveGuardRef.current = true;
+    if (pendingLeaveActionRef.current) {
+      navigation.dispatch(pendingLeaveActionRef.current);
+    }
+  };
+
+  const handleSaveFromConfirm = () => {
+    setShowLeaveConfirm(false);
+    handleSave();
+  };
 
   if (isLoading) {
     return (
@@ -396,6 +409,49 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showLeaveConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={handleKeepEditing}>
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmCard, { width: confirmCardWidth }]}>
+            <Text style={styles.confirmTitle}>Save your changes?</Text>
+            <Text style={styles.confirmMessage}>
+              You&apos;ve edited your profile but haven&apos;t saved yet.
+            </Text>
+            <View style={styles.confirmActions}>
+              <FlowPillButton
+                label="Keep editing"
+                width={confirmCardWidth - CONFIRM_CARD_PADDING * 2}
+                onPress={handleKeepEditing}
+                disabled={isSaving}
+              />
+              {canSave ? (
+                <Pressable
+                  onPress={handleSaveFromConfirm}
+                  disabled={isSaving}
+                  style={styles.confirmLinkButton}
+                  hitSlop={8}>
+                  {isSaving ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={FlowText.link}>Save changes</Text>
+                  )}
+                </Pressable>
+              ) : null}
+              <Pressable
+                onPress={handleDiscardChanges}
+                disabled={isSaving}
+                style={styles.confirmLinkButton}
+                hitSlop={8}>
+                <Text style={styles.confirmDiscardText}>Don&apos;t save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -441,5 +497,43 @@ const styles = StyleSheet.create({
   },
   error: {
     marginTop: 20,
+  },
+  confirmOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    paddingHorizontal: CONFIRM_OVERLAY_PADDING,
+  },
+  confirmCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    padding: CONFIRM_CARD_PADDING,
+  },
+  confirmTitle: {
+    ...FlowText.titleCompact,
+    fontSize: 20,
+    lineHeight: 24,
+    marginBottom: 10,
+  },
+  confirmMessage: {
+    ...FlowText.subtitle,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    marginTop: 24,
+    gap: 16,
+  },
+  confirmLinkButton: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  confirmDiscardText: {
+    color: Palette.error,
+    fontSize: 15,
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });
