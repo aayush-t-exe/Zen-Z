@@ -194,6 +194,18 @@ export default function StudentProfilePage() {
     return score ? score.score : 0;
   };
 
+  // personality_dimensions accumulates every dimension the quiz has ever
+  // used, including ones from deactivated questions (old temperament quiz,
+  // removed options) — see 0089_personality_quiz_taste_rebuild.sql. Scoring
+  // only writes a row for a dimension the student actually triggered (an
+  // unpicked multi-select tag gets no row at all, not a 0 — see
+  // score-personality/logic.ts), so filtering to dimensions with a score
+  // keeps this list to what this student was actually asked and answered,
+  // instead of dozens of stale 0% bars from a quiz version they never took.
+  const scoredDimensions = dimensions.filter(dim =>
+    scores.some(s => s.dimension_id === dim.id)
+  );
+
   const handleDeleteAccount = async () => {
     if (isDeleting) return;
 
@@ -285,11 +297,11 @@ export default function StudentProfilePage() {
         <div className="bg-white rounded-lg border p-8 mb-8">
           <h2 className="text-2xl font-bold mb-6">Personality Profile</h2>
 
-          {dimensions.length === 0 ? (
-            <p className="text-gray-600">No personality dimensions available yet</p>
+          {scoredDimensions.length === 0 ? (
+            <p className="text-gray-600">No personality profile yet — hasn&apos;t completed the quiz</p>
           ) : (
             <div className="space-y-6">
-              {dimensions.map(dim => {
+              {scoredDimensions.map(dim => {
                 const score = getScoreForDimension(dim.id);
                 const percentage = Math.round(score * 100);
 
