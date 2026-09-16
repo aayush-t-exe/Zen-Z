@@ -6,6 +6,7 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  Modal,
   StyleSheet,
   Alert,
   Platform,
@@ -19,12 +20,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
-import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
+import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowSurface, FlowText } from '@/constants/flow-theme';
 import { FlowSurfaceBox } from '@/components/flow-panel';
 import { FlowPillButton } from '@/components/flow-pill-button';
 import { SUMMARY_ICONS, SummaryCard } from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
 import { formatSlotDateTime } from '@/lib/format';
+import { buildWhatsappUrl, fetchSupportEmail, fetchSupportWhatsappPhone } from '@/lib/support';
 
 interface BookingDetails {
   id: string;
@@ -43,6 +45,11 @@ interface BookingDetails {
 
 const PAYMENT_POLL_ATTEMPTS = 5;
 const PAYMENT_POLL_DELAY_MS = 1500;
+
+/** Side margin the book-again confirm dialog sits within — same as bookings.tsx's remove-booking dialog. */
+const CONFIRM_OVERLAY_PADDING = 28;
+/** Confirm dialog's own inset, on all four sides. */
+const CONFIRM_CARD_PADDING = 24;
 
 // Games like 8-Ball Pool and Pickleball have a fixed group size (min ===
 // max) — "group of 4–4" reads as a typo, so collapse it to a single number.
@@ -73,6 +80,8 @@ export default function PaymentScreen() {
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
+  // The confirm dialog sits narrower than the page column, on its own margin.
+  const confirmCardWidth = Math.min(320, screenWidth - CONFIRM_OVERLAY_PADDING * 2);
 
   // This screen is reached two different ways — pushed on top of
   // booking-flow.tsx for a fresh booking, or *replacing* it outright when
@@ -95,6 +104,7 @@ export default function PaymentScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [showBookAgainConfirm, setShowBookAgainConfirm] = useState(false);
   const [error, setError] = useState('');
   const [isTestMode, setIsTestMode] = useState(false);
 
@@ -338,6 +348,43 @@ export default function PaymentScreen() {
     setIsProcessing(false);
   };
 
+  // A stuck "we haven't received your payment yet" is exactly where a
+  // student who did pay has no self-service way forward — Check Again
+  // only re-reads this same booking row (see fetchBooking above), so if
+  // the webhook never lands it can never recover on its own. WhatsApp
+  // over a plain call: async, and the student can attach their payment
+  // screenshot — see profiles.phone's own doc comment on why WhatsApp is
+  // this app's established contact channel, not calling.
+  const [isContactingSupport, setIsContactingSupport] = useState(false);
+
+  const handleContactSupport = async () => {
+    if (isContactingSupport || !booking) return;
+    setIsContactingSupport(true);
+
+    try {
+      const phone = await fetchSupportWhatsappPhone();
+      if (!phone) {
+        const email = await fetchSupportEmail();
+        Alert.alert(
+          "Couldn't open WhatsApp",
+          email
+            ? `Please email us at ${email} instead.`
+            : "We couldn't load our contact details right now. Please try again in a moment."
+        );
+        return;
+      }
+
+      const activityName = booking.slots?.activity_types?.name ?? 'my booking';
+      const message = `Hi, I paid for ${activityName} but the app still shows payment not received. Booking ID: ${booking.id}`;
+      await Linking.openURL(buildWhatsappUrl(phone, message));
+    } catch (err) {
+      console.error('Failed to open WhatsApp:', err);
+      Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+    } finally {
+      setIsContactingSupport(false);
+    }
+  };
+
   // Loading this screen (via booking-flow.tsx's "resume an existing unpaid
   // booking" redirect, see its loadActivityAndSlots) is a dead end otherwise
   // — the only way back to slot selection was rediscovering Bookings and
@@ -347,36 +394,29 @@ export default function PaymentScreen() {
   // inventing a second one.
   const handleCancelAndChooseAgain = () => {
     if (!booking) return;
+    setShowBookAgainConfirm(true);
+  };
+
+  const handleConfirmBookAgain = async () => {
+    if (!booking) return;
     const activityTypeId = booking.slots?.activity_type_id;
 
-    Alert.alert(
-      'Book again?',
-      "You haven't paid yet, so nothing's booked — but you'll give up this spot to redo your booking (slot, budget, group), and can't get it back.",
-      [
-        { text: 'Keep this spot', style: 'cancel' },
-        {
-          text: 'Yes, book again',
-          style: 'destructive',
-          onPress: async () => {
-            setIsCancelling(true);
-            const { error: cancelError } = await supabase.rpc('cancel_unpaid_booking', {
-              p_booking_id: booking.id,
-            });
-            setIsCancelling(false);
+    setShowBookAgainConfirm(false);
+    setIsCancelling(true);
+    const { error: cancelError } = await supabase.rpc('cancel_unpaid_booking', {
+      p_booking_id: booking.id,
+    });
+    setIsCancelling(false);
 
-            if (cancelError) {
-              Alert.alert('Could not restart your booking', cancelError.message);
-              return;
-            }
+    if (cancelError) {
+      Alert.alert('Could not restart your booking', cancelError.message);
+      return;
+    }
 
-            router.replace(
-              activityTypeId
-                ? ({ pathname: '/booking-flow', params: { activityId: String(activityTypeId) } } as any)
-                : ('/(home)' as any)
-            );
-          },
-        },
-      ]
+    router.replace(
+      activityTypeId
+        ? ({ pathname: '/booking-flow', params: { activityId: String(activityTypeId) } } as any)
+        : ('/(home)' as any)
     );
   };
 
@@ -524,8 +564,19 @@ export default function PaymentScreen() {
               <View style={styles.notice}>
                 <Text style={styles.noticeTitle}>We haven&apos;t received your payment yet</Text>
                 <Text style={styles.noticeBody}>
-                  If you completed payment, give it a moment and check again.
+                  If you completed payment, give it a moment and check again. Still stuck? Message us
+                  and we&apos;ll sort it out.
                 </Text>
+                <Pressable
+                  onPress={handleContactSupport}
+                  disabled={isContactingSupport}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  style={{ marginTop: 10 }}>
+                  <Text style={FlowText.link}>
+                    {isContactingSupport ? 'Opening WhatsApp…' : 'Message us on WhatsApp'}
+                  </Text>
+                </Pressable>
               </View>
             </FlowSurfaceBox>
           )}
@@ -586,6 +637,43 @@ export default function PaymentScreen() {
           )}
         </Pressable>
       </View>
+
+      <Modal
+        visible={showBookAgainConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowBookAgainConfirm(false)}
+      >
+        <View style={styles.confirmOverlay}>
+          <View style={[styles.confirmCard, { width: confirmCardWidth }]}>
+            <Text style={styles.confirmTitle}>Book again?</Text>
+            <Text style={styles.confirmMessage}>
+              You haven&apos;t paid yet, so nothing&apos;s booked — but you&apos;ll give up this spot
+              to redo your booking (slot, budget, group), and can&apos;t get it back.
+            </Text>
+            <View style={styles.confirmActions}>
+              <FlowPillButton
+                label="Keep this spot"
+                width={confirmCardWidth - CONFIRM_CARD_PADDING * 2}
+                onPress={() => setShowBookAgainConfirm(false)}
+                disabled={isCancelling}
+              />
+              <Pressable
+                onPress={handleConfirmBookAgain}
+                disabled={isCancelling}
+                style={styles.confirmRemoveButton}
+                hitSlop={8}
+              >
+                {isCancelling ? (
+                  <ActivityIndicator size="small" color={Palette.error} />
+                ) : (
+                  <Text style={styles.confirmRemoveText}>Yes, book again</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -658,6 +746,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     textDecorationLine: 'underline',
+    fontFamily: FontFamily.accent.sfProDisplayMedium,
+  },
+  confirmOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.72)',
+    paddingHorizontal: CONFIRM_OVERLAY_PADDING,
+  },
+  confirmCard: {
+    backgroundColor: '#0A0A0A',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: FlowSurface.stroke,
+    padding: CONFIRM_CARD_PADDING,
+  },
+  confirmTitle: {
+    ...FlowText.titleCompact,
+    fontSize: 20,
+    lineHeight: 24,
+    marginBottom: 10,
+  },
+  confirmMessage: {
+    ...FlowText.subtitle,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  confirmActions: {
+    marginTop: 24,
+    gap: 16,
+  },
+  confirmRemoveButton: {
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  confirmRemoveText: {
+    color: Palette.error,
+    fontSize: 15,
     fontFamily: FontFamily.accent.sfProDisplayMedium,
   },
 });

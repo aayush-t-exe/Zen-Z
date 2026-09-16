@@ -23,6 +23,7 @@ import { FlowActionRow, FlowSurfaceBox } from '@/components/flow-panel';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
+import { buildWhatsappUrl, fetchSupportEmail, fetchSupportWhatsappPhone } from '@/lib/support';
 import {
   fetchProfileFields,
   fetchSignedPhotoUrl,
@@ -72,6 +73,7 @@ export default function ProfileScreen() {
 
   const [isDialing, setIsDialing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isContactingSupport, setIsContactingSupport] = useState(false);
 
   const userId = user?.id;
 
@@ -140,6 +142,36 @@ export default function ProfileScreen() {
       );
     } finally {
       setIsDialing(false);
+    }
+  };
+
+  // "Need help now" above dials for an in-progress meetup emergency —
+  // this is the everyday "something's wrong with the app/my booking"
+  // channel, so it opens a WhatsApp chat rather than the dialer (async,
+  // lets the student attach a screenshot). Falls back to the support
+  // email if the WhatsApp number can't be loaded.
+  const handleContactSupport = async () => {
+    if (isContactingSupport) return;
+    setIsContactingSupport(true);
+
+    try {
+      const phone = await fetchSupportWhatsappPhone();
+      if (!phone) {
+        const email = await fetchSupportEmail();
+        Alert.alert(
+          "Couldn't open WhatsApp",
+          email
+            ? `Please email us at ${email} instead.`
+            : "We couldn't load our contact details right now. Please try again in a moment."
+        );
+        return;
+      }
+      await Linking.openURL(buildWhatsappUrl(phone, 'Hi, I need some help with my Zen-Z account.'));
+    } catch (err) {
+      console.error('Failed to open WhatsApp:', err);
+      Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+    } finally {
+      setIsContactingSupport(false);
     }
   };
 
@@ -320,6 +352,15 @@ export default function ProfileScreen() {
               disabled={isDialing}
               icon={require('@/assets/images/icon-call.png')}
               onPress={() => dialEmergencyContact(fetchEmergencyContactPhoneBackup)}
+            />
+            {/* For everyday issues (a booking, a payment) rather than an
+                in-progress meetup emergency — the two rows above are for that. */}
+            <FlowActionRow
+              label={isContactingSupport ? 'Opening WhatsApp…' : 'Contact Support'}
+              width={contentWidth}
+              disabled={isContactingSupport}
+              icon={require('@/assets/images/icon-call.png')}
+              onPress={handleContactSupport}
             />
           </View>
 

@@ -15,7 +15,16 @@ interface DashboardMetrics {
   groups_formed: number;
   unmatched_count: number;
   pending_reports: number;
+  stuck_payments_count: number;
 }
+
+// A payment link takes at most a couple of minutes to complete and have
+// its webhook land — 10 minutes past that with a payment attempt on
+// record and no 'paid' status is a real stuck payment, not just a student
+// still on the PayU checkout page. Mirrors NeedsAttention.tsx's own
+// query (matching/page.tsx) — kept in sync by hand since this is a plain
+// client component, not shared server-side logic.
+const STUCK_PAYMENT_MINUTES = 10;
 
 export default function Dashboard() {
   const router = useRouter();
@@ -81,10 +90,24 @@ export default function Dashboard() {
           .select('id')
           .eq('status', 'open');
 
+        // Same "why is this invisible" gap that surfaced the 2026-09-16
+        // incident: a payment that never got its webhook used to have no
+        // signal anywhere until a student complained. See NeedsAttention.tsx
+        // (matching/page.tsx) for the matching-page panel this count links to.
+        const stuckPaymentCutoff = new Date(Date.now() - STUCK_PAYMENT_MINUTES * 60 * 1000).toISOString();
+        const { data: stuckPayments, error: stuckPaymentsError } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('payment_status', 'unpaid')
+          .not('payment_id', 'is', null)
+          .neq('status', 'cancelled')
+          .lt('created_at', stuckPaymentCutoff);
+
         // A failed query here must not present as "0 unmatched, 0 pending
         // reports" — that reads as "nothing needs your attention" when it
         // actually means the dashboard couldn't check.
-        const metricsFetchError = bookingsError || groupsError || unmatchedError || reportsError;
+        const metricsFetchError =
+          bookingsError || groupsError || unmatchedError || reportsError || stuckPaymentsError;
         if (metricsFetchError) {
           setMetricsError(metricsFetchError.message);
           return;
@@ -109,6 +132,7 @@ export default function Dashboard() {
           groups_formed: groups?.length || 0,
           unmatched_count: unmatched?.length || 0,
           pending_reports: reports?.length || 0,
+          stuck_payments_count: stuckPayments?.length || 0,
         });
       } catch (error) {
         console.error('Error fetching metrics:', error);
@@ -177,6 +201,10 @@ export default function Dashboard() {
             {' · '}
             <Link href="/referrals" className="text-sm text-blue-600 hover:text-blue-800">
               Referrals
+            </Link>
+            {' · '}
+            <Link href="/feedback" className="text-sm text-blue-600 hover:text-blue-800">
+              Feedback
             </Link>
             {' · '}
             <Link href="/analytics" className="text-sm text-blue-600 hover:text-blue-800">
@@ -271,6 +299,26 @@ export default function Dashboard() {
               className="text-sm text-blue-600 hover:text-blue-800 mt-4 block"
             >
               Review reports →
+            </Link>
+          </div>
+
+          {/* Stuck payments */}
+          <div className="bg-white rounded-lg border p-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Payments to check</p>
+                <p className="text-4xl font-bold mt-2 text-orange-600">{metrics.stuck_payments_count}</p>
+              </div>
+              <span className="text-3xl">💳</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-4">
+              Unpaid {STUCK_PAYMENT_MINUTES}+ min after a payment attempt
+            </p>
+            <Link
+              href="/matching"
+              className="text-sm text-blue-600 hover:text-blue-800 mt-2 block"
+            >
+              Review →
             </Link>
           </div>
         </div>

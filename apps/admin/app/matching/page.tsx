@@ -6,6 +6,7 @@ import { useAdminGuard, AdminAccessDenied, AdminAuthLoading } from '@/lib/adminA
 import { formatSlotDateTime } from '@/lib/format';
 import Link from 'next/link';
 import MatchingBoard from './MatchingBoard';
+import NeedsAttention from './NeedsAttention';
 
 interface Activity {
   id: number;
@@ -201,6 +202,8 @@ export default function MatchingPage() {
             {error}
           </div>
         )}
+
+        <NeedsAttention />
 
         {/* Activity & Slot Selection */}
         <div className="bg-white rounded-lg border p-6 mb-8">
