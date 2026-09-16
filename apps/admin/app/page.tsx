@@ -266,6 +266,12 @@ export default function Dashboard() {
               <span className="text-3xl">✅</span>
             </div>
             <p className="text-sm text-gray-500 mt-4">Confirmed groups ready to meet</p>
+            <Link
+              href="/groups"
+              className="text-sm text-blue-600 hover:text-blue-800 mt-2 block"
+            >
+              View groups →
+            </Link>
           </div>
 
           {/* Unmatched bookings */}
@@ -319,6 +325,57 @@ export default function Dashboard() {
               className="text-sm text-blue-600 hover:text-blue-800 mt-2 block"
             >
               Review →
+            </Link>
+          </div>
+        </div>
+
+        {/* Manage */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">Manage</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Link
+              href="/students"
+              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
+            >
+              <span className="text-3xl">🧑‍🎓</span>
+              <p className="font-semibold mt-3">Students</p>
+              <p className="text-sm text-gray-500 mt-1">Browse and search every student profile</p>
+            </Link>
+
+            <Link
+              href="/reports"
+              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
+            >
+              <span className="text-3xl">🚩</span>
+              <p className="font-semibold mt-3">Reports</p>
+              <p className="text-sm text-gray-500 mt-1">Review open and past safety reports</p>
+            </Link>
+
+            <Link
+              href="/referrals"
+              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
+            >
+              <span className="text-3xl">🎁</span>
+              <p className="font-semibold mt-3">Referrals</p>
+              <p className="text-sm text-gray-500 mt-1">Track redemptions and referral credits</p>
+            </Link>
+
+            <Link
+              href="/feedback"
+              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
+            >
+              <span className="text-3xl">💬</span>
+              <p className="font-semibold mt-3">Feedback</p>
+              <p className="text-sm text-gray-500 mt-1">See how past meetups went, straight from students</p>
+            </Link>
+
+            <Link
+              href="/analytics"
+              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
+            >
+              <span className="text-3xl">📊</span>
+              <p className="font-semibold mt-3">Analytics</p>
+              <p className="text-sm text-gray-500 mt-1">Bookings, revenue, and funnel trends</p>
             </Link>
           </div>
         </div>
