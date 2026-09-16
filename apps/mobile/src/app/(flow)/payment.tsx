@@ -76,7 +76,7 @@ function IncludedLine({ label }: { label: string }) {
 
 export default function PaymentScreen() {
   const router = useRouter();
-  const { slotId } = useLocalSearchParams<{ slotId: string }>();
+  const { slotId, resumed } = useLocalSearchParams<{ slotId: string; resumed?: string }>();
   const { width: screenWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
@@ -489,6 +489,16 @@ export default function PaymentScreen() {
                 ? `A friend's invite covered ₹${discount} of this one. We'll let you know once your table is set.`
                 : "We'll let you know once your table is set."}
           </Text>
+          {resumed === '1' && (
+            // Only shown when this screen was reached by re-tapping an
+            // already-sealed activity (booking-flow.tsx's existingBooking
+            // redirect), not right after actually paying — a student who
+            // just paid already knows why they're seeing this.
+            <Text style={styles.resumedNote}>
+              You&apos;ve already unlocked {activity?.name ?? 'this'} for the week — that&apos;s this
+              invitation, not a new one.
+            </Text>
+          )}
           <FlowPillButton
             label="Continue  →"
             width={contentWidth}
@@ -703,6 +713,11 @@ const styles = StyleSheet.create({
   centredSubtitle: {
     ...FlowText.subtitle,
     textAlign: 'center',
+  },
+  resumedNote: {
+    ...FlowText.fine,
+    textAlign: 'center',
+    marginTop: 4,
   },
   sealedTick: {
     width: 34,

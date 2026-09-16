@@ -400,9 +400,13 @@ export default function BookingFlowScreen() {
           .maybeSingle();
 
         if (existingBooking) {
+          // resumed=1 tells payment.tsx it got here via this redirect, not
+          // by just finishing a fresh booking — a paid booking then shows
+          // an extra line explaining why re-tapping this activity landed
+          // here instead of letting the student book again.
           router.replace({
             pathname: '/payment' as any,
-            params: { slotId: slotData[0].id },
+            params: { slotId: slotData[0].id, resumed: '1' },
           });
           return;
         }
