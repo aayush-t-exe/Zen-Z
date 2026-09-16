@@ -9,6 +9,8 @@ import {
   Alert,
   StyleSheet,
   useWindowDimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -233,8 +235,17 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      // 'height' on Android, same fix as email-input.tsx/booking-flow.tsx/
+      // group/[groupId].tsx — without it the keyboard just overlays the
+      // WhatsApp field at the bottom of this form instead of pushing the
+      // ScrollView content up so it stays reachable.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth }}>
           <View style={styles.header}>
             <FlowBackArrow onPress={() => router.back()} />
@@ -318,7 +329,7 @@ export default function EditProfileScreen() {
           </View>
         </View>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
