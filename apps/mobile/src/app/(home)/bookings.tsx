@@ -250,16 +250,33 @@ export default function BookingsScreen() {
 
               if (booking.status === 'pending_match') {
                 return (
-                  <FlowSurfaceBox key={booking.id} width={contentWidth}>
-                    <View style={styles.cardBody}>
-                      <ActivityRow name={booking.activity_name} cardWidth={contentWidth}>
-                        <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
-                        <Text style={styles.cardSubtitle}>
-                          {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
-                        </Text>
-                      </ActivityRow>
-                    </View>
-                  </FlowSurfaceBox>
+                  <Pressable
+                    key={booking.id}
+                    onPress={() =>
+                      router.push({
+                        // Not yet in expo-router's generated route types
+                        // (brand new screen) — same `as any` precedent
+                        // payment.tsx/booking-flow.tsx already use for this.
+                        pathname: '/(flow)/whats-next' as any,
+                        params: {
+                          activityName: booking.activity_name,
+                          slotDatetime: booking.slot_datetime,
+                        },
+                      })
+                    }
+                  >
+                    <FlowSurfaceBox width={contentWidth}>
+                      <View style={styles.cardBody}>
+                        <ActivityRow name={booking.activity_name} cardWidth={contentWidth}>
+                          <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
+                          <Text style={styles.cardSubtitle}>
+                            {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
+                            {' · '}Tap to see what happens next →
+                          </Text>
+                        </ActivityRow>
+                      </View>
+                    </FlowSurfaceBox>
+                  </Pressable>
                 );
               }
 

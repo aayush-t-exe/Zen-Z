@@ -16,6 +16,8 @@ export default function FlowLayout() {
       <Stack.Screen name="payment-callback" />
       <Stack.Screen name="booking-details" />
       <Stack.Screen name="no-show" />
+      <Stack.Screen name="whats-next" />
+      <Stack.Screen name="feedback" />
       <Stack.Screen name="group/[groupId]" />
       <Stack.Screen name="invite" />
       <Stack.Screen name="edit-profile" />
