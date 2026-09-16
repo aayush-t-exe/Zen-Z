@@ -12,7 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
@@ -60,6 +60,7 @@ function isValidName(value: string): boolean {
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
@@ -106,6 +107,14 @@ export default function EditProfileScreen() {
   const isLoading = isProfileLoading;
   const seededRef = useRef(false);
 
+  // The values the form was seeded with, so isDirty below can tell an
+  // actual edit apart from the initial fetch just landing.
+  const [initialValues, setInitialValues] = useState<{
+    fullName: string;
+    yearOfStudy: number | null;
+    phone: string;
+  } | null>(null);
+
   // Seeds the editable fields once, the first time the cached/fetched
   // profile actually arrives — not on every render, so it doesn't clobber
   // an in-progress edit if this query happens to refetch in the background
@@ -113,10 +122,28 @@ export default function EditProfileScreen() {
   useEffect(() => {
     if (!profile || seededRef.current) return;
     seededRef.current = true;
-    setFullName(profile.full_name ?? '');
-    setYearOfStudy(profile.year_of_study ?? null);
-    setPhone(profile.phone ?? '');
+    const seeded = {
+      fullName: profile.full_name ?? '',
+      yearOfStudy: profile.year_of_study ?? null,
+      phone: profile.phone ?? '',
+    };
+    setFullName(seeded.fullName);
+    setYearOfStudy(seeded.yearOfStudy);
+    setPhone(seeded.phone);
+    setInitialValues(seeded);
   }, [profile]);
+
+  const isDirty =
+    !!initialValues &&
+    (fullName !== initialValues.fullName ||
+      yearOfStudy !== initialValues.yearOfStudy ||
+      phone !== initialValues.phone ||
+      photoUri !== null);
+
+  // Set right before any router.back() this screen triggers itself
+  // (a successful save, or "Discard" inside the confirm below) so that
+  // follow-up doesn't re-trigger the same guard on its own way out.
+  const bypassLeaveGuardRef = useRef(false);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -218,6 +245,11 @@ export default function EditProfileScreen() {
       // indefinitely.
       queryClient.invalidateQueries({ queryKey: profileFieldsKey(user.id) });
 
+      // A save just went through, so the beforeRemove guard above would
+      // otherwise catch this very router.back() — the state still reads
+      // as dirty against initialValuesRef, which was never updated to the
+      // now-saved values.
+      bypassLeaveGuardRef.current = true;
       router.back();
     } catch (err: any) {
       setError(err.message || 'Failed to update profile');
@@ -225,6 +257,41 @@ export default function EditProfileScreen() {
       setIsSaving(false);
     }
   };
+
+  // beforeRemove fires for every way this screen can be left — the header
+  // back arrow, Android's hardware back button, and the iOS swipe-back
+  // gesture — since they all resolve to the same navigator "go back"
+  // action under the hood. Catching it here means there's one guard
+  // instead of three separate ones to keep in sync.
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (!isDirty || bypassLeaveGuardRef.current) return;
+      e.preventDefault();
+
+      const buttons: any[] = [
+        { text: 'Keep editing', style: 'cancel' },
+        {
+          text: "Don't save",
+          style: 'destructive',
+          onPress: () => {
+            bypassLeaveGuardRef.current = true;
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ];
+      if (canSave) {
+        buttons.push({ text: 'Save', onPress: () => handleSave() });
+      }
+
+      Alert.alert(
+        'Save your changes?',
+        "You've edited your profile but haven't saved yet.",
+        buttons
+      );
+    });
+    return unsubscribe;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation, isDirty, canSave]);
 
   if (isLoading) {
     return (
