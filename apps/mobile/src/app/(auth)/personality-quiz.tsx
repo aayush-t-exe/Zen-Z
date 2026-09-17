@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, Text, ActivityIndicator, Animated, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, ActivityIndicator, Animated, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
@@ -390,54 +390,68 @@ export default function PersonalityQuizScreen() {
       </View>
 
       <View style={styles.body}>
-        <Text style={FlowText.title}>{currentQuestion.prompt}</Text>
-
-        {currentQuestion.question_type === 'single_select' && (
-          <View style={{ gap: 14, marginTop: 32 }}>
-            {currentQuestion.options?.map((option) => {
-              const isSelected = currentAnswer?.selectedOptionIds?.[0] === option.id;
-              const hasSelection = (currentAnswer?.selectedOptionIds?.length ?? 0) > 0;
-              return (
-                <FlowPanel
-                  key={option.id}
-                  label={option.label}
-                  width={contentWidth}
-                  // These answers are whole sentences, not the two-word
-                  // labels the booking flow's rows hold — the longest active
-                  // one is 77 characters. Left-ranged so a wrapped answer
-                  // reads as a sentence.
-                  align="left"
-                  selected={isSelected}
-                  dimmed={hasSelection && !isSelected}
-                  onPress={() => handleSelectOption(option.id)}
-                />
-              );
-            })}
-          </View>
-        )}
-
-        {currentQuestion.question_type === 'multi_select' && (
-          <View style={styles.chipGrid}>
-            {currentQuestion.options?.map((option) => (
-              <OptionChip
-                key={option.id}
-                label={option.label}
-                selected={currentAnswer?.selectedOptionIds?.includes(option.id) ?? false}
-                onPress={() => handleToggleMultiOption(option.id)}
+        {currentQuestion.question_type === 'scale' ? (
+          <>
+            <Text style={FlowText.title}>{currentQuestion.prompt}</Text>
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <ScaleQuestion
+                value={currentAnswer?.scaleValue}
+                dimensionLabel={currentQuestion.scaleDimensionLabel}
+                tierLabels={currentQuestion.scaleTierLabels}
+                onChange={handleScaleChange}
               />
-            ))}
-          </View>
-        )}
+            </View>
+          </>
+        ) : (
+          // Some questions carry more options than fit one screen (the
+          // personality-question data is content-driven — see CLAUDE.md,
+          // never hardcoded), so this has to scroll instead of assuming a
+          // fixed-height body. Title travels inside the scroll area too, or
+          // a long option list pushes the Next button to overlap it instead
+          // of just scrolling past.
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <Text style={FlowText.title}>{currentQuestion.prompt}</Text>
 
-        {currentQuestion.question_type === 'scale' && (
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <ScaleQuestion
-              value={currentAnswer?.scaleValue}
-              dimensionLabel={currentQuestion.scaleDimensionLabel}
-              tierLabels={currentQuestion.scaleTierLabels}
-              onChange={handleScaleChange}
-            />
-          </View>
+            {currentQuestion.question_type === 'single_select' && (
+              <View style={{ gap: 14, marginTop: 32 }}>
+                {currentQuestion.options?.map((option) => {
+                  const isSelected = currentAnswer?.selectedOptionIds?.[0] === option.id;
+                  const hasSelection = (currentAnswer?.selectedOptionIds?.length ?? 0) > 0;
+                  return (
+                    <FlowPanel
+                      key={option.id}
+                      label={option.label}
+                      width={contentWidth}
+                      // These answers are whole sentences, not the two-word
+                      // labels the booking flow's rows hold — the longest active
+                      // one is 77 characters. Left-ranged so a wrapped answer
+                      // reads as a sentence.
+                      align="left"
+                      selected={isSelected}
+                      dimmed={hasSelection && !isSelected}
+                      onPress={() => handleSelectOption(option.id)}
+                    />
+                  );
+                })}
+              </View>
+            )}
+
+            {currentQuestion.question_type === 'multi_select' && (
+              <View style={styles.chipGrid}>
+                {currentQuestion.options?.map((option) => (
+                  <OptionChip
+                    key={option.id}
+                    label={option.label}
+                    selected={currentAnswer?.selectedOptionIds?.includes(option.id) ?? false}
+                    onPress={() => handleToggleMultiOption(option.id)}
+                  />
+                ))}
+              </View>
+            )}
+          </ScrollView>
         )}
 
         {error ? <Text style={[FlowText.error, styles.error]}>{error}</Text> : null}
@@ -692,6 +706,9 @@ const styles = StyleSheet.create({
   body: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 24,
+  },
   footer: {
     paddingTop: 12,
   },
@@ -704,7 +721,8 @@ const styles = StyleSheet.create({
   chipGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    rowGap: 14,
+    columnGap: 10,
     marginTop: 32,
   },
   error: {

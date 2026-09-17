@@ -48,9 +48,9 @@ const styles = StyleSheet.create({
     backgroundColor: FlowSurface.fill,
     borderWidth: 1,
     borderColor: FlowSurface.stroke,
-    borderRadius: 22,
-    paddingVertical: 11,
-    paddingHorizontal: 18,
+    borderRadius: 24,
+    paddingVertical: 13,
+    paddingHorizontal: 20,
   },
   chipSelected: {
     backgroundColor: SELECTED_FILL,
