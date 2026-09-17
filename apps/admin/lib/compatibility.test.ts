@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { cosineSimilarity, averagePairwiseSimilarity, averageSimilarityToGroup, type ScoreVector } from './compatibility';
+import {
+  cosineSimilarity,
+  averagePairwiseSimilarity,
+  averageSimilarityToGroup,
+  outlierMemberIndexes,
+  type ScoreVector,
+} from './compatibility';
 
 const DIMS = [1, 2, 3];
 
@@ -62,5 +68,27 @@ describe('averageSimilarityToGroup', () => {
     const memberA: ScoreVector = { 1: 1, 2: 0, 3: 0 };
     const memberB: ScoreVector = { 1: 0, 2: 1, 3: 0 };
     expect(averageSimilarityToGroup(candidate, [memberA, memberB], DIMS)).toBeCloseTo(0.5);
+  });
+});
+
+describe('outlierMemberIndexes', () => {
+  it('returns empty for fewer than 3 members', () => {
+    const a: ScoreVector = { 1: 1, 2: 0, 3: 0 };
+    const b: ScoreVector = { 1: 0, 2: 1, 3: 0 };
+    expect(outlierMemberIndexes([a, b], DIMS)).toEqual(new Set());
+  });
+
+  it('flags the one member who shares nothing with two otherwise-identical members', () => {
+    const a: ScoreVector = { 1: 1, 2: 1, 3: 0 };
+    const b: ScoreVector = { 1: 1, 2: 1, 3: 0 };
+    const outlier: ScoreVector = { 1: 0, 2: 0, 3: 1 };
+    expect(outlierMemberIndexes([a, b, outlier], DIMS)).toEqual(new Set([2]));
+  });
+
+  it('flags nobody when everyone is similarly matched', () => {
+    const a: ScoreVector = { 1: 1, 2: 0.9, 3: 0 };
+    const b: ScoreVector = { 1: 0.9, 2: 1, 3: 0 };
+    const c: ScoreVector = { 1: 0.8, 2: 0.8, 3: 0.1 };
+    expect(outlierMemberIndexes([a, b, c], DIMS)).toEqual(new Set());
   });
 });

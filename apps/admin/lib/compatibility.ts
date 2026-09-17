@@ -63,3 +63,35 @@ export function averageSimilarityToGroup(
   }
   return count > 0 ? total / count : null;
 }
+
+// Flags a member whose average similarity to the *rest* of the group sits
+// well below the group's own internal average — i.e. everyone else is
+// clicking with each other noticeably more than they are with this one
+// person. Deliberately relative rather than an absolute score cutoff: with
+// no real usage data yet to calibrate a fixed threshold against, "half the
+// group's own norm" adapts to whatever the actual score distribution turns
+// out to be, instead of a guessed number that could flag everyone or no one.
+// Needs at least 3 members — with only 2, one pairwise score just *is* the
+// group, there's no "rest of group" to be an outlier against.
+export function outlierMemberIndexes(
+  memberScores: ScoreVector[],
+  dimensionIds: number[],
+  opts: { minGroupSize?: number; ratio?: number } = {}
+): Set<number> {
+  const { minGroupSize = 3, ratio = 0.5 } = opts;
+  const outliers = new Set<number>();
+  if (memberScores.length < minGroupSize) return outliers;
+
+  const groupAvg = averagePairwiseSimilarity(memberScores, dimensionIds);
+  if (groupAvg === null || groupAvg <= 0) return outliers;
+
+  memberScores.forEach((candidate, i) => {
+    const others = memberScores.filter((_, j) => j !== i);
+    const simToRest = averageSimilarityToGroup(candidate, others, dimensionIds);
+    if (simToRest !== null && simToRest < groupAvg * ratio) {
+      outliers.add(i);
+    }
+  });
+
+  return outliers;
+}

@@ -16,6 +16,7 @@ import { supabase } from '@/lib/supabase';
 import {
   averagePairwiseSimilarity,
   averageSimilarityToGroup,
+  outlierMemberIndexes,
   type ScoreVector,
 } from '@/lib/compatibility';
 import { getSignedPhotoUrls } from '@/lib/photos';
@@ -528,6 +529,10 @@ export default function MatchingBoard({
                   (!isMovies || !!groupMovieId) &&
                   confirmingGroupId === null;
                 const score = groupScore(group.localId);
+                const outlierIndexes = outlierMemberIndexes(
+                  members.map((m) => scoresByUser[m.user_id] ?? {}),
+                  dimensionIds
+                );
                 const genderConstraint = requiredGenderForGroup(members);
                 // Members might already agree on a movie (choose_movie, hard
                 // filter guarantees they agree) even before the founder has
@@ -570,13 +575,14 @@ export default function MatchingBoard({
                       {members.length === 0 ? (
                         <p className="text-sm text-gray-400 italic">Drop students here</p>
                       ) : (
-                        members.map((booking) => (
+                        members.map((booking, memberIdx) => (
                           <DraggableCard key={booking.id} id={booking.id}>
                             <StudentCard
                               booking={booking}
                               photoUrl={photoFor(booking)}
                               compact
                               hasMovieUnavailable={booking.movie_id !== null && booking.movie?.is_available === false}
+                              isTasteOutlier={outlierIndexes.has(memberIdx)}
                               onCancel={() => handleCancelBooking(booking)}
                               cancelling={cancellingId === booking.id}
                             />
@@ -700,6 +706,7 @@ function StudentCard({
   compatibilityBadge = null,
   hasOpenReport = false,
   hasMovieUnavailable = false,
+  isTasteOutlier = false,
   onCancel,
   cancelling = false,
 }: {
@@ -710,6 +717,7 @@ function StudentCard({
   compatibilityBadge?: { groupNumber: number; score: number } | null;
   hasOpenReport?: boolean;
   hasMovieUnavailable?: boolean;
+  isTasteOutlier?: boolean;
   onCancel?: () => void;
   cancelling?: boolean;
 }) {
@@ -727,6 +735,11 @@ function StudentCard({
       {hasMovieUnavailable && (
         <p className="text-xs font-medium text-orange-600 mb-1">
           ⚠️ Chose a movie that&apos;s no longer showing — reassign at confirm
+        </p>
+      )}
+      {isTasteOutlier && (
+        <p className="text-xs font-medium text-orange-600 mb-1">
+          ⚠️ Lowest taste/interest overlap with the rest of this group — worth a second look
         </p>
       )}
       <div className="flex gap-3 items-center">
