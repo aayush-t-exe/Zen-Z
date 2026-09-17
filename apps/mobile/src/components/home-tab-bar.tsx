@@ -39,7 +39,13 @@ const LABEL_FOR: Record<string, string> = {
 type HomeTabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
 
 const SIDE_MARGIN = 46;
-const BAR_HEIGHT = 66;
+// Exported so (home)/_layout.tsx's exit toast can sit just clear of the bar
+// without duplicating its geometry.
+export const HOME_TAB_BAR_HEIGHT = 66;
+const BAR_HEIGHT = HOME_TAB_BAR_HEIGHT;
+
+/** Same floor-plus-inset rule the bar itself uses for its bottom margin. */
+export const homeTabBarBottomMargin = (bottomInset: number) => Math.max(33, bottomInset + 12);
 
 export function HomeTabBar({ state, descriptors, navigation, insets }: HomeTabBarProps) {
   const { width: screenWidth } = useWindowDimensions();
@@ -50,7 +56,7 @@ export function HomeTabBar({ state, descriptors, navigation, insets }: HomeTabBa
     // handling now that it isn't the navigator's, so hold that 33dp on
     // devices reporting no bottom inset (3-button nav) and lift further clear
     // of a gesture bar when there is one.
-    <View style={[styles.bar, { marginBottom: Math.max(33, insets.bottom + 12) }]}>
+    <View style={[styles.bar, { marginBottom: homeTabBarBottomMargin(insets.bottom) }]}>
       {/* The designer's bar art, same as the cards use, rather than a flat
           fill — it carries the lit rim and the gradient that give the pill its
           sheen. Needs explicit width/height: an <Image> laid out with
