@@ -446,6 +446,13 @@ export default function BookingFlowScreen() {
 
     if (plusOne && !friendName.trim()) {
       setError("Who are you bringing? Add their name, or turn off Bring a +1.");
+      // Same reasoning as the toggle-on scroll above: the Their Name field
+      // and this error both sit at the bottom of the summary, so a student
+      // who scrolled back up to review the rest of the summary before
+      // tapping Next never sees why the button didn't go through.
+      requestAnimationFrame(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      });
       return;
     }
 

@@ -20,6 +20,7 @@ import {
   FlowText,
 } from '@/constants/flow-theme';
 import { FlowActionRow, FlowSurfaceBox } from '@/components/flow-panel';
+import { FlowConfirmDialog } from '@/components/flow-confirm-dialog';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { fetchEmergencyContactPhone, fetchEmergencyContactPhoneBackup } from '@/lib/emergency';
@@ -74,6 +75,8 @@ export default function ProfileScreen() {
   const [isDialing, setIsDialing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isContactingSupport, setIsContactingSupport] = useState(false);
+  const [signOutDialogOpen, setSignOutDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const userId = user?.id;
 
@@ -181,9 +184,11 @@ export default function ProfileScreen() {
       queryClient.clear();
       setSession(null);
       setUser(null);
+      setSignOutDialogOpen(false);
       router.replace('/(auth)/onboarding');
     } catch (err) {
       console.error('Sign out failed:', err);
+      setSignOutDialogOpen(false);
     }
   };
 
@@ -206,61 +211,53 @@ export default function ProfileScreen() {
 
   const handleDeleteAccount = () => {
     if (isDeleting) return;
+    setDeleteDialogOpen(true);
+  };
 
-    Alert.alert(
-      'Delete your account?',
-      "This permanently removes your profile info and photo. It can't be undone.",
-      [
-        { text: 'Keep it', style: 'cancel' },
-        {
-          text: 'Delete account',
-          style: 'destructive',
-          onPress: async () => {
-            setIsDeleting(true);
-            // Goes through the delete-account Edge Function rather than
-            // calling the delete_own_account RPC directly — the photo
-            // cleanup step now has to happen as a real Storage API call
-            // (Supabase blocks a raw SQL delete on storage.objects), and
-            // this function is what sequences "scrub the account first,
-            // then best-effort clean up the photo" correctly.
-            const { error: functionError } = await supabase.functions.invoke('delete-account');
-            setIsDeleting(false);
+  const confirmDeleteAccount = async () => {
+    setIsDeleting(true);
+    // Goes through the delete-account Edge Function rather than
+    // calling the delete_own_account RPC directly — the photo
+    // cleanup step now has to happen as a real Storage API call
+    // (Supabase blocks a raw SQL delete on storage.objects), and
+    // this function is what sequences "scrub the account first,
+    // then best-effort clean up the photo" correctly.
+    const { error: functionError } = await supabase.functions.invoke('delete-account');
+    setIsDeleting(false);
 
-            if (functionError) {
-              // supabase-js only gives a generic "non-2xx status" message
-              // by default — the actual reason is in the response body,
-              // on FunctionsHttpError's `context` (the raw Response).
-              let message = functionError.message || 'Failed to delete account';
-              const context = (functionError as any).context;
-              if (context && typeof context.json === 'function') {
-                try {
-                  const body = await context.json();
-                  if (body?.error) message = body.error;
-                } catch {
-                  // Body wasn't JSON — fall back to the generic message.
-                }
-              }
+    if (functionError) {
+      // supabase-js only gives a generic "non-2xx status" message
+      // by default — the actual reason is in the response body,
+      // on FunctionsHttpError's `context` (the raw Response).
+      let message = functionError.message || 'Failed to delete account';
+      const context = (functionError as any).context;
+      if (context && typeof context.json === 'function') {
+        try {
+          const body = await context.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // Body wasn't JSON — fall back to the generic message.
+        }
+      }
 
-              if (message === 'ACTIVE_BOOKING') {
-                Alert.alert(
-                  'Not just yet',
-                  "You've got a paid booking that's still pending or matched. Cancel it or message us first, then come back to delete your account."
-                );
-                return;
-              }
-              Alert.alert('Could not delete account', message);
-              return;
-            }
+      setDeleteDialogOpen(false);
+      if (message === 'ACTIVE_BOOKING') {
+        Alert.alert(
+          'Not just yet',
+          "You've got a paid booking that's still pending or matched. Cancel it or message us first, then come back to delete your account."
+        );
+        return;
+      }
+      Alert.alert('Could not delete account', message);
+      return;
+    }
 
-            await supabase.auth.signOut();
-            queryClient.clear();
-            setSession(null);
-            setUser(null);
-            router.replace('/(auth)/onboarding');
-          },
-        },
-      ]
-    );
+    setDeleteDialogOpen(false);
+    await supabase.auth.signOut();
+    queryClient.clear();
+    setSession(null);
+    setUser(null);
+    router.replace('/(auth)/onboarding');
   };
 
   const handleFollowInstagram = async () => {
@@ -403,7 +400,7 @@ export default function ProfileScreen() {
               label="Sign Out"
               width={contentWidth}
               tone="danger"
-              onPress={handleSignOut}
+              onPress={() => setSignOutDialogOpen(true)}
             />
             <FlowActionRow
               label={isDeleting ? 'Deleting…' : 'Delete Account'}
@@ -417,6 +414,27 @@ export default function ProfileScreen() {
           <Text style={[FlowText.fine, styles.versionText]}>App Version: 1.0.0</Text>
         </View>
       </ScrollView>
+
+      <FlowConfirmDialog
+        visible={signOutDialogOpen}
+        title="Sign out?"
+        message="You'll need to verify your email again to come back in."
+        cancelLabel="Stay signed in"
+        destructiveLabel="Sign Out"
+        onCancel={() => setSignOutDialogOpen(false)}
+        onConfirm={handleSignOut}
+      />
+
+      <FlowConfirmDialog
+        visible={deleteDialogOpen}
+        title="Delete your account?"
+        message="This permanently removes your profile info and photo. It can't be undone."
+        cancelLabel="Keep it"
+        destructiveLabel="Delete account"
+        loading={isDeleting}
+        onCancel={() => setDeleteDialogOpen(false)}
+        onConfirm={confirmDeleteAccount}
+      />
     </View>
   );
 }
