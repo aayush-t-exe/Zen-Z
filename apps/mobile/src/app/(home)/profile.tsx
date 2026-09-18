@@ -169,7 +169,8 @@ export default function ProfileScreen() {
         );
         return;
       }
-      await Linking.openURL(buildWhatsappUrl(phone, 'Hi, I need some help with my Zen-Z account.'));
+      const name = profile?.full_name ?? 'a student';
+      await Linking.openURL(buildWhatsappUrl(phone, `Hi, I'm ${name} and I need some help with my Zen-Z account.`));
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);
       Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');

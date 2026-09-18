@@ -27,6 +27,7 @@ import { SUMMARY_ICONS, SummaryCard } from '@/components/summary-card';
 import { supabase } from '@/lib/supabase';
 import { formatSlotDateTime } from '@/lib/format';
 import { buildWhatsappUrl, fetchSupportEmail, fetchSupportWhatsappPhone } from '@/lib/support';
+import { fetchProfileFields } from '@/lib/profile';
 
 interface BookingDetails {
   id: string;
@@ -375,7 +376,8 @@ export default function PaymentScreen() {
       }
 
       const activityName = booking.slots?.activity_types?.name ?? 'my booking';
-      const message = `Hi, I paid for ${activityName} but the app still shows payment not received. Booking ID: ${booking.id}`;
+      const name = await fetchProfileFields(booking.user_id).then((p) => p.full_name, () => null);
+      const message = `Hi, I'm ${name ?? 'a student'} and I paid for ${activityName} but the app still shows payment not received. Booking ID: ${booking.id}`;
       await Linking.openURL(buildWhatsappUrl(phone, message));
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);

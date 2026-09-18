@@ -8,6 +8,8 @@ import { FlowPillButton } from '@/components/flow-pill-button';
 import { SummaryBadge } from '@/components/summary-card';
 import { formatSlotDateTime } from '@/lib/format';
 import { buildWhatsappUrl, fetchSupportWhatsappPhone } from '@/lib/support';
+import { fetchProfileFields } from '@/lib/profile';
+import { useAuthStore } from '@/store/auth';
 
 /** The comp's own tick (payment.tsx's IncludedLine uses the same one), standing in for a list bullet. */
 const TICK = require('@/assets/images/icon-tick.png');
@@ -55,6 +57,7 @@ export default function WhatsNextScreen() {
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [isContactingSupport, setIsContactingSupport] = useState(false);
+  const userId = useAuthStore((state) => state.user?.id);
 
   const handleContactSupport = async () => {
     if (isContactingSupport) return;
@@ -66,7 +69,12 @@ export default function WhatsNextScreen() {
         Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
         return;
       }
-      const message = `Hi, I can't make it to ${activityName ?? 'my booking'}${
+      // This DM lands straight in the founder's own WhatsApp, so naming the
+      // student here (not just the slot) is what lets them reply without
+      // first digging through the admin dashboard to match a booking. A
+      // failed name lookup shouldn't block the message going out at all.
+      const name = userId ? await fetchProfileFields(userId).then((p) => p.full_name, () => null) : null;
+      const message = `Hi, I'm ${name ?? 'a student'} and I can't make it to ${activityName ?? 'my booking'}${
         slotDatetime ? ` (${formatSlotDateTime(slotDatetime, activityName)})` : ''
       } — can you help?`;
       await Linking.openURL(buildWhatsappUrl(phone, message));
