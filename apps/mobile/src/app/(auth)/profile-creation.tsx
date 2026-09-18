@@ -6,9 +6,12 @@ import {
   Image,
   Alert,
   StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
 import {
@@ -54,6 +57,7 @@ function isValidName(value: string): boolean {
 export default function ProfileCreationScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const setAuthError = useAuthStore((state) => state.setError);
 
@@ -277,7 +281,13 @@ export default function ProfileCreationScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <KeyboardAvoidingView
+      style={[styles.root, { paddingBottom: 28 + insets.bottom }]}
+      // 'height' on Android — this screen has no ScrollView, so without it
+      // the keyboard just overlays the name/WhatsApp fields and the Continue
+      // button instead of shrinking the body to make room for them. Same fix
+      // as email-input.tsx/booking-flow.tsx/group/[groupId].tsx.
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={{ width: contentWidth, flex: 1 }}>
         <View style={styles.header}>
           <FlowBackArrow onPress={handleBack} />
@@ -417,7 +427,7 @@ export default function ProfileCreationScreen() {
           />
         </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

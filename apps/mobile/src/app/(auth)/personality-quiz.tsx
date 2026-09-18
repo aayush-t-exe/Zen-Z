@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, ActivityIndicator, Animated, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { FlowBackArrow } from '@/components/flow-back-button';
@@ -54,6 +55,7 @@ export default function PersonalityQuizScreen() {
   const router = useRouter();
   const { name } = useLocalSearchParams<{ name?: string }>();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
 
   // Same content column the booking flow and profile creation run.
@@ -380,7 +382,7 @@ export default function PersonalityQuizScreen() {
   };
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingBottom: 28 + insets.bottom }]}>
       <View style={{ width: contentWidth, flex: 1 }}>
       <View style={styles.header}>
         <FlowBackArrow onPress={handleBack} />
@@ -501,6 +503,7 @@ function ScaleQuestion({
 }
 
 function CuratingScreen() {
+  const insets = useSafeAreaInsets();
   // Matches the lazy-useState pattern email-input.tsx uses for Animated.Value
   // — refs flag the new react-hooks/refs lint rule, useState doesn't.
   const [rotation] = useState(() => new Animated.Value(0));
@@ -551,7 +554,7 @@ function CuratingScreen() {
   const radius = 44;
 
   return (
-    <View style={[styles.root, styles.centered]}>
+    <View style={[styles.root, styles.centered, { paddingBottom: 28 + insets.bottom }]}>
       <Animated.View style={[styles.dotRing, spinStyle]}>
         {dots.map((i) => {
           const angle = (i / dots.length) * Math.PI * 2;
@@ -654,11 +657,12 @@ function RecapScreen({
   width: number;
   onContinue: () => void;
 }) {
+  const insets = useSafeAreaInsets();
   const greetingName = name ? `, ${name}` : '';
   const tier: 0 | 1 | 2 = traitValue < 0.34 ? 0 : traitValue < 0.67 ? 1 : 2;
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingBottom: 28 + insets.bottom }]}>
       <View style={[styles.body, styles.centered, { width }]}>
         {traitLabel && <PersonalityRevealCard tier={tier} label={traitLabel} />}
         <Text style={[FlowText.titleCentred, { marginTop: 32 }]}>

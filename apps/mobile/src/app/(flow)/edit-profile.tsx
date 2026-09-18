@@ -14,6 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as ImagePicker from 'expo-image-picker';
 import { decode } from 'base64-arraybuffer';
@@ -70,6 +71,7 @@ export default function EditProfileScreen() {
   const router = useRouter();
   const navigation = useNavigation();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
@@ -323,7 +325,7 @@ export default function EditProfileScreen() {
       // ScrollView content up so it stays reachable.
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 48 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth }}>

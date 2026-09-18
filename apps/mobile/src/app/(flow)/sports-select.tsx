@@ -7,6 +7,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { activityArt } from '@/constants/activity-art';
@@ -44,6 +45,7 @@ export default function SportsSelectScreen() {
   const router = useRouter();
   const { parentId } = useLocalSearchParams<{ parentId: string }>();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [options, setOptions] = useState<SportOption[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -86,7 +88,7 @@ export default function SportsSelectScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.content, { width: contentWidth }]}>
+      <View style={[styles.content, { width: contentWidth, paddingBottom: 24 + insets.bottom }]}>
         <View style={{ gap: 6 }}>
           <Text style={styles.title}>Enter the{'\n'}arena</Text>
           <Text style={styles.subtitle}>Four games, one Saturday. Choose wisely.</Text>
@@ -152,7 +154,6 @@ const styles = StyleSheet.create({
     // No tab-bar reservation, unlike Home: this screen is pushed on top of the
     // tabs as its own stack (see (flow)/_layout.tsx), so nothing floats over it.
     paddingTop: 24,
-    paddingBottom: 24,
   },
   // Home's own header type — Inter Black, near-solid leading, tight tracking —
   // since this screen is the same grid one level down.

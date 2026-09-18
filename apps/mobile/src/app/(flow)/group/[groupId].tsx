@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { FlowSurface, FlowText } from '@/constants/flow-theme';
@@ -61,6 +62,7 @@ export default function GroupScreen() {
   const user = useAuthStore((state) => state.user);
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const refreshUnreadCount = useChatStore((state) => state.refreshUnreadCount);
 
   // The report sheet's own column: it is inset 24dp from each edge, and both
@@ -564,7 +566,7 @@ export default function GroupScreen() {
               </Pressable>
             )}
 
-            <View style={styles.inputRow}>
+            <View style={[styles.inputRow, { paddingBottom: 12 + insets.bottom }]}>
               <TextInput
                 value={input}
                 onChangeText={setInput}
@@ -589,7 +591,7 @@ export default function GroupScreen() {
 
       <Modal visible={reportStep !== null} animationType="slide" transparent onRequestClose={closeReportSheet}>
         <View style={styles.modalOverlay}>
-          <View style={styles.sheet}>
+          <View style={[styles.sheet, { paddingBottom: 40 + insets.bottom }]}>
             {reportStep === 'members' && (
               <>
                 <Text style={styles.sheetTitle}>Group Details</Text>
@@ -861,7 +863,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     paddingHorizontal: 22,
-    paddingVertical: 12,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: FlowSurface.stroke,
   },
@@ -903,7 +905,6 @@ const styles = StyleSheet.create({
     borderColor: FlowSurface.stroke,
     paddingHorizontal: 24,
     paddingTop: 26,
-    paddingBottom: 40,
   },
   sheetTitle: {
     ...FlowText.titleCompact,

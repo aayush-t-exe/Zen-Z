@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Pressable, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -29,6 +30,7 @@ const REVEAL_SPRING = { duration: 500, dampingRatio: 0.72, reduceMotion: ReduceM
  */
 export default function JaipurIntroScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const hasAdvanced = useRef(false);
 
   const eyebrowOpacity = useSharedValue(0);
@@ -79,7 +81,7 @@ export default function JaipurIntroScreen() {
 
   return (
     <Pressable
-      style={styles.root}
+      style={[styles.root, { paddingBottom: 48 + insets.bottom }]}
       onPress={handleContinue}
       accessibilityRole="button"
       accessibilityLabel="Continue to onboarding">

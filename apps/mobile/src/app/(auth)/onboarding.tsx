@@ -10,6 +10,7 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FlowText, flowTracking } from '@/constants/flow-theme';
 import { FlowPillButton } from '@/components/flow-pill-button';
@@ -75,6 +76,7 @@ const SLIDES: Slide[] = [
 export default function OnboardingScreen() {
   const router = useRouter();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -186,7 +188,7 @@ export default function OnboardingScreen() {
       />
 
       {currentIndex === 0 ? (
-        <View style={styles.footerSplash}>
+        <View style={[styles.footerSplash, { paddingBottom: 28 + insets.bottom }]}>
           <FlowPillButton label="Begin  →" onPress={handleNext} />
           <Pressable onPress={handleContinue} hitSlop={12}>
             {({ pressed }) => (
@@ -197,7 +199,7 @@ export default function OnboardingScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.footerIntro}>
+        <View style={[styles.footerIntro, { paddingBottom: 62 + insets.bottom }]}>
           <PageDots count={SLIDES.length - 1} active={currentIndex - 1} />
           <FlowPillButton label={isLast ? 'Begin  →' : 'Next  →'} onPress={handleNext} />
         </View>
@@ -269,12 +271,10 @@ const styles = StyleSheet.create({
   },
   footerSplash: {
     paddingHorizontal: 21,
-    paddingBottom: 28,
     gap: 20,
   },
   footerIntro: {
     paddingHorizontal: 21,
-    paddingBottom: 62,
     gap: 22,
   },
   pressedText: {

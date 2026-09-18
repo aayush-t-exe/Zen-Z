@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { View, Text, ScrollView, Image, Alert, StyleSheet, useWindowDimensions } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
 import { FlowPillButton } from '@/components/flow-pill-button';
@@ -54,6 +55,7 @@ export default function WhatsNextScreen() {
     slotDatetime?: string;
   }>();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
 
   const [isContactingSupport, setIsContactingSupport] = useState(false);
@@ -88,7 +90,9 @@ export default function WhatsNextScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: 56 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth, alignItems: 'center' }}>
           {activityName && (
             <View style={{ marginBottom: 18 }}>
@@ -146,7 +150,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     alignItems: 'center',
-    paddingVertical: 56,
+    paddingTop: 56,
     paddingHorizontal: 24,
   },
   centredSubtitle: {

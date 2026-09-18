@@ -9,6 +9,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/fonts';
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { FlowSurfaceBox } from '@/components/flow-panel';
@@ -34,6 +35,7 @@ function StatRow({ label, value, width }: { label: string; value: number; width:
 export default function InviteScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   // Same content column the rest of the redesign runs.
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
@@ -125,7 +127,7 @@ export default function InviteScreen() {
         </View>
       </ScrollView>
 
-      <View style={styles.footer}>
+      <View style={[styles.footer, { paddingBottom: 40 + insets.bottom }]}>
         <FlowBackButton onPress={() => router.back()} />
         <View style={{ marginTop: 18 }}>
           <FlowPillButton
@@ -193,7 +195,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignSelf: 'center',
-    paddingBottom: 40,
     paddingTop: 12,
   },
 });

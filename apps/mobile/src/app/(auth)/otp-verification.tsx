@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FontFamily } from '@/constants/fonts';
 import { FlowSurface, FlowText, flowTracking } from '@/constants/flow-theme';
 import { FlowPillButton } from '@/components/flow-pill-button';
@@ -26,6 +27,7 @@ export default function OTPVerificationScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams<{ email: string }>();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [otp, setOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -133,7 +135,7 @@ export default function OTPVerificationScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <Image

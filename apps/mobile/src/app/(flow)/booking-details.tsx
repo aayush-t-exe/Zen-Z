@@ -10,6 +10,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FLOW_CONTENT_MAX, FLOW_SIDE_PADDING, FlowText } from '@/constants/flow-theme';
 import { ACTIVITY_ART_BADGE_SCALE, activityArt } from '@/constants/activity-art';
@@ -77,6 +78,7 @@ export default function BookingDetailsScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   // Same content column the rest of the redesign runs.
   const contentWidth = Math.min(FLOW_CONTENT_MAX, screenWidth - FLOW_SIDE_PADDING * 2);
@@ -147,7 +149,9 @@ export default function BookingDetailsScreen() {
 
   return (
     <View style={styles.root}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={[styles.scroll, { paddingBottom: 48 + insets.bottom }]}
+        showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth }}>
           <Text style={styles.pageTitle}>Booking Details</Text>
 

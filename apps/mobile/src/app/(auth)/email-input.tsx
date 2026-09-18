@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { FlowText, flowTracking } from '@/constants/flow-theme';
@@ -31,6 +32,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export default function EmailInputScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -122,7 +124,7 @@ export default function EmailInputScreen() {
       // already used for this on booking-flow.tsx and group/[groupId].tsx.
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 40 + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}>
         <Image
