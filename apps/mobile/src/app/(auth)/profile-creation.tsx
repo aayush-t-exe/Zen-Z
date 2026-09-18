@@ -5,6 +5,7 @@ import {
   Pressable,
   Image,
   Alert,
+  ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
@@ -37,7 +38,12 @@ const YEARS: { label: string; value: number }[] = [
 ];
 const GENDERS = ['Male', 'Female', 'Other', 'Prefer not to say'];
 
-const STEP_COUNT = 6;
+// Two screens, not one field per screen: Name/DOB/Year/Gender all group as
+// "about you" (no typing but the name), Phone/Photo group as the last step —
+// six single-field "next next next" taps read as busywork, per the founder's
+// own tester feedback. Photo stays out of the first screen: it needs real
+// visual room a dense field list would crowd.
+const STEP_COUNT = 2;
 const MIN_AGE_YEARS = 18;
 
 // Exactly 10 digits, no spaces/dashes/parens/+ — a WhatsApp contact
@@ -79,14 +85,10 @@ export default function ProfileCreationScreen() {
   // Lazy initializer so `Date.now()` runs once on mount, not on every render.
   const [maxDobDate] = useState(() => new Date(Date.now() - MIN_AGE_YEARS * 365.25 * 24 * 60 * 60 * 1000));
 
-  const canAdvance = [
-    isValidName(fullName),
-    dateOfBirth !== null,
-    yearOfStudy !== null,
-    gender !== '',
-    isValidPhone(phone.trim()),
-    true, // step 5's own check below handles the photo, so the student sees a real message instead of a silently-disabled button
-  ][step];
+  const canAdvance =
+    step === 0
+      ? isValidName(fullName) && dateOfBirth !== null && yearOfStudy !== null && gender !== ''
+      : isValidPhone(phone.trim()); // this step's own check below handles the photo, so the student sees a real message instead of a silently-disabled button
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -126,58 +128,58 @@ export default function ProfileCreationScreen() {
   const handleNext = async () => {
     if (!canAdvance) return;
 
-    if (step === 0 && !isValidName(fullName)) {
-      setError('Enter your full name without any numbers.');
+    if (step === 0) {
+      if (!isValidName(fullName)) {
+        setError('Enter your full name without any numbers.');
+        return;
+      }
+
+      // The calendar (dob-field.tsx) already clamps its own maxDate, but a
+      // date picked before this render's maxDobDate was computed (or a
+      // stale one carried in state) still deserves a real message here
+      // rather than a silently-disabled Continue button.
+      if (dateOfBirth && dateOfBirth > maxDobDate) {
+        setError(`You need to be at least ${MIN_AGE_YEARS} to use Zen-Z.`);
+        return;
+      }
+
+      // Previously this only surfaced as a cryptic FK error at final
+      // submit, in handleCreateProfile — well past every other field, and
+      // by then it read as the whole profile failing rather than one wrong
+      // code. Checking right here, on the screen it's actually typed on,
+      // catches it immediately instead.
+      if (referralCode.trim()) {
+        setIsLoading(true);
+        setError('');
+        const { data: isValid, error: validateError } = await supabase.rpc('validate_referral_code', {
+          p_code: referralCode.trim(),
+        });
+        setIsLoading(false);
+
+        if (validateError) {
+          setError('Could not check that invite code — try again.');
+          return;
+        }
+        if (!isValid) {
+          setError("That invite code doesn't look right.");
+          return;
+        }
+      }
+
+      setStep(1);
       return;
     }
 
-    // Previously this only surfaced as a cryptic FK error at final submit,
-    // in handleCreateProfile — well past DOB/year/gender/phone/photo, and
-    // by then it read as the whole profile failing rather than one wrong
-    // code. Checking right here, on the step it's actually typed, catches
-    // it immediately instead.
-    if (step === 0 && referralCode.trim()) {
-      setIsLoading(true);
-      setError('');
-      const { data: isValid, error: validateError } = await supabase.rpc('validate_referral_code', {
-        p_code: referralCode.trim(),
-      });
-      setIsLoading(false);
-
-      if (validateError) {
-        setError('Could not check that invite code — try again.');
-        return;
-      }
-      if (!isValid) {
-        setError("That invite code doesn't look right.");
-        return;
-      }
-    }
-
-    // maximumDate on the native picker (below) is the first line of
-    // defense, but Android's date-picker widget doesn't consistently
-    // enforce it across every OEM skin — so a too-young date can still
-    // reach state here and needs its own check before advancing, with a
-    // real message instead of a silently-disabled Continue button.
-    if (step === 1 && dateOfBirth && dateOfBirth > maxDobDate) {
-      setError(`You need to be at least ${MIN_AGE_YEARS} to use Zen-Z.`);
-      return;
-    }
-
-    if (step === 4 && !isValidPhone(phone.trim())) {
+    if (!isValidPhone(phone.trim())) {
       setError('Enter a valid WhatsApp number.');
       return;
     }
 
-    if (step === 5 && !photoUri) {
+    if (!photoUri) {
       setError('Add a photo before continuing.');
       return;
     }
 
-    if (step < STEP_COUNT - 1) {
-      setStep(step + 1);
-      return;
-    }
     handleCreateProfile();
   };
 
@@ -283,10 +285,11 @@ export default function ProfileCreationScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.root, { paddingBottom: 28 + insets.bottom }]}
-      // 'height' on Android — this screen has no ScrollView, so without it
-      // the keyboard just overlays the name/WhatsApp fields and the Continue
-      // button instead of shrinking the body to make room for them. Same fix
-      // as email-input.tsx/booking-flow.tsx/group/[groupId].tsx.
+      // 'height' on Android — react-native-screens' native screen container
+      // isn't itself resized by the OS's own adjustResize, so without this
+      // the keyboard just overlays the ScrollView below instead of shrinking
+      // it to keep the focused field and the Continue button reachable. Same
+      // fix as email-input.tsx/booking-flow.tsx/group/[groupId].tsx.
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={{ width: contentWidth, flex: 1 }}>
         <View style={styles.header}>
@@ -296,19 +299,73 @@ export default function ProfileCreationScreen() {
           </View>
         </View>
 
-        <View style={styles.body}>
+        <ScrollView
+          style={styles.body}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}>
           {step === 0 && (
-            <StepShell title="What's your name?">
-              <FlowField
-                width={contentWidth}
-                placeholder="Your full name"
-                value={fullName}
-                onChangeText={setFullName}
-                editable={!isLoading}
-                autoFocus
-              />
-              <View style={{ marginTop: 20, gap: 10 }}>
-                <Text style={FlowText.fine}>Have an invite code?</Text>
+            <StepShell title="Tell us about you">
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>Name</Text>
+                <FlowField
+                  width={contentWidth}
+                  placeholder="Your full name"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  editable={!isLoading}
+                  autoFocus
+                />
+              </View>
+
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>Date of birth</Text>
+                <DobField
+                  value={dateOfBirth}
+                  onChange={(selected) => {
+                    setDateOfBirth(selected);
+                    setError('');
+                  }}
+                  maxDate={maxDobDate}
+                  contentWidth={contentWidth}
+                />
+                <Text style={FlowText.fine}>We&apos;ll never show this to anyone else.</Text>
+              </View>
+
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>Year</Text>
+                <View style={{ gap: 14 }}>
+                  {YEARS.map((year) => (
+                    <FlowPanel
+                      key={year.value}
+                      label={year.label}
+                      width={contentWidth}
+                      selected={yearOfStudy === year.value}
+                      dimmed={yearOfStudy !== null && yearOfStudy !== year.value}
+                      onPress={() => setYearOfStudy(year.value)}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>How do you define yourself?</Text>
+                <View style={{ gap: 14 }}>
+                  {GENDERS.map((g) => (
+                    <FlowPanel
+                      key={g}
+                      label={g}
+                      width={contentWidth}
+                      selected={gender === g}
+                      dimmed={gender !== '' && gender !== g}
+                      onPress={() => setGender(g)}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>Have an invite code?</Text>
                 <FlowField
                   width={contentWidth}
                   placeholder="Optional"
@@ -322,91 +379,49 @@ export default function ProfileCreationScreen() {
           )}
 
           {step === 1 && (
-            <StepShell title="When's your birthday?" subtitle="We'll never show this to anyone else.">
-              <DobField
-                value={dateOfBirth}
-                onChange={(selected) => {
-                  setDateOfBirth(selected);
-                  setError('');
-                }}
-                maxDate={maxDobDate}
-                contentWidth={contentWidth}
-              />
-            </StepShell>
-          )}
-
-          {step === 2 && (
-            <StepShell title="Which year are you in?">
-              <View style={{ gap: 14 }}>
-                {YEARS.map((year) => (
-                  <FlowPanel
-                    key={year.value}
-                    label={year.label}
-                    width={contentWidth}
-                    selected={yearOfStudy === year.value}
-                    dimmed={yearOfStudy !== null && yearOfStudy !== year.value}
-                    onPress={() => setYearOfStudy(year.value)}
-                  />
-                ))}
+            <StepShell title="Last few things">
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>WhatsApp number</Text>
+                <FlowField
+                  width={contentWidth}
+                  placeholder="9XXXXXXXXX"
+                  value={phone}
+                  onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
+                  editable={!isLoading}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                  autoFocus
+                />
+                <Text style={FlowText.fine}>
+                  Just your 10-digit number — no +91 needed. We&apos;ll use this to reach you about
+                  event details.
+                </Text>
               </View>
-            </StepShell>
-          )}
 
-          {step === 3 && (
-            <StepShell title="How do you define yourself?">
-              <View style={{ gap: 14 }}>
-                {GENDERS.map((g) => (
-                  <FlowPanel
-                    key={g}
-                    label={g}
-                    width={contentWidth}
-                    selected={gender === g}
-                    dimmed={gender !== '' && gender !== g}
-                    onPress={() => setGender(g)}
-                  />
-                ))}
+              <View style={styles.group}>
+                <Text style={FlowText.sectionLabel}>Photo</Text>
+                <Pressable
+                  onPress={handlePickImage}
+                  disabled={isLoading}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a photo">
+                  <View style={styles.photoPicker}>
+                    {photoUri ? (
+                      <Image
+                        source={{ uri: photoUri }}
+                        style={styles.photoPreview}
+                        accessibilityIgnoresInvertColors
+                      />
+                    ) : (
+                      <Text style={FlowText.panelLabel}>Upload</Text>
+                    )}
+                  </View>
+                </Pressable>
+                <Text style={[FlowText.fine, styles.privacyLine]}>
+                  This photo is seen only by our team, to help us craft the right group for you —
+                  never by other members.
+                </Text>
               </View>
-            </StepShell>
-          )}
-
-          {step === 4 && (
-            <StepShell title="What's your WhatsApp number?" subtitle="We'll use this to reach you about event details.">
-              <FlowField
-                width={contentWidth}
-                placeholder="9XXXXXXXXX"
-                value={phone}
-                onChangeText={(text) => setPhone(text.replace(/\D/g, '').slice(0, 10))}
-                editable={!isLoading}
-                keyboardType="number-pad"
-                maxLength={10}
-                autoFocus
-              />
-            </StepShell>
-          )}
-
-          {step === 5 && (
-            <StepShell title="Add a photo">
-              <Pressable
-                onPress={handlePickImage}
-                disabled={isLoading}
-                accessibilityRole="button"
-                accessibilityLabel="Add a photo">
-                <View style={styles.photoPicker}>
-                  {photoUri ? (
-                    <Image
-                      source={{ uri: photoUri }}
-                      style={styles.photoPreview}
-                      accessibilityIgnoresInvertColors
-                    />
-                  ) : (
-                    <Text style={FlowText.panelLabel}>Upload</Text>
-                  )}
-                </View>
-              </Pressable>
-              <Text style={[FlowText.fine, styles.privacyLine]}>
-                This photo is seen only by our team, to help us craft the right group for you —
-                never by other members.
-              </Text>
             </StepShell>
           )}
 
@@ -415,7 +430,7 @@ export default function ProfileCreationScreen() {
               {error}
             </Text>
           ) : null}
-        </View>
+        </ScrollView>
 
         <View style={styles.footer}>
           <FlowPillButton
@@ -466,6 +481,15 @@ const styles = StyleSheet.create({
   },
   body: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 24,
+  },
+  // No marginTop here: StepShell's own `gap: 28` already spaces one group
+  // from the next (and from the title above them), so a group only needs
+  // its own internal label-to-field gap.
+  group: {
+    gap: 14,
   },
   footer: {
     paddingTop: 12,
