@@ -1,0 +1,67 @@
+diff --git a/apps/mobile/package.json b/apps/mobile/package.json
+index 0cdb806..de7cae1 100644
+--- a/apps/mobile/package.json
++++ b/apps/mobile/package.json
+@@ -17,6 +17,7 @@
+     "expo": "~57.0.12",
+     "expo-constants": "~57.0.10",
+     "expo-dev-client": "~57.0.11",
++    "expo-file-system": "~57.0.7",
+     "expo-font": "~57.0.1",
+     "expo-image-picker": "^57.0.9",
+     "expo-linking": "~57.0.5",
+@@ -26,6 +27,7 @@
+     "expo-secure-store": "~57.0.1",
+     "expo-splash-screen": "~57.0.6",
+     "expo-status-bar": "~57.0.1",
++    "expo-store-review": "~57.0.3",
+     "expo-system-ui": "~57.0.2",
+     "expo-updates": "~57.0.21",
+     "expo-web-browser": "~57.0.2",
+diff --git a/apps/mobile/src/lib/notifications.test.ts b/apps/mobile/src/lib/notifications.test.ts
+index fbfd128..b045054 100644
+--- a/apps/mobile/src/lib/notifications.test.ts
++++ b/apps/mobile/src/lib/notifications.test.ts
+@@ -46,7 +46,15 @@ describe('handleNotificationResponse', () => {
+     });
+   });
+ 
+-  it('falls back to the bookings tab for a type with no dedicated screen', () => {
++  it('routes a post_event_feedback notification to the feedback screen', () => {
++    handleNotificationResponse(responseWithData({ type: 'post_event_feedback', bookingId: 'booking-1' }));
++    expect(mockPush).toHaveBeenCalledWith({
++      pathname: '/(flow)/feedback',
++      params: { bookingId: 'booking-1' },
++    });
++  });
++
++  it('does not treat a post_event_feedback type with a missing bookingId as the feedback route', () => {
+     handleNotificationResponse(responseWithData({ type: 'post_event_feedback' }));
+     expect(mockPush).toHaveBeenCalledWith('/(home)/bookings');
+   });
+diff --git a/apps/mobile/src/lib/notifications.ts b/apps/mobile/src/lib/notifications.ts
+index 25a0e77..236913e 100644
+--- a/apps/mobile/src/lib/notifications.ts
++++ b/apps/mobile/src/lib/notifications.ts
+@@ -103,8 +103,7 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
+ // Routes a tap on a delivered notification to the relevant screen, based on
+ // the `type`/`data` fields the send-notifications Edge Function sets
+ // (0019_notifications.sql, 0020_no_show_strikes.sql). Falls back to the
+-// Bookings tab for any type that doesn't have a dedicated screen yet (e.g.
+-// post_event_feedback — there's no feedback-entry screen built yet).
++// Bookings tab for any type that doesn't have a dedicated screen.
+ export function handleNotificationResponse(
+   response: ExpoNotifications.NotificationResponse,
+ ): void {
+@@ -115,6 +114,11 @@ export function handleNotificationResponse(
+     return;
+   }
+ 
++  if (data?.type === 'post_event_feedback' && typeof data?.bookingId === 'string') {
++    router.push({ pathname: '/(flow)/feedback', params: { bookingId: data.bookingId } });
++    return;
++  }
++
+   // A new-message tap should open the actual conversation, not the
+   // Booking Details detour every other groupId-carrying type uses below —
+   // reading the message IS the point of tapping this one.

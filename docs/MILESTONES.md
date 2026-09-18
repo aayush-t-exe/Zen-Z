@@ -29,6 +29,7 @@ steps, no TODOs left in anything marked done.
 | 21 | Production Checklist | ⬜ |
 | — | Sports activity (founder addition, 2026-08-19) | ✅ Done — fourth home-screen category (Box Cricket, Football, 8-Ball Pool, Pickleball) with its own price/headcount/duration per game, one-off Saturday slot only; existing Café/Dinner/Movie slots trimmed to a single upcoming occurrence each. See docs/PRODUCT_SPEC.md §1.5a |
 | — | Referrals (founder addition, 2026-08-31) | ✅ Done — the §1.13 program built end to end: unlimited invites off one permanent code per student, reward fires when a referred friend's first booking is paid, next booking auto-skips PayU on an available credit, admin `/referrals` view, analytics revenue/profit corrected to exclude comped bookings. Deployed to dev only, same as everything since Milestone 20. |
+| — | Event-highlights feedback (started 2026-09-17, parked 2026-09-18) | ⬜ Deferred to a future update, founder call — not building now. Backend/admin work reverted via migration 0099; the never-committed mobile screen and full spec saved to docs/deferred/event-highlights-feedback/. |
 
 At each step: what we're building, why now, exactly what to create, every
 command to run, every dependency to install, every file to create, folder

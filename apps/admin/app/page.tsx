@@ -337,15 +337,6 @@ export default function Dashboard() {
             </Link>
 
             <Link
-              href="/feedback"
-              className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
-            >
-              <span className="text-3xl">💬</span>
-              <p className="font-semibold mt-3">Feedback</p>
-              <p className="text-sm text-gray-500 mt-1">See how past meetups went, straight from students</p>
-            </Link>
-
-            <Link
               href="/analytics"
               className="bg-white rounded-lg border p-6 block hover:border-gray-400 transition-colors"
             >
