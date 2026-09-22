@@ -70,13 +70,28 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
     // OEM's battery manager, which is what pointed at this rather than a
     // storage issue.
     const RETRY_DELAYS_MS = [500, 1000, 2000];
+    const GET_SESSION_TIMEOUT_MS = 6000;
 
     const setupAuth = async () => {
       for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
         try {
+          // getSession() can hang indefinitely — neither resolve nor reject
+          // — on a degraded connection (TCP handshake succeeds, response
+          // never lands), which the retry loop below can't see since it
+          // only reacts to thrown errors. Racing a timeout converts that
+          // hang into a retryable failure instead of a permanently stuck
+          // splash screen.
           const {
             data: { session },
-          } = await supabase.auth.getSession();
+          } = await Promise.race([
+            supabase.auth.getSession(),
+            new Promise<never>((_, reject) =>
+              setTimeout(
+                () => reject(new Error('getSession timed out')),
+                GET_SESSION_TIMEOUT_MS
+              )
+            ),
+          ]);
 
           // The real fork this whole file's history has been chasing: did
           // getSession() actually resolve with no session (the persisted
