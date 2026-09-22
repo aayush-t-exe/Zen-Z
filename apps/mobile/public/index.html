@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
     <title>%WEB_TITLE%</title>
 
     <!-- PWA installability — iOS Safari only reads the apple-* tags below for
@@ -24,6 +24,14 @@
       html,
       body {
         height: 100%;
+        /* iOS Safari's 100% resolves against the layout viewport, which stays
+           tall enough to sit behind the address bar/toolbar — content sized
+           off that ends up drawn partly off-screen at the top, and doesn't
+           shrink when the on-screen keyboard opens. `dvh` is the dynamic
+           viewport height Safari added specifically to track what's actually
+           visible; browsers that don't support it just ignore this line and
+           keep the 100% above. */
+        height: 100dvh;
       }
       /* These styles disable body scrolling if you are using <ScrollView> */
       body {

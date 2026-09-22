@@ -18,10 +18,19 @@ export function OptionChip({
   label,
   selected,
   onPress,
+  maxWidth,
 }: {
   label: string;
   selected: boolean;
   onPress: () => void;
+  /**
+   * Caps the chip at its row's own width so a long label wraps instead of
+   * running off the row unbroken — a plain `'100%'` doesn't resolve here,
+   * since a flex-wrap row's own width isn't definite enough for children to
+   * size a percentage against. Pass the row's actual width (its column's
+   * `contentWidth`, the same value FlowPanel takes).
+   */
+  maxWidth: number;
 }) {
   const [pressed, setPressed] = useState(false);
 
@@ -32,7 +41,8 @@ export function OptionChip({
       onPressOut={() => setPressed(false)}
       accessibilityRole="checkbox"
       accessibilityState={{ checked: selected }}
-      accessibilityLabel={label}>
+      accessibilityLabel={label}
+      style={{ maxWidth, flexShrink: 1 }}>
       <View style={[styles.chip, selected && styles.chipSelected, pressed && styles.chipPressed]}>
         <Text style={[styles.label, selected && styles.labelSelected]}>{label}</Text>
       </View>

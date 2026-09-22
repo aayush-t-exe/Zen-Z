@@ -121,13 +121,22 @@ export default function OTPVerificationScreen() {
   };
 
   const focusCode = () => {
-    // Android's hardware back button dismisses the keyboard without blurring
-    // the TextInput, so it still thinks it's focused and a plain .focus() is a
-    // no-op — force blur first so focus() isn't ignored. requestAnimationFrame
-    // isn't a long enough gap for Android's InputMethodManager to actually
-    // release focus before the re-focus call lands, so use a short real delay.
-    inputRef.current?.blur();
-    setTimeout(() => inputRef.current?.focus(), 100);
+    if (Platform.OS === 'android') {
+      // Android's hardware back button dismisses the keyboard without blurring
+      // the TextInput, so it still thinks it's focused and a plain .focus() is a
+      // no-op — force blur first so focus() isn't ignored. requestAnimationFrame
+      // isn't a long enough gap for Android's InputMethodManager to actually
+      // release focus before the re-focus call lands, so use a short real delay.
+      inputRef.current?.blur();
+      setTimeout(() => inputRef.current?.focus(), 100);
+      return;
+    }
+    // Safari only raises the on-screen keyboard for a focus() call made
+    // synchronously inside a real user-gesture handler — the setTimeout above
+    // pushes it past that window, so on web (and inside the installed
+    // home-screen PWA, where this was actually reported) tapping the boxes
+    // silently did nothing. A direct, same-tick focus() keeps the gesture.
+    inputRef.current?.focus();
   };
 
   return (

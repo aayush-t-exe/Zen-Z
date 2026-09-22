@@ -449,6 +449,7 @@ export default function PersonalityQuizScreen() {
                     label={option.label}
                     selected={currentAnswer?.selectedOptionIds?.includes(option.id) ?? false}
                     onPress={() => handleToggleMultiOption(option.id)}
+                    maxWidth={contentWidth}
                   />
                 ))}
               </View>
