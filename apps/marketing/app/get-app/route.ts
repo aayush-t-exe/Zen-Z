@@ -14,6 +14,14 @@
 // after, and lets them continue in on their own once they've read it.
 import { NextRequest, NextResponse } from 'next/server';
 
+// Platform detection depends on reading the request's User-Agent, so this
+// route can never be served from a cached/static response — force that
+// explicitly rather than relying on Next.js inferring it, and mark every
+// response no-store so neither the CDN nor the visitor's browser holds on
+// to an old redirect target across a deploy.
+export const dynamic = 'force-dynamic';
+const NO_STORE_HEADERS = { 'Cache-Control': 'no-store, must-revalidate' };
+
 const WEB_APP_URL = 'https://zen-z-app.vercel.app';
 // Same package id as ANDROID_PACKAGE in apps/mobile/src/app/(home)/profile.tsx.
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.campussocial.app&hl=en';
@@ -60,15 +68,15 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const isIOS = /iphone|ipad|ipod/i.test(userAgent);
 
   if (isAndroid) {
-    return NextResponse.redirect(PLAY_STORE_URL, { status: 302 });
+    return NextResponse.redirect(PLAY_STORE_URL, { status: 302, headers: NO_STORE_HEADERS });
   }
 
   if (isIOS) {
     return new NextResponse(iosInstructionsPage(), {
       status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: { 'Content-Type': 'text/html; charset=utf-8', ...NO_STORE_HEADERS },
     });
   }
 
-  return NextResponse.redirect(WEB_APP_URL, { status: 302 });
+  return NextResponse.redirect(WEB_APP_URL, { status: 302, headers: NO_STORE_HEADERS });
 }

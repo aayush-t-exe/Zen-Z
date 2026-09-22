@@ -29,6 +29,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
+import { AddToHomeScreenBanner } from '@/components/add-to-home-screen-banner';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { initSentry, Sentry } from '@/lib/sentry';
 
@@ -242,6 +243,7 @@ function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <RootLayoutContent onReady={() => setAuthReady(true)} />
           <NetworkStatusOverlay />
+          <AddToHomeScreenBanner />
         </QueryClientProvider>
       </ErrorBoundary>
     </GestureHandlerRootView>
