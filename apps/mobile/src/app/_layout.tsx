@@ -26,6 +26,7 @@ import {
   Inter_800ExtraBold,
   Inter_900Black,
 } from '@expo-google-fonts/inter';
+import { isAuthRetryableFetchError } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { NetworkStatusOverlay } from '@/components/network-status-overlay';
@@ -84,6 +85,7 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
           // splash screen.
           const {
             data: { session },
+            error: sessionError,
           } = await Promise.race([
             supabase.auth.getSession(),
             new Promise<never>((_, reject) =>
@@ -93,6 +95,16 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
               )
             ),
           ]);
+
+          // getSession() doesn't throw when the expired-token refresh hits a
+          // network error — it resolves with session: null plus an
+          // AuthRetryableFetchError, leaving the stored session intact on
+          // disk. Treating that as "logged out" sent a genuinely signed-in
+          // student to onboarding on any cold start over weak data; throwing
+          // routes it through the retry loop below instead.
+          if (sessionError && isAuthRetryableFetchError(sessionError)) {
+            throw sessionError;
+          }
 
           // The real fork this whole file's history has been chasing: did
           // getSession() actually resolve with no session (the persisted
@@ -206,7 +218,7 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
 
 function RootLayout() {
   const [authReady, setAuthReady] = useState(false);
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     Fraunces_400Regular,
     Fraunces_500Medium,
     Fraunces_600SemiBold,
@@ -229,18 +241,24 @@ function RootLayout() {
     SFProDisplay_400Regular_Italic: require('../../assets/fonts/SFProDisplay-RegularItalic.otf'),
   });
 
+  // A single font failing or timing out (expo-font gives each ~12s on web,
+  // across ~4MB of files on congested campus Wi-Fi) left fontsLoaded false
+  // forever and rendered nothing — a permanent black screen. On error, carry
+  // on with the system font fallback instead.
+  const fontsReady = fontsLoaded || !!fontError;
+
   useEffect(() => {
     // Hiding the splash as soon as fonts load (before auth restore below has
     // finished) exposed the navigator's default white background for the
     // rest of the boot sequence — up to ~3.5s on a cold relaunch, since
     // RootLayoutContent's session restore retries. Keeping the (black)
     // splash up until both are ready removes that white flash entirely.
-    if (fontsLoaded && authReady) {
+    if (fontsReady && authReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded, authReady]);
+  }, [fontsReady, authReady]);
 
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return null;
   }
 
