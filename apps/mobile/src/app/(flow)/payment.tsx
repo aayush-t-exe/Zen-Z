@@ -244,11 +244,37 @@ export default function PaymentScreen() {
     }, [slotId, fetchBooking])
   );
 
+  // The web checkout runs in its own tab (or, from an installed home-screen
+  // app, in Safari), so coming back from it never fires navigation focus —
+  // this screen was never unfocused. The document just becomes visible
+  // again. Refetching on that is what actually turns the screen green after
+  // a payment, and it's the only path back: PayU's Payment Links don't
+  // redirect, so nothing else tells the app anything happened.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof document === 'undefined') {
+      return;
+    }
+    const refetchIfVisible = () => {
+      if (document.visibilityState === 'visible' && slotId) {
+        fetchBooking();
+      }
+    };
+    document.addEventListener('visibilitychange', refetchIfVisible);
+    return () => document.removeEventListener('visibilitychange', refetchIfVisible);
+  }, [slotId, fetchBooking]);
+
   const handlePay = async () => {
     if (!booking) {
       setError('Booking not found');
       return;
     }
+
+    // Opened blank, synchronously, before the awaited call below: Safari
+    // only allows window.open from inside the tap itself and blocks it once
+    // a network round trip has happened, which is the same restriction that
+    // ruled out WebBrowser's popup-based web shim. It gets pointed at PayU
+    // once the link comes back.
+    const checkoutTab = Platform.OS === 'web' ? window.open('', '_blank') : null;
 
     setIsProcessing(true);
     setError('');
@@ -292,28 +318,37 @@ export default function PaymentScreen() {
           }
         }
         setError(message);
+        checkoutTab?.close();
         return;
       }
 
       if (!data.success) {
         setError(data.error || 'Failed to create payment link');
+        checkoutTab?.close();
         return;
       }
 
       setIsTestMode(!!data.is_test_mode);
 
       if (Platform.OS === 'web') {
-        // There's no native "in-app browser that hands control back"
-        // concept on web, and redirectUrl is already a real https URL here
-        // (expo-linking's createURL resolves to the current page's origin
-        // on web) — a full-page redirect there and back is simpler and far
-        // more reliable than WebBrowser's web shim, which opens a popup via
-        // window.open() and relies on postMessage: iOS Safari in particular
-        // blocks that popup once it's opened after an awaited network call
-        // above rather than synchronously inside the tap handler.
-        // payment-callback.tsx (and this screen's own useFocusEffect
-        // refetch on remount) picks the flow back up once PayU redirects
-        // here.
+        // Checkout goes to its own tab so this one survives. Navigating
+        // this tab to PayU instead (which is what shipped first) tore the
+        // app down mid-payment, and since PayU's Payment Links never
+        // redirect back (see create-payment-order's own note on that), the
+        // student was simply left on PayU's "Payment Completed" page with
+        // no way back and nothing left running to notice they had paid.
+        //
+        // No poll here the way the native path does below: the student is
+        // in the other tab and will be for a while, so there'd be nothing
+        // to see yet. The visibilitychange refetch above is what picks this
+        // up when they come back.
+        if (checkoutTab) {
+          checkoutTab.location.href = data.payment_link_url;
+          return;
+        }
+        // Popup blocked. Falling back to the old behaviour rather than
+        // stranding the payment entirely — the webhook still marks the
+        // booking paid, the student just has to find their own way back.
         window.location.href = data.payment_link_url;
         return;
       }
@@ -338,6 +373,7 @@ export default function PaymentScreen() {
       }
     } catch (err: any) {
       setError(err.message || 'Payment error');
+      checkoutTab?.close();
     } finally {
       setIsProcessing(false);
     }
