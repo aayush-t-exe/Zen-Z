@@ -20,6 +20,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getPostAuthRoute } from '@/lib/authRouting';
 import { getAuthErrorMessage } from '@/lib/authErrors';
+import { PLAY_REVIEW_EMAIL } from '@/constants/playReview';
 
 const HEADER_RATIO = 389 / 814;
 
@@ -71,11 +72,18 @@ export default function OTPVerificationScreen() {
     setError('');
 
     try {
-      const { data, error: verifyError } = await supabase.auth.verifyOtp({
-        email: email || '',
-        token: otp.trim(),
-        type: 'email',
-      });
+      // The dedicated Play Store review account has a fixed password
+      // instead of a real rotating OTP — see docs/PLAY_STORE_SUBMISSION.md.
+      // This branch only ever matches that one hardcoded address; every
+      // real user still goes through verifyOtp() below, unchanged.
+      const { data, error: verifyError } =
+        email === PLAY_REVIEW_EMAIL
+          ? await supabase.auth.signInWithPassword({ email, password: otp.trim() })
+          : await supabase.auth.verifyOtp({
+              email: email || '',
+              token: otp.trim(),
+              type: 'email',
+            });
 
       if (verifyError) {
         const message = getAuthErrorMessage(verifyError);
@@ -103,6 +111,9 @@ export default function OTPVerificationScreen() {
   const handleResendOTP = async () => {
     setResendTimer(60);
     setError('');
+
+    // Fixed password, not a code — nothing to resend.
+    if (email === PLAY_REVIEW_EMAIL) return;
 
     try {
       const { error: resendError } = await supabase.auth.signInWithOtp({

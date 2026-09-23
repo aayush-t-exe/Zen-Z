@@ -20,6 +20,7 @@ import { FlowPillButton } from '@/components/flow-pill-button';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/auth';
 import { getAuthErrorMessage } from '@/lib/authErrors';
+import { PLAY_REVIEW_EMAIL } from '@/constants/playReview';
 
 const HEADER_RATIO = 389 / 814;
 const FIELD_RATIO = 658 / 1386;
@@ -85,6 +86,18 @@ export default function EmailInputScreen() {
 
     setIsLoading(true);
     setError('');
+
+    // The dedicated Play Store review account signs in with a fixed
+    // password, not a real emailed OTP — see docs/PLAY_STORE_SUBMISSION.md.
+    // No code to send, so skip straight to the verification screen.
+    if (trimmedEmail === PLAY_REVIEW_EMAIL) {
+      setIsLoading(false);
+      router.push({
+        pathname: '/(auth)/otp-verification',
+        params: { email: trimmedEmail },
+      });
+      return;
+    }
 
     try {
       const { error: otpError } = await supabase.auth.signInWithOtp({

@@ -6,6 +6,77 @@ against Play's own definitions before submitting; misdeclaring it can carry
 policy consequences and this draft is a best-effort mapping from
 `apps/marketing/app/privacy/page.tsx`, not legal advice.
 
+## Reviewer login (Sign in details) — required after the 2026-09-22 rejection
+
+Google rejected version code 2 (`IN_APP_EXPERIENCE-8158`) because Zen-Z has
+no password to give reviewers — auth is email OTP only, no exceptions (see
+CLAUDE.md's auth rule). Google's own rejection text asked for exactly this:
+"a dedicated test bypass ... that do[es] not require your account to be
+linked to our testing devices."
+
+**Current design (2026-09-22, replaces the earlier link-based tool):** the
+review account has a fixed, reusable email+password pair. No separate
+webpage to visit — Google types one email and one 6-digit code straight
+into the app's existing sign-in screens, exactly like a real login. This
+needed a small, tightly scoped app change (see below), unlike the earlier
+version which touched no app code at all.
+
+- `apps/mobile/src/constants/playReview.ts` — the one hardcoded review
+  email, `teamzenz.reviewer@gmail.com` (the account already on file with
+  Google from the 2026-09-22 rejection screenshot). Not a secret.
+- `email-input.tsx` — for that one email, skips the real `signInWithOtp()`
+  call (no code to send) and goes straight to the verification screen.
+- `otp-verification.tsx` — for that one email, calls
+  `supabase.auth.signInWithPassword()` instead of `verifyOtp()`. Every
+  other email is completely unaffected — unchanged code path, unchanged
+  behavior.
+- `supabase/functions/play-review-set-password` — an admin-only function,
+  never called by the app or by Google. Sets/rotates the fixed password on
+  the review account. Reuses the same `PLAY_REVIEW_SECRET` as before.
+
+Verified 2026-09-22 against prod directly (not just reasoned about): the
+password logs in via the real `/auth/v1/token?grant_type=password`
+endpoint and — unlike the old OTP-code approach — is **reusable**, not
+single-use.
+
+**Only you can do this part:**
+
+1. This needs an app code change to actually reach the build Google
+   reviews, which means an EAS Update to the **production** channel after
+   this lands — `cd apps/mobile && eas update --channel production` (needs
+   an interactive `eas login`, can't be run here). Do this before
+   resubmitting, or Google will still be testing the old code.
+2. Set/rotate the password (only needed once, or if you want to change
+   it):
+   ```
+   supabase functions deploy play-review-set-password --project-ref hzydzyeyvfuokveujbki
+   curl -X POST "https://hzydzyeyvfuokveujbki.supabase.co/functions/v1/play-review-set-password?secret=<PLAY_REVIEW_SECRET>&password=<six digits>"
+   ```
+3. Paste this into Play Console's **Sign in details** declaration ("Some
+   or all functionality is restricted" → app access instructions):
+
+   > This app uses email sign-in. To review it:
+   > 1. Open the app and enter this email address on the sign-in screen:
+   >    teamzenz.reviewer@gmail.com
+   > 2. On the next screen, enter this code: `<six digits>`
+   >
+   > That's the complete sign-in — no email inbox access is needed.
+
+4. Do one real end-to-end check yourself (any device) after the EAS
+   Update lands — confirm the app actually shows the new code path before
+   submitting, since an OTA update only takes effect once the installed
+   app has checked for and applied it.
+
+This still doesn't need a new APK/AAB upload — the EAS Update patches the
+JS bundle of the build Google already has, and this is otherwise a Play
+Console metadata change only. Google re-reviews the whole app on any
+resubmission, not just the changed field.
+
+`supabase/functions/play-review-code` (the earlier link-based tool) is
+still deployed but no longer referenced by these instructions — safe to
+leave running unused, or remove it later if you want one less thing
+around.
+
 ## Blocking — only you can do these
 
 1. **Google Play Console developer account.** Created at
