@@ -84,6 +84,64 @@ Resend's 100/day):
 that only affects local `supabase start`, not these hosted projects, so
 there's no repo change needed for this step.
 
+## 4a. Zoho ZeptoMail: standby email OTP provider
+
+Status (2026-09-24, launch eve): Brevo is still the **live** SMTP provider
+in `campus-social-prod`. ZeptoMail is set up and domain-verified as a
+**manual-swap backup only**. It wasn't made primary because it couldn't be
+tested end to end before launch.
+
+Supabase Auth only supports one SMTP provider at a time, so there is no
+automatic failover. Switching is a manual dashboard change that takes about
+two minutes. Automatic failover would need a Supabase "Send Email" auth hook
+(an Edge Function that tries Brevo, then ZeptoMail), which hasn't been built.
+
+**What's already done:**
+- ZeptoMail account, Mail Agent `agent_1`, India data center (zoho.in).
+- `zen-z.site` verified in ZeptoMail via two Hostinger DNS records:
+  | Type | Name | Value |
+  |---|---|---|
+  | TXT | `2412355._domainkey` | the DKIM key from ZeptoMail → agent_1 → Domains |
+  | CNAME | `bounce-zem` | `cluster89.zeptomail.in` |
+- ZeptoMail needs no SPF entry, so the existing SPF TXT record was left
+  untouched.
+
+**When to switch to ZeptoMail:**
+- Students report login codes not arriving, **or**
+- The Brevo dashboard shows the daily sending limit reached (300/day on the
+  free plan; "resend code" taps count too), **or**
+- Supabase → Authentication → Logs shows SMTP/email-sending errors.
+
+**How to switch (you do this, Supabase dashboard):**
+1. Before changing anything, make sure the current Brevo values are written
+   down somewhere safe (host, port, username, password), so you can switch
+   back.
+2. `campus-social-prod` → Authentication → Emails → SMTP Settings. Set:
+   | Field | Value |
+   |---|---|
+   | Host | `smtp.zeptomail.in` |
+   | Port | `587` |
+   | Username | `emailapikey` |
+   | Password | the current Send Mail token (ZeptoMail → agent_1 → SMTP / API) |
+   | Sender email | `noreply@zen-z.site` |
+   | Sender name | `Zen-Z` |
+3. Save. The next OTP email goes out through ZeptoMail immediately; no
+   app update or redeploy is needed.
+4. Test: sign out on a phone, sign in with your own email, confirm the code
+   arrives from `noreply@zen-z.site` and isn't in spam.
+
+**To switch back:** repeat step 2 with the saved Brevo values.
+
+**Never commit the ZeptoMail token** to this repo or paste it into chat. If
+it's ever exposed, generate a new token under agent_1 → SMTP / API, delete
+the old one, and update Supabase if ZeptoMail is currently live.
+
+**Known issue, not yet fixed:** the `zen-z.site` SPF record is currently
+`v=spf1 include:_spf.mailersend.net ~all`. It doesn't include Brevo, which
+may be one reason Brevo OTP emails land in spam. There can only be one SPF
+record per domain, so fix it by editing that record, never by adding a
+second one.
+
 ## 5. Mobile — EAS test build (no app store submission)
 
 Apple Developer Program / Google Play Console enrollment is explicitly
