@@ -26,40 +26,118 @@ const WEB_APP_URL = 'https://zen-z-app.vercel.app';
 // Same package id as ANDROID_PACKAGE in apps/mobile/src/app/(home)/profile.tsx.
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.campussocial.app&hl=en';
 
-function iosInstructionsPage(): string {
+// Undocumented but long-standing iOS scheme: handing the OS an
+// `x-safari-https://` URL opens it in Safari proper, which is the only way
+// out of an in-app browser. It can be swallowed silently depending on who is
+// hosting the web view, so nothing below relies on it alone.
+const SAFARI_URL = WEB_APP_URL.replace(/^https:\/\//, 'x-safari-https://');
+
+/**
+ * iOS browsers that cannot install a web app at all: Add to Home Screen is
+ * Safari's Share sheet and nobody else's. That covers other engines' iOS
+ * wrappers (Chrome, Firefox, Edge) and, more importantly for the launch
+ * poster, every in-app browser people land in from a scan or a shared link:
+ * Google's own (a Lens scan opens there, not in Safari), Instagram, WhatsApp.
+ *
+ * Deliberately not exhaustive, and it can't be: Brave on iOS reports a User-
+ * Agent identical to Safari's on purpose, so it is invisible here even though
+ * it has no Add to Home Screen either. That's why the Safari page still
+ * carries its own "not seeing it?" escape route rather than trusting this.
+ */
+const IOS_CANNOT_INSTALL =
+  /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|GSA\/|FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|LinkedInApp|MicroMessenger|Twitter/i;
+
+const STEP_NUMBER_STYLE =
+  'flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#000;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;';
+const PRIMARY_BUTTON_STYLE =
+  'display:inline-block;background:#fff;color:#000;font-weight:600;padding:14px 28px;border-radius:10px;text-decoration:none;';
+const SHARE_ICON =
+  '<svg width="16" height="20" viewBox="0 0 16 20" fill="none" style="vertical-align:-4px;margin:0 2px;"><path d="M8 1v12M4 5 8 1l4 4M1 11v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function step(n: number, body: string, marginBottom = 20): string {
+  return `<li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:${marginBottom}px;">
+          <span style="${STEP_NUMBER_STYLE}">${n}</span>
+          <span>${body}</span>
+        </li>`;
+}
+
+/**
+ * Last resort for anyone the Safari hand-off doesn't work for: the address,
+ * copyable, to paste into Safari by hand. Worth the few lines because the
+ * `x-safari-https://` scheme can fail silently, and a scan that dead-ends is
+ * a student who never opens the app at all.
+ */
+function copyLinkFallback(): string {
+  return `<p style="color:#6f727a;font-size:0.8rem;line-height:1.5;margin:22px 0 0;">
+        Or open Safari yourself and go to
+        <button type="button"
+          onclick="navigator.clipboard.writeText('${WEB_APP_URL}').then(function(){this.textContent='zen-z-app.vercel.app (copied)'}.bind(this))"
+          style="background:none;border:none;padding:0;color:#a0a3ab;font:inherit;text-decoration:underline;cursor:pointer;">zen-z-app.vercel.app</button>
+      </p>`;
+}
+
+function page(title: string, body: string): string {
   return `<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Zen-Z</title>
+    <title>${title}</title>
   </head>
   <body style="font-family:-apple-system,sans-serif;background:#0b0b0d;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center;">
     <div style="max-width:360px;">
-      <h1 style="font-size:1.4rem;margin-bottom:8px;">Get the full app on your Home Screen</h1>
-      <p style="color:#a0a3ab;margin-bottom:28px;">Zen-Z isn't on the App Store yet, but you can add it to your Home Screen like a real app — full screen, its own icon, no browser bar.</p>
-
-      <ol style="text-align:left;color:#fff;padding:0;margin:0 0 32px;list-style:none;">
-        <li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:20px;">
-          <span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#000;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;">1</span>
-          <span>Tap <strong>Continue to Zen-Z</strong> below to open the app.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:20px;">
-          <span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#000;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;">2</span>
-          <span>In Safari, tap the <strong>Share</strong> icon
-            <svg width="16" height="20" viewBox="0 0 16 20" fill="none" style="vertical-align:-4px;margin:0 2px;"><path d="M8 1v12M4 5 8 1l4 4M1 11v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            in the toolbar.</span>
-        </li>
-        <li style="display:flex;gap:12px;align-items:flex-start;">
-          <span style="flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#000;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;">3</span>
-          <span>Scroll down and tap <strong>Add to Home Screen</strong>.</span>
-        </li>
-      </ol>
-
-      <a href="${WEB_APP_URL}" style="display:inline-block;background:#fff;color:#000;font-weight:600;padding:14px 28px;border-radius:10px;text-decoration:none;">Continue to Zen-Z →</a>
+${body}
     </div>
   </body>
 </html>`;
+}
+
+function safariInstructionsPage(): string {
+  return page(
+    'Zen-Z',
+    `      <h1 style="font-size:1.4rem;margin-bottom:8px;">Get the full app on your Home Screen</h1>
+      <p style="color:#a0a3ab;margin-bottom:28px;">Zen-Z isn't on the App Store yet, but you can add it to your Home Screen like a real app: full screen, its own icon, no browser bar.</p>
+
+      <ol style="text-align:left;color:#fff;padding:0;margin:0 0 32px;list-style:none;">
+        ${step(1, 'Tap <strong>Continue to Zen-Z</strong> below to open the app.')}
+        ${step(2, `In Safari, tap the <strong>Share</strong> icon ${SHARE_ICON} in the toolbar.`)}
+        ${step(3, 'Scroll down and tap <strong>Add to Home Screen</strong>.', 0)}
+      </ol>
+
+      <a href="${WEB_APP_URL}" style="${PRIMARY_BUTTON_STYLE}">Continue to Zen-Z →</a>
+
+      <p style="color:#6f727a;font-size:0.8rem;line-height:1.5;margin:26px 0 0;">
+        No <strong>Add to Home Screen</strong> in that menu? Then this isn't Safari, and only Safari can install it.
+        <a href="${SAFARI_URL}" style="color:#a0a3ab;">Open in Safari</a>.
+      </p>`
+  );
+}
+
+/**
+ * Shown to browsers known to have no Add to Home Screen at all, where the
+ * Safari steps would only send someone hunting for a menu item that isn't
+ * there. Leads with the hand-off instead, and keeps the steps below it for
+ * once they land.
+ */
+function openInSafariPage(): string {
+  return page(
+    'Zen-Z',
+    `      <h1 style="font-size:1.4rem;margin-bottom:8px;">Open this in Safari first</h1>
+      <p style="color:#a0a3ab;margin-bottom:28px;">Zen-Z installs to your Home Screen from Safari, and only from Safari. The browser you're in right now can't do it.</p>
+
+      <a href="${SAFARI_URL}" style="${PRIMARY_BUTTON_STYLE}">Open in Safari →</a>
+
+      <ol style="text-align:left;color:#fff;padding:0;margin:32px 0 0;list-style:none;">
+        ${step(1, `Once Safari opens, tap the <strong>Share</strong> icon ${SHARE_ICON} in the toolbar.`)}
+        ${step(2, 'Scroll down and tap <strong>Add to Home Screen</strong>.', 0)}
+      </ol>
+
+${copyLinkFallback()}
+
+      <p style="margin:26px 0 0;">
+        <a href="${WEB_APP_URL}" style="color:#6f727a;font-size:0.8rem;">Skip for now, just open Zen-Z</a>
+      </p>`
+  );
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
@@ -72,7 +150,10 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   }
 
   if (isIOS) {
-    return new NextResponse(iosInstructionsPage(), {
+    const html = IOS_CANNOT_INSTALL.test(userAgent)
+      ? openInSafariPage()
+      : safariInstructionsPage();
+    return new NextResponse(html, {
       status: 200,
       headers: { 'Content-Type': 'text/html; charset=utf-8', ...NO_STORE_HEADERS },
     });
