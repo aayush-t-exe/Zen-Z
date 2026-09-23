@@ -48,15 +48,17 @@ function installHint(): InstallHint {
  */
 export function AddToHomeScreenBanner() {
   const [visible, setVisible] = useState(false);
-  const [hint, setHint] = useState<InstallHint>('none');
+  // Read once as this mounts rather than assigned from inside the effect
+  // below: which browser this is can't change for the life of the component,
+  // and setting state synchronously in an effect body is a cascading render
+  // that the lint rule CI runs rejects outright.
+  const [hint] = useState<InstallHint>(installHint);
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    const detected = installHint();
-    if (detected === 'none') {
+    if (hint === 'none') {
       return;
     }
-    setHint(detected);
     let cancelled = false;
     AsyncStorage.getItem(DISMISSED_KEY)
       .then((dismissed) => {
@@ -72,7 +74,7 @@ export function AddToHomeScreenBanner() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [hint]);
 
   if (!visible) {
     return null;
