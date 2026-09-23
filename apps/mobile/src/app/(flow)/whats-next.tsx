@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, ScrollView, Image, Alert, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, ScrollView, Image, StyleSheet, useWindowDimensions } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import * as Linking from 'expo-linking';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -68,7 +69,7 @@ export default function WhatsNextScreen() {
     try {
       const phone = await fetchSupportWhatsappPhone();
       if (!phone) {
-        Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+        showAlert("Couldn't open WhatsApp", 'Please try again in a moment.');
         return;
       }
       // This DM lands straight in the founder's own WhatsApp, so naming the
@@ -82,7 +83,7 @@ export default function WhatsNextScreen() {
       await Linking.openURL(buildWhatsappUrl(phone, message));
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);
-      Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+      showAlert("Couldn't open WhatsApp", 'Please try again in a moment.');
     } finally {
       setIsContactingSupport(false);
     }

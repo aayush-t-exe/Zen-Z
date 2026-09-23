@@ -10,11 +10,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Modal,
-  Alert,
   Linking,
   StyleSheet,
   useWindowDimensions,
+  AppState,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { useLocalSearchParams, useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
@@ -215,6 +216,38 @@ export default function GroupScreen() {
     };
   }, [groupId, group?.is_revealed, user?.id, refreshUnreadCount, realtimeRetryCount]);
 
+  // Backgrounding the app (Android) or the tab/home-screen app (iOS web)
+  // drops the realtime socket, and messages sent during that gap never
+  // arrive over it once it reconnects. Catch up on return to foreground by
+  // re-fetching the latest page and merging it in by id, so nothing already
+  // on screen jumps or duplicates.
+  useEffect(() => {
+    if (!groupId || !group?.is_revealed) return;
+
+    const subscription = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+      const { data, error } = await supabase
+        .from('messages')
+        .select('id, sender_id, content, is_system, created_at, deleted_at, data')
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false })
+        .limit(MESSAGE_FETCH_LIMIT);
+      if (error || !data) return;
+
+      setMessages((prev) => {
+        const byId = new Map(prev.map((m) => [m.id, m]));
+        for (const m of data as ChatMessage[]) byId.set(m.id, m);
+        return [...byId.values()].sort((a, b) => a.created_at.localeCompare(b.created_at));
+      });
+
+      if (isFocusedRef.current) {
+        markGroupRead(groupId).then(refreshUnreadCount);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [groupId, group?.is_revealed, refreshUnreadCount]);
+
   const memberName = (senderId: string) =>
     members.find((m) => m.id === senderId)?.first_name ?? 'Someone';
 
@@ -254,7 +287,7 @@ export default function GroupScreen() {
       console.error('Failed to send message:', error);
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       setInput(content);
-      Alert.alert("Couldn't send", 'Your message wasn’t sent. Give it another try.');
+      showAlert("Couldn't send", 'Your message wasn’t sent. Give it another try.');
       return;
     }
 
@@ -271,7 +304,7 @@ export default function GroupScreen() {
   };
 
   const handleDeleteMessage = (messageId: string) => {
-    Alert.alert('Delete message?', 'This removes it for everyone in the group.', [
+    showAlert('Delete message?', 'This removes it for everyone in the group.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
@@ -293,7 +326,7 @@ export default function GroupScreen() {
 
   const handleLeaveGroup = () => {
     if (!group) return;
-    Alert.alert(
+    showAlert(
       'Leave this group?',
       'You’ll lose access to the chat and this group will disappear from your list. Everyone else stays as they are.',
       [
@@ -310,7 +343,7 @@ export default function GroupScreen() {
             setLeaving(false);
             if (error) {
               console.error('Failed to leave group:', error);
-              Alert.alert('Could not leave the group', 'Please try again.');
+              showAlert('Could not leave the group', 'Please try again.');
               return;
             }
             closeReportSheet();
@@ -876,7 +909,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 11,
     ...FlowText.fieldText,
-    fontSize: 15,
+    // iOS Safari zooms the page into any focused input under 16px, and with
+    // body overflow hidden that left students pinch-zooming a clipped chat.
+    fontSize: Platform.OS === 'web' ? 16 : 15,
   },
   sendButton: {
     borderRadius: 999,

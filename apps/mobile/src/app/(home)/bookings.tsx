@@ -5,11 +5,11 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Alert,
   Modal,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
@@ -153,7 +153,7 @@ export default function BookingsScreen() {
     setConfirmCancel(null);
 
     if (error) {
-      Alert.alert('Could not cancel', error.message);
+      showAlert('Could not cancel', error.message);
       return;
     }
 

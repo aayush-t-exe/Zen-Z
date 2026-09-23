@@ -6,13 +6,13 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
-  Alert,
   Modal,
   StyleSheet,
   useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { useNavigation, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -164,7 +164,7 @@ export default function EditProfileScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'We need permission to access your photos');
+      showAlert('Permission needed', 'We need permission to access your photos');
       return;
     }
 

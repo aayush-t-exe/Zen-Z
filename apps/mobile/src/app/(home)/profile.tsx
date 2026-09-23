@@ -6,10 +6,10 @@ import {
   Image,
   ActivityIndicator,
   Platform,
-  Alert,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Linking from 'expo-linking';
@@ -130,7 +130,7 @@ export default function ProfileScreen() {
         // A silent no-op here is not acceptable for an emergency button —
         // someone tapping this needs to know right away to reach out
         // another way, not wonder why nothing happened.
-        Alert.alert(
+        showAlert(
           "Couldn't reach this number",
           "We couldn't load the emergency contact right now. If this is urgent, please call local emergency services directly."
         );
@@ -139,7 +139,7 @@ export default function ProfileScreen() {
       await Linking.openURL(`tel:${phone}`);
     } catch (err) {
       console.error('Failed to open dialer:', err);
-      Alert.alert(
+      showAlert(
         "Couldn't open the dialer",
         'If this is urgent, please call local emergency services directly.'
       );
@@ -161,7 +161,7 @@ export default function ProfileScreen() {
       const phone = await fetchSupportWhatsappPhone();
       if (!phone) {
         const email = await fetchSupportEmail();
-        Alert.alert(
+        showAlert(
           "Couldn't open WhatsApp",
           email
             ? `Please email us at ${email} instead.`
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
       await Linking.openURL(buildWhatsappUrl(phone, `Hi, I'm ${name} and I need some help with my Zen-Z account.`));
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);
-      Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+      showAlert("Couldn't open WhatsApp", 'Please try again in a moment.');
     } finally {
       setIsContactingSupport(false);
     }
@@ -207,7 +207,7 @@ export default function ProfileScreen() {
       await Linking.openURL(canOpenMarket ? marketUrl : webUrl);
       return;
     }
-    Alert.alert('Coming soon', "We're not on the App Store just yet — hang tight.");
+    showAlert('Coming soon', "We're not on the App Store just yet — hang tight.");
   };
 
   const handleDeleteAccount = () => {
@@ -243,13 +243,13 @@ export default function ProfileScreen() {
 
       setDeleteDialogOpen(false);
       if (message === 'ACTIVE_BOOKING') {
-        Alert.alert(
+        showAlert(
           'Not just yet',
           "You've got a paid booking that's still pending or matched. Cancel it or message us first, then come back to delete your account."
         );
         return;
       }
-      Alert.alert('Could not delete account', message);
+      showAlert('Could not delete account', message);
       return;
     }
 

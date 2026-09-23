@@ -8,11 +8,11 @@ import {
   ActivityIndicator,
   Modal,
   StyleSheet,
-  Alert,
   Platform,
   BackHandler,
   useWindowDimensions,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
@@ -402,7 +402,7 @@ export default function PaymentScreen() {
       const phone = await fetchSupportWhatsappPhone();
       if (!phone) {
         const email = await fetchSupportEmail();
-        Alert.alert(
+        showAlert(
           "Couldn't open WhatsApp",
           email
             ? `Please email us at ${email} instead.`
@@ -417,7 +417,7 @@ export default function PaymentScreen() {
       await Linking.openURL(buildWhatsappUrl(phone, message));
     } catch (err) {
       console.error('Failed to open WhatsApp:', err);
-      Alert.alert("Couldn't open WhatsApp", 'Please try again in a moment.');
+      showAlert("Couldn't open WhatsApp", 'Please try again in a moment.');
     } finally {
       setIsContactingSupport(false);
     }
@@ -447,7 +447,7 @@ export default function PaymentScreen() {
     setIsCancelling(false);
 
     if (cancelError) {
-      Alert.alert('Could not restart your booking', cancelError.message);
+      showAlert('Could not restart your booking', cancelError.message);
       return;
     }
 
