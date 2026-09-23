@@ -4,10 +4,13 @@ import {
   Text,
   Image,
   ActivityIndicator,
+  Platform,
+  ScrollView,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AuthPalette as Palette } from '@/constants/auth-palette';
 import { FontFamily } from '@/constants/fonts';
 import { activityArt } from '@/constants/activity-art';
@@ -54,6 +57,7 @@ const taglineFor = (name: string) =>
 export default function HomeScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [firstName, setFirstName] = useState('');
@@ -124,7 +128,22 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.content, { width: contentWidth }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}>
+        <View
+          style={[
+            styles.content,
+            {
+              width: contentWidth,
+              // Native's navigator keeps screens clear of the status bar on
+              // its own; the web build has to reserve it, and this is the
+              // one screen that starts flush with the top rather than
+              // carrying a comp-tuned top padding of its own.
+              paddingTop: 24 + (Platform.OS === 'web' ? insets.top : 0),
+            },
+          ]}>
         <View style={{ gap: 6 }}>
           <Text style={styles.title}>{firstName ? `Welcome\n${firstName}` : 'Welcome'}</Text>
           <Text style={styles.subtitle}>Pick an activity to unlock your next adventure.</Text>
@@ -198,7 +217,8 @@ export default function HomeScreen() {
             <Text style={styles.bannerSubtitle}>New people. New stories.{'\n'}New memories.</Text>
           </View>
         </View>
-      </View>
+        </View>
+      </ScrollView>
     </View>
   );
 }
@@ -209,10 +229,23 @@ const styles = StyleSheet.create({
     backgroundColor: Palette.canvas,
     alignItems: 'center',
   },
-  content: {
+  scroll: {
     flex: 1,
+    alignSelf: 'stretch',
+  },
+  // Centring lives here rather than on the content below, so it still
+  // centres when there's room but scrolls once there isn't. As `flex: 1` +
+  // `justifyContent: 'center'` on a plain View, a screen too short for the
+  // grid and the banner spilled the overflow equally off both ends — and
+  // the half above the top edge was unreachable, so the greeting was
+  // simply cut in half. Reported live on iOS web, where the usable height
+  // runs shorter than the handset this was laid out against.
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 24,
+  },
+  content: {
     // The floating pill tab bar (home/_layout.tsx) is position: 'absolute'
     // now instead of docked, so this screen has to reserve the space itself
     // (bar height 66 + its own 33 bottom offset, plus breathing room) or the

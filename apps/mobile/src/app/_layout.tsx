@@ -1,10 +1,9 @@
 import '@/global.css';
 import { useEffect, useState } from 'react';
-import { LogBox, Platform } from 'react-native';
+import { LogBox } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Stack } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as SplashScreen from 'expo-splash-screen';
 import { useFonts } from 'expo-font';
 import {
@@ -56,7 +55,6 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
   const setUser = useAuthStore((state) => state.setUser);
   const setLoading = useAuthStore((state) => state.setLoading);
   const session = useAuthStore((state) => state.session);
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let mounted = true;
@@ -180,21 +178,14 @@ function RootLayoutContent({ onReady }: { onReady: () => void }) {
     }
   }, [isReady, onReady]);
 
-  // Native's own navigator already keeps every screen clear of the status
-  // bar/notch on its own — adding this there too would double the gap.
-  // The web build has no such navigator (it's a plain DOM tree), and the
-  // CSS-only attempt at this same fix (padding the outer #root element)
-  // didn't reach real content: React Navigation's screen container renders
-  // its own box inside that, so the ancestor's padding never applied.
-  // Setting it here, in the actual screen container React Navigation
-  // renders, is the one place guaranteed not to be shadowed like that.
-  const screenOptions = {
-    headerShown: false,
-    contentStyle: {
-      backgroundColor: '#000000',
-      ...(Platform.OS === 'web' ? { paddingTop: insets.top } : null),
-    },
-  };
+  // Deliberately no blanket safe-area padding here. Applying it to every
+  // screen stacked it on top of each screen's own top padding (88 on the
+  // booking flow, 56 on the auth screens — both tuned against the comps),
+  // costing ~60dp of height on screens that already cleared the status bar
+  // and pushing the booking flow's "Bring a +1" row below the fold. Only
+  // Discover actually starts flush with the top, so it reserves the inset
+  // itself.
+  const screenOptions = { headerShown: false, contentStyle: { backgroundColor: '#000000' } };
 
   if (!isReady) {
     return <Stack screenOptions={screenOptions} />;

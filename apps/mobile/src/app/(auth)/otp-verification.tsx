@@ -160,41 +160,43 @@ export default function OTPVerificationScreen() {
           {email}
         </Text>
 
-        <Pressable
-          onPress={focusCode}
-          accessibilityRole="button"
-          accessibilityLabel="Enter the 6-digit code"
-          style={[styles.boxes, { width: contentWidth, gap: boxGap }]}>
-          {Array.from({ length: 6 }).map((_, i) => {
-            const digit = otp[i];
-            const isActive = i === otp.length && otp.length < 6 && !isLoading;
-            return (
-              <View
-                key={i}
-                style={[
-                  styles.box,
-                  { width: boxWidth, height: boxWidth * 1.18 },
-                  isActive && styles.boxActive,
-                ]}>
-                <Text style={styles.digit}>{digit ?? ''}</Text>
-              </View>
-            );
-          })}
-        </Pressable>
+        <View style={{ width: contentWidth }}>
+          <Pressable
+            onPress={focusCode}
+            accessibilityRole="button"
+            accessibilityLabel="Enter the 6-digit code"
+            style={[styles.boxes, { width: contentWidth, gap: boxGap }]}>
+            {Array.from({ length: 6 }).map((_, i) => {
+              const digit = otp[i];
+              const isActive = i === otp.length && otp.length < 6 && !isLoading;
+              return (
+                <View
+                  key={i}
+                  style={[
+                    styles.box,
+                    { width: boxWidth, height: boxWidth * 1.18 },
+                    isActive && styles.boxActive,
+                  ]}>
+                  <Text style={styles.digit}>{digit ?? ''}</Text>
+                </View>
+              );
+            })}
+          </Pressable>
 
-        <TextInput
-          ref={inputRef}
-          value={otp}
-          onChangeText={(text) => {
-            setOtp(text.replace(/[^0-9]/g, '').slice(0, 6));
-            setError('');
-          }}
-          editable={!isLoading}
-          keyboardType="number-pad"
-          maxLength={6}
-          autoFocus
-          style={styles.hiddenInput}
-        />
+          <TextInput
+            ref={inputRef}
+            value={otp}
+            onChangeText={(text) => {
+              setOtp(text.replace(/[^0-9]/g, '').slice(0, 6));
+              setError('');
+            }}
+            editable={!isLoading}
+            keyboardType="number-pad"
+            maxLength={6}
+            autoFocus
+            style={[styles.hiddenInput, Platform.OS === 'web' && styles.webOverlayInput]}
+          />
+        </View>
 
         {error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
@@ -284,6 +286,22 @@ const styles = StyleSheet.create({
     opacity: 0,
     height: 1,
     width: 1,
+  },
+  // On web the same field is stretched over the boxes instead of parked
+  // off-screen at 1x1. Two things depend on that: a tap lands on the real
+  // input (so the keyboard opens without a synthetic focus() call at all),
+  // and Safari has a real box to scroll above the keyboard — it won't
+  // bother for a 1x1 invisible one, which is why the boxes and Verify
+  // button stayed buried under it. The 16dp type is what stops iOS
+  // zooming the whole page in on focus; it renders nothing at opacity 0.
+  webOverlayInput: {
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: undefined,
+    height: undefined,
+    fontSize: 16,
   },
   error: {
     ...FlowText.error,

@@ -37,6 +37,15 @@
       body {
         overflow: hidden;
       }
+      /* The app paints its own black canvas, but the document underneath it
+         doesn't — anywhere the app's own box comes up short of the screen
+         (the home-indicator strip on an installed iOS home-screen app, most
+         visibly) the browser's default white showed through as a bar along
+         the bottom edge. */
+      html,
+      body {
+        background-color: #000000;
+      }
       /* These styles make the root element full-height */
       #root {
         display: flex;
