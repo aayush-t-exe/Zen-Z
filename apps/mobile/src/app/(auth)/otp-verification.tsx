@@ -170,6 +170,9 @@ export default function OTPVerificationScreen() {
           Enter the 6-digit code sent to{'\n'}
           {email}
         </Text>
+        {/* zen-z.site is a young domain, so Gmail/Outlook often file the
+            code under spam until it builds sending reputation. */}
+        <Text style={styles.spamHint}>Not seeing it? Check your spam folder.</Text>
 
         <View style={{ width: contentWidth }}>
           <Pressable
@@ -264,6 +267,13 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     textAlign: 'center',
     marginTop: 10,
+  },
+  spamHint: {
+    ...FlowText.fine,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginTop: 8,
     marginBottom: 28,
   },
   boxes: {
