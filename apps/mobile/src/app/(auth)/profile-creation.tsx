@@ -4,13 +4,13 @@ import {
   Text,
   Pressable,
   Image,
-  Alert,
   ScrollView,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
 } from 'react-native';
+import { showAlert } from '@/lib/alert';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -93,7 +93,7 @@ export default function ProfileCreationScreen() {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission needed', 'We need permission to access your photos');
+      showAlert('Permission needed', 'We need permission to access your photos');
       return;
     }
 
@@ -199,7 +199,15 @@ export default function ProfileCreationScreen() {
       }
 
       const currentUser = user;
-      const dobIso = dateOfBirth.toISOString().slice(0, 10);
+      // The calendar picks a local-midnight Date; toISOString() converts to
+      // UTC first, which in IST (UTC+5:30) lands on the previous day and
+      // stored every student's birthday one day early. Format the local
+      // calendar date directly instead.
+      const dobIso = [
+        dateOfBirth.getFullYear(),
+        String(dateOfBirth.getMonth() + 1).padStart(2, '0'),
+        String(dateOfBirth.getDate()).padStart(2, '0'),
+      ].join('-');
 
       // Almost always a no-op — handle_new_user() already created this row
       // at signup. Only matters for an account whose profiles row is
