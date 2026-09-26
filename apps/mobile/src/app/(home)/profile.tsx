@@ -412,6 +412,9 @@ export default function ProfileScreen() {
             />
           </View>
 
+          <Text style={[FlowText.sectionLabel, styles.taglineText]}>
+            For JNU students, by JNU students
+          </Text>
           <Text style={[FlowText.fine, styles.versionText]}>App Version: 1.0.0</Text>
         </View>
       </ScrollView>
@@ -485,8 +488,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
   },
-  versionText: {
+  taglineText: {
     marginTop: 36,
+    textAlign: 'center',
+  },
+  versionText: {
+    marginTop: 8,
     textAlign: 'center',
   },
 });
