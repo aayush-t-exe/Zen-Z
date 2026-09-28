@@ -104,7 +104,7 @@ export default function WhatsNextScreen() {
             </View>
           )}
 
-          <Text style={FlowText.titleCentred}>Your invitation is sealed.</Text>
+          <Text style={FlowText.titleCentred}>You&apos;re in.</Text>
           {activityName && slotDatetime && (
             <Text style={[styles.centredSubtitle, { marginTop: 8 }]}>
               {activityName}, {formatSlotDateTime(slotDatetime, activityName)}

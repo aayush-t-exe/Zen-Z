@@ -195,6 +195,7 @@ Step 5 — Confirm:
 - **[NEW DETAIL]** A student with an active no-show block (see §1.10 No-Show Policy) cannot start this flow at all — they see a paused-invitations message in place of Step 1 instead.
 - **[UI CHANGE 2026-09-03]** The payment screen that follows Step 5 is now on the redesign too, and shows the booking on the *same* four-row card the Confirm step draws (the UI PAGE 5 comp) instead of its own bordered receipt: activity, slot, group (with the +1's name under it), then the amount, with a referral credit explaining itself as that row's second line. It also shows the slot time, which it previously never fetched. Nothing on it is editable, so no row draws a chevron. Both this screen and the Confirm step's activity row now carry the founder's 3D activity render (`constants/activity-art.ts`) rather than the cream line illustrations the pre-redesign screens used — those are deleted, and Sports games have their own renders now, so no screen falls back to a generic mark.
 - **Booking cutoff (founder decision, 2026-08-25; revised twice same day):** a slot stops being bookable at midnight IST, 2 days before its date — the same calendar rule for every activity ("book by end of day, 2 days ahead"), chosen over a flat hour count so it's something a student can actually reason about. (0039 originally set this to a flat 24h before `slot_datetime`, which left a window where a student could book *after* that slot's reveal moment — `reveal_venue_at` (§1.8) — had already passed, making the group's venue/chat unlock all at once instead of via the intended slow reveal; 0043 tightened that to a flat 48h, matching `reveal_venue_at` exactly but landing at a different odd clock time per activity; 0044 replaced the flat-hour rule with this calendar rule, which still always lands safely before `reveal_venue_at` for every activity — by 17-20 hours' margin, since every activity's slot time is a PM hour and this cutoff is always midnight the same day.) Enforced on the `bookings` insert RLS policy (the only server-side checkpoint, since bookings are inserted directly from the mobile client) and mirrored client-side so a slot inside the window is never offered in Step 2 in the first place. See `supabase/migrations/0044_midnight_ist_booking_cutoff.sql`.
+- **Free Cafés and Dinners (founder decision, 2026-09-28):** Cafés and Dinners cost the student nothing (`convenience_fee = 0`); revenue on these two comes from venue commission instead. Movies and Sports are unchanged. A free booking is sealed the moment it's created, by a server-side trigger that reads the price itself (`payment_status = 'paid'`, `payment_id = 'free'`), so it skips the payment screen and goes straight to "Your invitation is sealed", and it enters the matching pool like any paid booking. Step 5 shows **"Free to unlock your invitation."** in place of a rupee figure. Unlike a paid booking, a student can cancel a free one themselves from Your Events while it's still unmatched ("Can't make it? Give up your seat"), so the founder isn't matching people who've already dropped out. A free booking never spends a referral credit and never earns the referrer one (§1.13). See `supabase/migrations/0101_free_cafe_dinner.sql`.
 - **Slot rollover:** Cafés/Dinners/Movies/Sports each keep exactly one upcoming slot (§1.5a). An hourly pg_cron job (`slot-rollover`, same pattern as the Module notifications cron) inserts the next weekly occurrence once the current one has no future slot left — this used to require a hand-written migration (0011, 0014) every time, and originally excluded Sports (0032) until the founder reversed that call (0041) so all four activities roll over the same way.
 
 ### 1.7 Waiting Experience (Tone-Redesigned)
@@ -262,6 +263,21 @@ Step 5 — Confirm:
 | Post-event | "How was it? Rate your group" | "How did your story end tonight?" |
 | No-show | "We noticed you missed..." | "Your seat sat empty tonight. Here's what that means next time." |
 
+**[COPY CHANGE 2026-09-28, founder decision]** Notifications and most in-app copy moved off the "invitation / story / mystery" voice onto the plain, honest voice the Content Constitution set on 2026-09-05. Current notification copy (`supabase/migrations/0102_notification_copy.sql`):
+
+| Trigger | Current copy |
+|---|---|
+| Booking confirmed | "You're in for Dinners." / "Wed 7 PM. We'll tell you when your table is set." |
+| Group matched | "Your table is set." / "See who you're sitting with." |
+| Venue reveal (48h before) | "Here's where you're going." / "Your group chat is open too. Say hi before you meet." (chat message: "Here's where you're meeting: {venue}") |
+| 2h before event | "2 hours to go." / "Dinners at 7 PM. Running late? Tell your group in the chat." |
+| Post-event | "How was it?" / "Tell us on WhatsApp. It helps us build a better table next time." Tapping opens WhatsApp to the support number, prefilled with the booking id, deliberately not a Play Store review prompt, so a bad night comes to the founder privately. |
+| No-show | "You missed tonight." / "It counts as a no-show. Here's what that means." |
+| Member joined / left | "Someone new joined your table." / "Someone dropped out." with "{activity}, {day time}" |
+| Referral reward | "Your friend booked. ₹21 off for you." / "It comes off your next Movie or Sports game automatically." |
+
+In-app, the founder kept these in the old voice on purpose: onboarding slide 1, the email screen ("Where should we send your invitation?"), the quiz loading steps, the home banner, and booking step 1 ("When do you want your story to begin?"). Everything else sealed/story/adventure-flavoured was rewritten ("You're in.", "Your table is set.", "Here's your plan", "Save my seat", "Almost there / Pay to hold your seat", "Bring a friend").
+
 **No-Show Policy (founder decision, 2026-08-14):** payment is never refunded on a no-show regardless of strike count (bookings are payment-gated, so this was already true before strikes existed). On top of that, 3 no-shows blocks a student from creating new bookings for 7 days; the strike count resets to 0 once the block is applied (a student can't accrue further no-shows while blocked, since they have no bookings to miss). There is no founder override to lift a block early — it only ever expires on its own. Tapping the no-show notification opens a dedicated screen showing the student's live strike count, or the exact date their invitations resume if they're currently blocked. **[ASSUMPTION]** The exact microcopy on that screen ("Strike N of 3...", "Three empty seats in a row...") is a first draft in the established voice, not founder-reviewed word-for-word — treat it as provisional pending sign-off.
 
 ### 1.11 Event Flow
@@ -296,10 +312,10 @@ Step 5 — Confirm:
 ┌─────────────────────────────┐
 │   Invite someone into the        │
 │   story                           │
-│   Your next Café or Dinner is     │
-│   on us when a friend takes       │
-│   their first step in. Bigger     │
-│   adventures get ₹21 off.         │
+│   When a friend you invite books  │
+│   their first Movie or Sports     │
+│   game, you get ₹21 off your      │
+│   next one.                       │
 │   Your code: RAVI2K25              │
 │   [ Share via WhatsApp ]           │
 └─────────────────────────────┘
@@ -311,6 +327,12 @@ fully covers Café/Dinner/Sports-tier bookings, discounts (doesn't fully
 waive) anything pricier; auto-applied to the referrer's next unpaid
 booking, no manual redemption step. Cap chosen so a cheaply-earned credit
 can never fully waive an expensive activity's real venue/equipment cost.
+
+**[CHANGE 2026-09-28]** With Cafés and Dinners free (§1.6), only a friend's
+first *paid* booking (Movies or Sports) earns a credit — a free booking
+never does, since otherwise throwaway accounts could farm credits at no
+cost. Every remaining paid activity costs more than ₹21, so a credit is now
+always a ₹21 discount, never a full waiver.
 
 ---
 

@@ -90,8 +90,8 @@ export default function SportsSelectScreen() {
     <View style={styles.root}>
       <View style={[styles.content, { width: contentWidth, paddingBottom: 24 + insets.bottom }]}>
         <View style={{ gap: 6 }}>
-          <Text style={styles.title}>Enter the{'\n'}arena</Text>
-          <Text style={styles.subtitle}>Four games, one Saturday. Choose wisely.</Text>
+          <Text style={styles.title}>Pick a{'\n'}game</Text>
+          <Text style={styles.subtitle}>Four games this week.</Text>
         </View>
 
         {isLoading ? (

@@ -30,10 +30,13 @@ before touching anything you're unsure about; don't guess at product rules.
   `personality_option_weights` / `personality_scale_mappings`. Never hardcode
   a question in frontend or backend code — adding question #6-15+ should be a
   data change only.
-- **Tone is mysterious/adventurous**, not operational. Before writing any
-  user-facing string, check docs/PRODUCT_SPEC.md's microcopy tables. Avoid
-  copy like "Booking Confirmed" — prefer the established voice ("Your
-  invitation is sealed").
+- **Tone is honest and plainly spoken** (founder decision 2026-09-28, matching
+  docs/CONTENT_CONSTITUTION.md), not operational and no longer the old
+  "invitation / story / mystery" voice. Prefer "You're in." / "Your table is
+  set." over both "Booking Confirmed" and "Your invitation is sealed". A few
+  old-voice lines were kept on purpose; see PRODUCT_SPEC.md §1.10's
+  2026-09-28 copy change before touching onboarding, the email screen, the
+  quiz loading steps, the home banner or booking step 1.
 - **Auth: email OTP only.** Phone/SMS OTP was scoped but dropped before it
   was ever built — do not add a phone sign-in option. No student ID, no
   student email domain check, no photo ID upload, no manual identity

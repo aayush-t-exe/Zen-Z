@@ -667,7 +667,7 @@ function RecapScreen({
       <View style={[styles.body, styles.centered, { width }]}>
         {traitLabel && <PersonalityRevealCard tier={tier} label={traitLabel} />}
         <Text style={[FlowText.titleCentred, { marginTop: 32 }]}>
-          {`Hey${greetingName}, we're starting\nto see your shape in this story.`}
+          {`Thanks${greetingName}.\nThat's plenty to work with.`}
         </Text>
         {traitLabel ? (
           <Text style={styles.subtitleCenter}>

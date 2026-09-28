@@ -426,8 +426,8 @@ export default function ProfileCreationScreen() {
                   </View>
                 </Pressable>
                 <Text style={[FlowText.fine, styles.privacyLine]}>
-                  This photo is seen only by our team, to help us craft the right group for you —
-                  never by other members.
+                  Only our team sees this. It helps us build your group. Other students never see
+                  it.
                 </Text>
               </View>
             </StepShell>

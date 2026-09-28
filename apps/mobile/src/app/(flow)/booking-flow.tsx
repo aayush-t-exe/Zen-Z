@@ -491,7 +491,7 @@ export default function BookingFlowScreen() {
           bookingError.code === '23505'
             ? "You've already got a booking for this slot — check Your Events."
             : bookingError.message.includes('row-level security policy')
-              ? "That invitation just slipped out of reach — go back and check again."
+              ? 'This slot just closed. Go back and pick another.'
               : bookingError.message
         );
         return;
@@ -563,9 +563,9 @@ export default function BookingFlowScreen() {
     return (
       <View style={[styles.root, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }]}>
         <Text style={{ fontSize: 32, marginBottom: 8 }}>🕯️</Text>
-        <Text style={[styles.title, { textAlign: 'center', fontSize: 22 }]}>Your invitations are paused.</Text>
+        <Text style={[styles.title, { textAlign: 'center', fontSize: 22 }]}>Your bookings are paused.</Text>
         <Text style={[styles.subtitle, { textAlign: 'center', marginTop: 8 }]}>
-          Three empty seats in a row does that. Check back {formatSlotDateTime(blockedUntil)}.
+          That happens after three no-shows in a row. Check back {formatSlotDateTime(blockedUntil)}.
         </Text>
       </View>
     );
@@ -805,7 +805,7 @@ export default function BookingFlowScreen() {
                 screens that echo it (Home's subtitle, Bookings' empty state),
                 so switching this one screen to "new" would leave the phrase
                 inconsistent in three places. */}
-            <Text style={styles.stepTitleCentred}>Your adventure awaits</Text>
+            <Text style={styles.stepTitleCentred}>Here&apos;s your plan</Text>
             <Text style={styles.stepSubtitleCentred}>Confirm your choices</Text>
 
             <SummaryCard
@@ -916,7 +916,7 @@ export default function BookingFlowScreen() {
                 button below is about to charge. Sports additionally has a
                 known duration to caption. */}
             <Text style={styles.priceCaption}>
-              <Text style={styles.priceValue}>₹{totalFee}</Text>
+              <Text style={styles.priceValue}>{totalFee === 0 ? 'Free' : `₹${totalFee}`}</Text>
               {activity.duration_minutes != null
                 ? ` for ${formatDuration(activity.duration_minutes)}${plusOne ? ', plus your +1' : ''}? Steal.`
                 : ` to unlock your invitation${plusOne ? ', plus your +1' : ''}.`}
@@ -941,7 +941,7 @@ export default function BookingFlowScreen() {
 
         <View style={{ marginTop: 18 }}>
           <FlowPillButton
-            label={currentStep === 'summary' ? 'Unlock Your Next Adventure' : 'Next  →'}
+            label={currentStep === 'summary' ? 'Save my seat' : 'Next  →'}
             onPress={handleNext}
             loading={isLoading}
             disabled={!canProceedToNextStep()}

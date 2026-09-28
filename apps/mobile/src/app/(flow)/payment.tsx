@@ -94,6 +94,8 @@ export default function PaymentScreen() {
   // Pushing to home explicitly (not `back()`) keeps the hardware button
   // behaving the same regardless of how this screen was reached.
   useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       router.push('/(home)');
       return true;
@@ -494,7 +496,7 @@ export default function PaymentScreen() {
   const baseFee =
     booking.movie_choice_type === 'choose_movie' && booking.movie
       ? booking.movie.price
-      : activity?.convenience_fee || 21;
+      : activity?.convenience_fee ?? 21;
   const stickerFee = booking.plus_one ? baseFee * 2 : baseFee;
   const discount = booking.referral_discount_amount || 0;
   // A credit is capped at ₹21 (0075_referral_partial_credits.sql) — it
@@ -518,7 +520,7 @@ export default function PaymentScreen() {
             accessibilityIgnoresInvertColors
           />
           <Text style={FlowText.titleCentred}>
-            {fullyCoveredByCredit ? 'Your invitation is sealed — on the house' : 'Your invitation is sealed'}
+            {fullyCoveredByCredit ? "You're in. On the house." : "You're in."}
           </Text>
           <Text style={styles.centredSubtitle}>
             {fullyCoveredByCredit
@@ -552,8 +554,8 @@ export default function PaymentScreen() {
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth }}>
-          <Text style={FlowText.titleCentred}>Unlock your adventure</Text>
-          <Text style={styles.stepSubtitleCentred}>Complete your payment to confirm your spot</Text>
+          <Text style={FlowText.titleCentred}>Almost there</Text>
+          <Text style={styles.stepSubtitleCentred}>Pay to hold your seat</Text>
 
           {/* The booking, on the same card the flow's own summary step uses
               (UI PAGE 5) — this screen is the last thing a student sees before
@@ -654,7 +656,7 @@ export default function PaymentScreen() {
           paddingTop: 12,
         }}>
         <FlowPillButton
-          label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee} to Unlock  →`}
+          label={hasAttemptedPayment ? 'Try Again  →' : `Pay ₹${fee}  →`}
           onPress={handlePay}
           loading={isProcessing}
           disabled={isCancelling}

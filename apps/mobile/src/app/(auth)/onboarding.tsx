@@ -52,15 +52,15 @@ const SLIDES: Slide[] = [
     art: require('@/assets/images/onboarding-tables.png'),
     artRatio: 1216 / 1056,
     artLabel: 'Pairs and groups talking over coffee, dinner and a film, wrapped in swirls',
-    title: 'Every table has a story',
-    subtitle: 'before anyone sits down.',
+    title: 'You answer a few questions.',
+    subtitle: 'We actually read them.',
   },
   {
     id: '2',
     art: require('@/assets/images/onboarding-hands.png'),
     artRatio: 1410 / 1200,
     artLabel: 'Hands drawing four strangers together into one group',
-    title: 'We craft your group.',
+    title: 'We build the group by hand.',
     subtitle: 'You just show up.',
   },
   {
@@ -68,8 +68,8 @@ const SLIDES: Slide[] = [
     art: require('@/assets/images/onboarding-invitation.png'),
     artRatio: 1335 / 1072,
     artLabel: 'An open envelope with a laid table and a film reel spilling out of it',
-    title: 'No swiping.',
-    subtitle: 'Just an invitation.',
+    title: 'No swiping. No profiles.',
+    subtitle: 'Nobody sees your photo.',
   },
 ];
 

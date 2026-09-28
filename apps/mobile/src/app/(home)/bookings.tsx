@@ -268,12 +268,27 @@ export default function BookingsScreen() {
                     <FlowSurfaceBox width={contentWidth}>
                       <View style={styles.cardBody}>
                         <ActivityRow name={booking.activity_name} cardWidth={contentWidth}>
-                          <Text style={styles.cardTitle}>Your invitation is sealed.</Text>
+                          <Text style={styles.cardTitle}>You&apos;re in.</Text>
                           <Text style={styles.cardSubtitle}>
                             {booking.activity_name}, {formatSlotDateTime(booking.slot_datetime, booking.activity_name)}
                             {' · '}Tap to see what happens next →
                           </Text>
                         </ActivityRow>
+
+                        {booking.payment_id === 'free' && (
+                          <Pressable
+                            onPress={() => handleCancelBooking(booking)}
+                            disabled={cancellingId === booking.id}
+                            hitSlop={8}
+                            style={{ marginTop: 14, marginLeft: activityLabelColumn(contentWidth), alignSelf: 'flex-start' }}
+                          >
+                            {cancellingId === booking.id ? (
+                              <ActivityIndicator size="small" color={Palette.error} />
+                            ) : (
+                              <Text style={styles.cancelText}>Can&apos;t make it? Give up your seat</Text>
+                            )}
+                          </Pressable>
+                        )}
                       </View>
                     </FlowSurfaceBox>
                   </Pressable>
@@ -299,7 +314,7 @@ export default function BookingsScreen() {
                             for both, with nothing distinguishing which slot
                             was which. */}
                         <ActivityRow name={group.activity_name} cardWidth={contentWidth}>
-                          <Text style={styles.cardTitle}>The story begins here.</Text>
+                          <Text style={styles.cardTitle}>Your table is set.</Text>
                           <Text style={styles.cardSubtitle}>
                             {group.activity_name} ·{' '}
                             {group.is_revealed ? 'Tap to see your venue and group →' : 'Tap for booking details →'}
@@ -326,10 +341,13 @@ export default function BookingsScreen() {
       >
         <View style={styles.confirmOverlay}>
           <View style={[styles.confirmCard, { width: confirmCardWidth }]}>
-            <Text style={styles.confirmTitle}>Remove this from Your Events?</Text>
+            <Text style={styles.confirmTitle}>
+              {confirmCancel?.payment_id === 'free' ? 'Give up your seat?' : 'Remove this from Your Events?'}
+            </Text>
             <Text style={styles.confirmMessage}>
-              You haven&apos;t paid for {confirmCancel?.activity_name} yet, but you&apos;ll lose this
-              slot. This can&apos;t be undone.
+              {confirmCancel?.payment_id === 'free'
+                ? `Your seat at ${confirmCancel.activity_name} goes back to the pool, so someone else can take it. You can book again while the slot is still open.`
+                : `You haven't paid for ${confirmCancel?.activity_name} yet, but you'll lose this slot. This can't be undone.`}
             </Text>
             <View style={styles.confirmActions}>
               <FlowPillButton

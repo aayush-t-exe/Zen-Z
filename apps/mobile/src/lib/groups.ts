@@ -4,6 +4,7 @@ export interface MyBooking {
   id: string;
   status: string;
   payment_status: string;
+  payment_id: string | null;
   slot_id: string;
   slot_datetime: string;
   activity_name: string;
@@ -44,7 +45,7 @@ export async function fetchMyBookings(userId: string): Promise<FetchResult<MyBoo
   const { data, error } = await supabase
     .from('bookings')
     .select(
-      `id, status, payment_status, slot_id,
+      `id, status, payment_status, payment_id, slot_id,
        slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, emoji ) )`
     )
     .eq('user_id', userId)
@@ -60,6 +61,7 @@ export async function fetchMyBookings(userId: string): Promise<FetchResult<MyBoo
       id: b.id,
       status: b.status,
       payment_status: b.payment_status,
+      payment_id: b.payment_id,
       slot_id: b.slot_id,
       slot_datetime: b.slots?.slot_datetime,
       activity_name: b.slots?.activity_types?.name ?? 'Activity',

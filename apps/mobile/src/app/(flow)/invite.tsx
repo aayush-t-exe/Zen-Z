@@ -80,7 +80,7 @@ export default function InviteScreen() {
     setIsSharing(true);
     try {
       await Share.share({
-        message: `Come step into the story with me on Zen-Z. Use my code ${code} when you join: https://zen-z.site`,
+        message: `I'm trying Zen-Z. They put 4-5 students at a table for a café, dinner or movie, and cafés and dinners are free right now. Use my code ${code}: https://zen-z.site`,
       });
     } catch {
       // A dismissed share sheet isn't an error worth surfacing.
@@ -93,10 +93,10 @@ export default function InviteScreen() {
     <View style={styles.root}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={{ width: contentWidth }}>
-          <Text style={FlowText.title}>Invite someone{'\n'}into the story</Text>
+          <Text style={FlowText.title}>Bring a friend</Text>
           <Text style={styles.subtitle}>
-            Your next Café or Dinner is on us when a friend takes their first step in. Bigger
-            adventures get ₹21 off.
+            When a friend you invite books their first Movie or Sports game, you get ₹21 off your
+            next one.
           </Text>
 
           {isLoading ? (
@@ -131,7 +131,7 @@ export default function InviteScreen() {
         <FlowBackButton onPress={() => router.back()} />
         <View style={{ marginTop: 18 }}>
           <FlowPillButton
-            label="Share via WhatsApp"
+            label="Share your code"
             width={contentWidth}
             onPress={handleShare}
             loading={isSharing}

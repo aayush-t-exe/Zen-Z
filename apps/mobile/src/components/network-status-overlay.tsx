@@ -50,9 +50,9 @@ export function NetworkStatusOverlay() {
       onRequestClose={() => {}}>
       <View style={styles.scrim}>
         <View style={styles.card}>
-          <Text style={styles.title}>The thread&rsquo;s gone quiet.</Text>
+          <Text style={styles.title}>You&rsquo;re offline.</Text>
           <Text style={styles.body}>
-            Check your connection — everything picks back up the moment you&rsquo;re online.
+            Everything picks back up when you reconnect.
           </Text>
         </View>
       </View>
