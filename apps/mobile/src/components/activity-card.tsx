@@ -1,5 +1,16 @@
-import { useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet, type ImageSourcePropType } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Animated,
+  Easing,
+  View,
+  Text,
+  Pressable,
+  Image,
+  Platform,
+  StyleSheet,
+  type ImageSourcePropType,
+} from 'react-native';
 
 import { FontFamily } from '@/constants/fonts';
 
@@ -39,11 +50,75 @@ export function activityCardMetrics(contentWidth: number) {
   return { width, height: width * CARD_RATIO };
 }
 
+/** Sampled off the red 3D Z brand mark. */
+const BRAND_RED = '#E8120C';
+const FREE_PULSE_MS = 1600;
+
+/**
+ * A halo that keeps breathing out of a corner tag so it reads before anything
+ * else on the card. Its own view rather than a shadow because Android can't
+ * tint an elevation shadow red.
+ */
+function PulseHalo() {
+  const [pulse] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    let loop: Animated.CompositeAnimation | undefined;
+    let cancelled = false;
+    AccessibilityInfo.isReduceMotionEnabled().then((reduceMotion) => {
+      if (cancelled || reduceMotion) return;
+      loop = Animated.loop(
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: FREE_PULSE_MS,
+          easing: Easing.out(Easing.quad),
+          useNativeDriver: Platform.OS !== 'web',
+        })
+      );
+      loop.start();
+    });
+    return () => {
+      cancelled = true;
+      loop?.stop();
+    };
+  }, [pulse]);
+
+  return (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFill,
+        styles.tagHalo,
+        {
+          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.7, 0] }),
+          transform: [
+            { scaleX: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.45] }) },
+            { scaleY: pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.9] }) },
+          ],
+        },
+      ]}
+    />
+  );
+}
+
+/** A stamp on the card's top-right corner: "FREE", or the activity's price. */
+function CornerTag({ label, pulses }: { label: string; pulses: boolean }) {
+  return (
+    <View style={styles.tagWrap} pointerEvents="none">
+      {pulses && <PulseHalo />}
+      <View style={styles.tag}>
+        <Text style={styles.tagText}>{label}</Text>
+      </View>
+    </View>
+  );
+}
+
 export function ActivityCard({
   name,
   tagline,
   art,
   width,
+  tag,
+  tagPulses = false,
   onPress,
 }: {
   name: string;
@@ -51,6 +126,9 @@ export function ActivityCard({
   tagline: string;
   art: ImageSourcePropType;
   width: number;
+  /** Corner stamp text, e.g. "FREE" or "₹126". */
+  tag?: string;
+  tagPulses?: boolean;
   onPress: () => void;
 }) {
   const [pressed, setPressed] = useState(false);
@@ -64,7 +142,7 @@ export function ActivityCard({
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"
-      accessibilityLabel={`${name}. ${tagline}`}
+      accessibilityLabel={`${name}. ${tag ? `${tag}. ` : ''}${tagline}`}
       style={{ width, height, opacity: pressed ? 0.82 : 1 }}>
       <Image
         source={require('@/assets/images/home-card-frame.png')}
@@ -105,6 +183,7 @@ export function ActivityCard({
           {tagline}
         </Text>
       </View>
+      {tag && <CornerTag label={tag} pulses={tagPulses} />}
     </Pressable>
   );
 }
@@ -126,5 +205,32 @@ const styles = StyleSheet.create({
     marginTop: 1,
     fontFamily: FontFamily.accent.sfProDisplayRegularItalic,
     textAlign: 'center',
+  },
+  tagWrap: {
+    position: 'absolute',
+    top: -7,
+    right: -5,
+    transform: [{ rotate: '-8deg' }],
+  },
+  tagHalo: {
+    backgroundColor: BRAND_RED,
+    borderRadius: 4,
+  },
+  tag: {
+    backgroundColor: BRAND_RED,
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    shadowColor: BRAND_RED,
+    shadowOpacity: 0.9,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  tagText: {
+    color: '#FFFDF8',
+    fontSize: 12,
+    lineHeight: 14,
+    letterSpacing: 1.6,
+    fontFamily: FontFamily.body.bold,
   },
 });

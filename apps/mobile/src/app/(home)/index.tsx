@@ -24,6 +24,7 @@ interface ActivityType {
   name: string;
   emoji: string;
   is_bookable: boolean;
+  convenience_fee: number | null;
 }
 
 /**
@@ -54,6 +55,13 @@ const taglineFor = (name: string) =>
       ? 'Unlock Your Game'
       : 'Unlock Your Table';
 
+// Sports is a menu of differently-priced games, not bookable itself, so it
+// has no single price to stamp.
+const priceTagFor = (activity: ActivityType) => {
+  if (!activity.is_bookable || activity.convenience_fee == null) return undefined;
+  return activity.convenience_fee === 0 ? 'FREE' : `₹${activity.convenience_fee}`;
+};
+
 export default function HomeScreen() {
   const router = useRouter();
   const { width: screenWidth } = useWindowDimensions();
@@ -74,7 +82,7 @@ export default function HomeScreen() {
 
     const { data, error } = await supabase
       .from('activity_types')
-      .select('id, name, emoji, is_bookable')
+      .select('id, name, emoji, is_bookable, convenience_fee')
       .eq('is_live', true)
       .is('parent_activity_id', null)
       .order('id', { ascending: true });
@@ -146,7 +154,7 @@ export default function HomeScreen() {
           ]}>
         <View style={{ gap: 6 }}>
           <Text style={styles.title}>{firstName ? `Welcome\n${firstName}` : 'Welcome'}</Text>
-          <Text style={styles.subtitle}>Pick an activity to unlock your next adventure.</Text>
+          <Text style={styles.subtitle}>What are you up for this week?</Text>
         </View>
 
         {isLoading ? (
@@ -178,6 +186,8 @@ export default function HomeScreen() {
                 tagline={taglineFor(activity.name)}
                 art={activityArt(activity.name)}
                 width={cardWidth}
+                tag={priceTagFor(activity)}
+                tagPulses={activity.is_bookable && activity.convenience_fee === 0}
                 onPress={() => handleActivityPress(activity)}
               />
             ))}
