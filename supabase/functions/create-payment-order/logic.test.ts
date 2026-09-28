@@ -20,8 +20,9 @@ describe('computeOrderAmountRupees', () => {
     expect(computeOrderAmountRupees(undefined)).toBe(21);
   });
 
-  it('falls back to ₹21 when the fee is zero (falsy)', () => {
-    expect(computeOrderAmountRupees(0)).toBe(21);
+  it('keeps a zero fee at zero instead of falling back (free Café/Dinner)', () => {
+    expect(computeOrderAmountRupees(0)).toBe(0);
+    expect(computeOrderAmountRupees(0, true)).toBe(0);
   });
 
   it('doubles the fee when plusOne is true', () => {

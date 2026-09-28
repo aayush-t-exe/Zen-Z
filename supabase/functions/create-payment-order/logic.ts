@@ -11,13 +11,14 @@
 // is the only writer of that column. Clamped to 0 defensively; in
 // practice redeem_referral_credit never lets a discount reach or exceed
 // the fee (that case marks the booking paid outright and this function is
-// never called for it at all).
+// never called for it at all). `??`, not `||`: a fee of 0 is a real free
+// activity (0101_free_cafe_dinner.sql), not a missing value.
 export function computeOrderAmountRupees(
   convenienceFee: number | null | undefined,
   plusOne = false,
   referralDiscountRupees = 0
 ): number {
-  const base = convenienceFee || 21;
+  const base = convenienceFee ?? 21;
   const total = plusOne ? base * 2 : base;
   return Math.max(total - (referralDiscountRupees || 0), 0);
 }

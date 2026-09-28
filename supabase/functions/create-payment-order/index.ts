@@ -138,6 +138,16 @@ serve(async (req) => {
       booking.referral_discount_amount
     );
 
+    // Free bookings are sealed by the seal_free_booking trigger (0101), so
+    // reaching here with ₹0 means something upstream is wrong. PayU can't
+    // serve a ₹0 link anyway.
+    if (amountRupees <= 0) {
+      return new Response(
+        JSON.stringify({ error: 'Nothing to pay for this booking.' }),
+        { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // PayU's hosted checkout is a full payment page (unlike Razorpay
     // Payment Links, which needs no cardholder details up front), so it
     // requires the payer's name/email/phone on the create-request itself.

@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
           supabase
             .from('bookings')
             .select(
-              `id, user_id, status, payment_status, created_at, referral_discount_amount, plus_one,
+              `id, user_id, status, payment_status, payment_id, created_at, referral_discount_amount, plus_one,
                movie_choice_type, movie:movie_id ( price ),
                slots:slot_id ( slot_datetime, activity_types:activity_type_id ( name, convenience_fee, profit_amount ) )`
             )
@@ -187,7 +187,13 @@ export default function AnalyticsPage() {
             (b.movie_choice_type === 'choose_movie' && b.movie
               ? b.movie.price
               : (b.slots?.activity_types?.convenience_fee ?? 0)) * (b.plus_one ? 2 : 1),
-          profit_amount: (b.slots?.activity_types?.profit_amount ?? 0) * (b.plus_one ? 2 : 1),
+          // A free booking (0101_free_cafe_dinner.sql) collected nothing.
+          // profit_amount stays ₹21 on Cafés/Dinners so bookings paid before
+          // they went free still count what they actually earned.
+          profit_amount:
+            b.payment_id === 'free'
+              ? 0
+              : (b.slots?.activity_types?.profit_amount ?? 0) * (b.plus_one ? 2 : 1),
           referral_discount_amount: b.referral_discount_amount ?? 0,
         }))
       );
