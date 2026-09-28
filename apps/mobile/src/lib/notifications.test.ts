@@ -11,6 +11,11 @@ jest.mock('@/lib/supabase', () => ({ supabase: {} }));
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({ router: { push: (...args: unknown[]) => mockPush(...args) } }));
 
+const mockOpenFeedback = jest.fn();
+jest.mock('@/lib/feedback', () => ({
+  openFeedbackOnWhatsapp: (...args: unknown[]) => mockOpenFeedback(...args),
+}));
+
 function responseWithData(data: Record<string, unknown>) {
   return {
     notification: { request: { content: { data } } },
@@ -20,6 +25,7 @@ function responseWithData(data: Record<string, unknown>) {
 describe('handleNotificationResponse', () => {
   beforeEach(() => {
     mockPush.mockClear();
+    mockOpenFeedback.mockClear();
   });
 
   it('routes a no_show notification to the no-show screen with its bookingId', () => {
@@ -46,8 +52,14 @@ describe('handleNotificationResponse', () => {
     });
   });
 
+  it('opens WhatsApp feedback for a post_event_feedback notification', () => {
+    handleNotificationResponse(responseWithData({ type: 'post_event_feedback', bookingId: 'booking-1' }));
+    expect(mockOpenFeedback).toHaveBeenCalledWith('booking-1');
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
   it('falls back to the bookings tab for a type with no dedicated screen', () => {
-    handleNotificationResponse(responseWithData({ type: 'post_event_feedback' }));
+    handleNotificationResponse(responseWithData({ type: 'referral_reward_earned' }));
     expect(mockPush).toHaveBeenCalledWith('/(home)/bookings');
   });
 

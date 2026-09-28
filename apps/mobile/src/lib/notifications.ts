@@ -21,6 +21,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { openFeedbackOnWhatsapp } from '@/lib/feedback';
 
 type NotificationsModule = typeof ExpoNotifications;
 
@@ -103,12 +104,16 @@ export async function registerForPushNotificationsAsync(userId: string): Promise
 // Routes a tap on a delivered notification to the relevant screen, based on
 // the `type`/`data` fields the send-notifications Edge Function sets
 // (0019_notifications.sql, 0020_no_show_strikes.sql). Falls back to the
-// Bookings tab for any type that doesn't have a dedicated screen yet (e.g.
-// post_event_feedback — there's no feedback-entry screen built yet).
+// Bookings tab for any type that doesn't have a dedicated screen.
 export function handleNotificationResponse(
   response: ExpoNotifications.NotificationResponse,
 ): void {
   const data = response.notification.request.content.data as Record<string, unknown>;
+
+  if (data?.type === 'post_event_feedback') {
+    void openFeedbackOnWhatsapp(typeof data.bookingId === 'string' ? data.bookingId : null);
+    return;
+  }
 
   if (data?.type === 'no_show' && typeof data?.bookingId === 'string') {
     router.push({ pathname: '/(flow)/no-show', params: { bookingId: data.bookingId } });
