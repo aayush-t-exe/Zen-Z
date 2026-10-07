@@ -2,6 +2,11 @@
   <img src="docs/store-assets/feature-graphic.png" alt="Zen-Z" width="720">
 </p>
 
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.campussocial.app"><img src="https://img.shields.io/badge/Google_Play-Get_the_app-34A853?logo=googleplay&logoColor=white" alt="Get it on Google Play"></a>
+  <a href="https://zen-z.site"><img src="https://img.shields.io/badge/Website-zen--z.site-111111" alt="Website: zen-z.site"></a>
+</p>
+
 # Zen-Z
 
 **A campus app that puts you at a table with four strangers who like the same things you do. Pick a café, dinner, movie or sports slot, take a short personality quiz, and a real person matches your group.**
@@ -18,6 +23,11 @@ launched on Google Play for students at Jaipur National University on
 personality quiz, and our Instagram reached 140K+ views.
 
 Built by **Aayush Thakur**.
+
+## Try it
+
+- **Android app:** [get Zen-Z on Google Play](https://play.google.com/store/apps/details?id=com.campussocial.app)
+- **Website:** [zen-z.site](https://zen-z.site)
 
 ## Screenshots
 
