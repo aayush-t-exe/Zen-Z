@@ -4,118 +4,135 @@
 
 # Zen-Z
 
-A campus social app that puts four or five strangers at the same table. A
-student books a weekly slot (a café, a dinner, a movie or a sports game),
-takes a short personality quiz, and a human matches them into a small group
-by interests and personality. The group gets a chat, a venue, and a time.
+**A campus app that puts you at a table with four strangers who like the same things you do. Pick a café, dinner, movie or sports slot, take a short personality quiz, and a real person matches your group.**
 
-I built Zen-Z from scratch, starting in July 2026, as the founder and only
-engineer: the Android app, the admin dashboard the matching team worked
-from, the marketing site, and the whole Supabase backend. It went out on
-Google Play and launched to students at Jaipur National University on
-24 September 2026.
+Most students have friends. What they often don't have is someone who wants
+to watch the same movie, play the same sport, or talk about the same things.
+Zen-Z fixes that one evening at a time: you book a slot, we build you a good
+table, and you show up.
 
-## What's in this repo
+I built Zen-Z by myself, starting in July 2026: the Android app, the
+dashboard our team used to match students, the website, and the backend. It
+launched on Google Play for students at Jaipur National University on
+24 September 2026. In its first week, 150+ students finished the
+personality quiz, and our Instagram reached 140K+ views.
 
-| Path | What it is |
-| --- | --- |
-| `apps/mobile` | Student app. Expo, React Native, TypeScript, Expo Router, NativeWind, Zustand, TanStack Query |
-| `apps/admin` | Matching and operations dashboard. Next.js App Router, Tailwind, shadcn/ui, @dnd-kit drag-and-drop matching board |
-| `apps/marketing` | Public site with pricing, FAQ, legal pages and the PayU redirect page. Next.js |
-| `supabase/migrations` | About 100 SQL migrations: schema, row-level security, RPCs, triggers, storage policies |
-| `supabase/functions` | Deno Edge Functions: PayU order creation and webhook, personality scoring, push notifications, account deletion |
-| `supabase/tests` | pgTAP tests for the security-critical database rules |
-| `docs/` | Product spec, architecture decisions, milestone plan, deployment notes |
+Built by **Aayush Thakur**.
 
 ## How it works
 
-1. **Sign in** with an email one-time code. No passwords and no phone auth.
-2. **Profile and quiz.** Students build a profile and answer a personality
-   quiz. The quiz is entirely data-driven: questions, options, scoring weights
-   and scale mappings all live in Postgres tables, so adding a question is an
-   insert, not a release. The `score-personality` Edge Function turns answers
-   into trait scores.
-3. **Book a slot.** Cafés and dinners are free to book. Movies and sports are
-   paid through PayU. There is no venue picker; the venue is assigned after
-   matching.
-4. **Matching.** The team drags students between candidate groups on the
-   admin board, using quiz scores, interests and budget, then confirms the
-   group and assigns a venue.
-5. **Meet.** The group sees each other's first names and interests, chats in
-   real time (Supabase Realtime), and gets push reminders before the slot.
+1. **Sign in with your email.** You get a one-time code. No password to remember.
+2. **Make a profile and take the quiz.** A few questions about how you like
+   to spend an evening, how social you feel, and what you're into.
+3. **Book a slot.** Café, Dinner, Movie, or a sport like cricket, football or
+   pickleball. Cafés and dinners are free to book. You can bring a friend if
+   you don't want to arrive alone.
+4. **Get matched.** Our team looks at everyone booked for that slot and puts
+   together groups of 4 or 5 people who should get along, then picks the venue.
+5. **Meet your group.** You see your groupmates' first names and interests,
+   chat with them in the app, and get a reminder before it starts.
 
-## Engineering highlights
+## What I built
 
-**Photo privacy enforced in the database, not the UI.** Students upload a
-profile photo, but only the matching team ever sees it. A student never sees
-another student's photo. This holds at three layers: RLS on `profiles`, a
-groupmate view that has no `photo_url` column, and a private storage bucket
-whose policy only admits admins. A pgTAP test
-(`supabase/tests/database/001_photo_privacy.sql`) checks it against the real
-policies.
+**The student app** (Android). Everything above: sign-in, profile, quiz,
+booking, payments, group chat, notifications, referrals, reporting someone,
+and deleting your account.
 
-**Payments the client can't fake.** PayU orders are created server-side in
-an Edge Function that prices the booking itself, so the app never sends an
-amount. A booking only becomes paid when PayU's webhook arrives with a hash
-that verifies against the merchant salt. Every webhook is logged, and the
-admin dashboard has a "Needs attention" panel for payments that got stuck
-between the two.
+**The matching dashboard** (web). Where the team does the actual matching.
+Students show up as cards that you drag between groups. It also handles
+venues, movie listings, bookings, payments that need a second look, safety
+reports, and basic analytics.
 
-**Security as tests.** The pgTAP suite covers row-level security and RPC
-permission boundaries: photo privacy, group reveal gates, no-show blocking,
-account deletion, report and message integrity, admin-only functions, and a
-regression test that internal `SECURITY DEFINER` functions are not callable
-by the `anon` or `authenticated` roles.
+**The website** (web). The public home page, pricing, FAQ, and the legal
+pages Google Play and our payment provider require.
 
-**CI on every push.** GitHub Actions runs lint, typecheck and unit tests for
-all three apps, Vitest for the Edge Function logic, a production build of
-the admin app, and the pgTAP suite against the dev database. The pgTAP job
-is serialised with a concurrency group, since runs share one database.
+**The backend.** The database, the security rules that decide who can see
+what, payments, the quiz scoring, and push notifications.
 
-**Two environments, schema in code.** Separate dev and prod Supabase
-projects. Every schema change is a migration file in this repo, never a
-dashboard edit. The mobile app ships over-the-air updates with EAS Update.
+## Problems I'm glad I solved
 
-**Privacy decisions written down.** The admin dashboard never displays group
-chat messages, including in the reports queue. `docs/ARCHITECTURE.md` explains
-why that is a policy decision rather than an RLS guarantee, and why
-end-to-end encryption was considered and rejected.
+**Nobody sees anyone else's photo.** Students upload a photo so the team can
+recognise them, but other students should never see it, not even their own
+groupmates. I didn't want that to depend on the app simply not showing it,
+so the database itself refuses to hand photos to anyone except the team.
+There's an automated test that checks this.
+
+**Payments can't be faked.** The app never tells the server what to charge.
+The server works out the price itself, and a booking only counts as paid
+once the payment provider confirms it directly, with a signature the server
+checks. When a payment gets stuck halfway, it shows up on the dashboard so
+the team can sort it out.
+
+**The quiz can change without an app update.** Every question, answer and
+scoring rule lives in the database. Adding a new question is one database
+entry, not a new release on the Play Store.
+
+**Updates without the Play Store.** Fixes and copy changes reach phones
+over the air, so a typo fix doesn't need a new store review.
+
+**Group chat stays private.** The dashboard can show who reported whom and
+why, but it never shows the chat messages themselves. That was a deliberate
+choice, and it's written down in the docs along with the reasoning.
+
+**Every change gets checked.** Each push to GitHub runs linting, type
+checks, unit tests for all three apps, a full production build of the
+dashboard, and a set of database tests that try to break the security rules.
+
+## Tech stack
+
+| Part | Built with |
+| --- | --- |
+| Student app | React Native, Expo, TypeScript, Expo Router, NativeWind, Zustand, TanStack Query |
+| Matching dashboard | Next.js, TypeScript, Tailwind, shadcn/ui, dnd-kit (drag and drop) |
+| Website | Next.js, Tailwind |
+| Backend | Supabase: Postgres, Auth, Storage, Realtime chat, Edge Functions (Deno) |
+| Payments | PayU, with server-side order creation and verified webhooks |
+| Testing | Vitest, Jest, pgTAP (database tests), GitHub Actions |
+| Releases | EAS Build and EAS Update |
+
+## Decisions and trade-offs
+
+| Decision | Why | Trade-off |
+| --- | --- | --- |
+| **People match the groups, not an algorithm** | With a few hundred students, a person who reads the quiz results makes better tables than code would, and learns what a good match looks like along the way. | It doesn't scale past one campus. The quiz scores are already stored in a form an algorithm could use later. |
+| **Email codes only, no phone sign-in** | Free to send and quick to set up. SMS in India needs weeks of registration. | Codes can land in spam, so I wrote a small tool to unblock testers during the first days. |
+| **No venue picker when booking** | The team picks the venue after matching, based on who is in the group and their budget. | Students book without knowing exactly where they'll go. |
+| **Security rules in the database, not just the app** | If the app has a bug, the data is still protected. Photos, chats and payments are all guarded this way. | Every new feature needs its rules written and tested, which takes longer. |
+| **Two environments, every change saved as a file** | A dev and a prod database, and every schema change is a file in this repo, so nothing gets changed by hand in production. | No staging environment yet, so the dev database has to stand in for one. |
 
 ## Running it locally
 
-Requires Node 22 and two Supabase projects (or one, for a quick look).
+You need Node 22 and a Supabase project.
 
 ```bash
 npm install
 
-# Copy the env templates and fill in your Supabase URL and anon key
 cp apps/mobile/.env.example apps/mobile/.env
 cp apps/admin/.env.local.example apps/admin/.env.local
+# fill in your Supabase URL and anon key in both
 
-# Apply the schema
 npx supabase link --project-ref <your-project-ref>
 npx supabase db push
 
-npm run mobile      # Expo dev server
-npm run admin       # admin dashboard on localhost:3000
-
-npm run test:functions   # Edge Function unit tests
-npm run test:db          # pgTAP, against the linked project
+npm run mobile   # student app (Expo)
+npm run admin    # matching dashboard on localhost:3000
 ```
 
-Payments need PayU credentials set as Edge Function secrets
-(`PAYU_MERCHANT_KEY`, `PAYU_MERCHANT_SALT`, `PAYU_MERCHANT_ID`,
+Tests: `npm run test:functions` for the backend logic, `npm run test:db` for
+the database security tests.
+
+Payments need PayU credentials set as Supabase secrets:
+`PAYU_MERCHANT_KEY`, `PAYU_MERCHANT_SALT`, `PAYU_MERCHANT_ID`,
 `PAYU_CLIENT_ID`, `PAYU_CLIENT_SECRET`, `PAYU_API_BASE_URL`,
-`PAYU_OAUTH_TOKEN_URL`) via `npx supabase secrets set`.
+`PAYU_OAUTH_TOKEN_URL`.
 
-## Docs
+## More detail
 
-- [`docs/PRODUCT_SPEC.md`](docs/PRODUCT_SPEC.md): every screen, table and rule
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): the technical decisions and the reasons behind them
-- [`docs/MILESTONES.md`](docs/MILESTONES.md): the milestone-by-milestone build plan
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md): environments, secrets and release steps
+- [Product spec](docs/PRODUCT_SPEC.md): every screen and rule
+- [Architecture](docs/ARCHITECTURE.md): the technical decisions and why
+- [Milestones](docs/MILESTONES.md): how the build was planned, step by step
 
 ## Author
 
-Aayush Thakur, B.Tech CSE at Jaipur National University.
+**Aayush Thakur**, B.Tech CSE at Jaipur National University.
 [LinkedIn](https://www.linkedin.com/in/aayush-thakur-5b0734326)
