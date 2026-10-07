@@ -19,14 +19,32 @@ personality quiz, and our Instagram reached 140K+ views.
 
 Built by **Aayush Thakur**.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/01-home.jpg" width="180" alt="Home screen with Cafés, Dinners, Movies and Sports cards, Cafés and Dinners marked free"><br><sub><b>Home</b>: pick what you're up for</sub></td>
+    <td align="center"><img src="docs/screenshots/02-sports.jpg" width="180" alt="Sports picker with box cricket, football, 8-ball pool and pickleball and their prices"><br><sub><b>Sports</b>: four games, priced per slot</sub></td>
+    <td align="center"><img src="docs/screenshots/03-time-slot.jpg" width="180" alt="Booking step to choose a fixed weekly time slot"><br><sub><b>Time</b>: a fixed weekly slot</sub></td>
+    <td align="center"><img src="docs/screenshots/04-budget.jpg" width="180" alt="Booking step to choose a budget range"><br><sub><b>Budget</b>: matched with similar budgets</sub></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="docs/screenshots/05-group-type.jpg" width="180" alt="Booking step to choose a mixed, women-only or men-only group"><br><sub><b>Group</b>: mixed, women only or men only</sub></td>
+    <td align="center"><img src="docs/screenshots/06-plan.jpg" width="180" alt="Booking summary with activity, time, group, budget and an option to bring a friend"><br><sub><b>Your plan</b>: check it, bring a +1</sub></td>
+    <td align="center"><img src="docs/screenshots/07-payment.jpg" width="180" alt="Payment screen showing an 8-ball pool booking for 70 rupees"><br><sub><b>Payment</b>: paid slots go through PayU</sub></td>
+    <td></td>
+  </tr>
+</table>
+
 ## How it works
 
 1. **Sign in with your email.** You get a one-time code. No password to remember.
 2. **Make a profile and take the quiz.** A few questions about how you like
    to spend an evening, how social you feel, and what you're into.
-3. **Book a slot.** Café, Dinner, Movie, or a sport like cricket, football or
-   pickleball. Cafés and dinners are free to book. You can bring a friend if
-   you don't want to arrive alone.
+3. **Book a slot.** Café, Dinner, Movie, or a sport (box cricket, football,
+   8-ball pool or pickleball). Cafés and dinners are free to book. Choose a
+   time, your budget, and a mixed, women-only or men-only group. You can
+   bring a friend if you don't want to arrive alone.
 4. **Get matched.** Our team looks at everyone booked for that slot and puts
    together groups of 4 or 5 people who should get along, then picks the venue.
 5. **Meet your group.** You see your groupmates' first names and interests,
