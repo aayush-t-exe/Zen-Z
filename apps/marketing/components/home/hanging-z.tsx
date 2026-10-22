@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import { useEffect, useRef } from 'react';
 import zGlossy from '@/assets/brand/z-glossy.webp';
+import { NoteArrow } from '@/components/ui/icons';
 
 type Lenis = { scrollTo: (t: string | Element, o?: { offset?: number; duration?: number }) => void };
 
@@ -238,7 +239,7 @@ export default function HangingZ({
         aria-hidden
         className="hz-note hand pointer-events-none absolute whitespace-nowrap text-[1.45rem] text-red-deep lg:text-[1.7rem]"
       >
-        <span ref={noteRef}>{note}</span> ↓
+        <span ref={noteRef}>{note}</span> <NoteArrow />
       </span>
     </div>
   );

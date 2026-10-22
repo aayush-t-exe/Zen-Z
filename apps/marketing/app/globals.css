@@ -428,8 +428,12 @@
   font-size: var(--hs-pill, clamp(1.45rem, 6.5vw, 3.3rem));
   margin-left: 0.05em;
 }
-.roll-track {
-  transition: width 0.6s var(--spring);
+/* The width spring is desktop only: on phones it cost a layout every frame
+   (rolling-sentence.tsx snaps the width there instead). */
+@media (hover: hover) and (pointer: fine) {
+  .roll-track {
+    transition: width 0.6s var(--spring);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .roll-in {
@@ -444,14 +448,15 @@
     display: none;
   }
 }
+/* Same units at both ends, so the compositor can run them off the main thread. */
 @keyframes roll-in {
-  from { transform: translateY(105%); }
-  to { transform: translateY(0); }
+  from { transform: translate3d(0, 105%, 0); }
+  to { transform: translate3d(0, 0%, 0); }
 }
 /* Full opacity the whole way: the pill clips it, and a half-faded word fails contrast mid-roll. */
 @keyframes roll-out {
-  from { transform: translateY(0); }
-  to { transform: translateY(-105%); }
+  from { transform: translate3d(0, 0%, 0); }
+  to { transform: translate3d(0, -105%, 0); }
 }
 
 /* Word reveal (components/home/word-reveal.tsx). --lit goes 0 → 1 on scroll. */
