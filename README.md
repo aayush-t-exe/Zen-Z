@@ -33,6 +33,9 @@ Built by **Aayush Thakur**.
 
 <table>
   <tr>
+    <td colspan="4" align="center"><a href="https://zen-z.site"><img src="docs/screenshots/website.jpg" width="760" alt="The zen-z.site home page: 'Spend a café evening with 4 people you haven't met', a phone showing the app, stickers, a QR code and the red Z hanging from the nav"></a><br><sub><b>Website</b>: the home page at <a href="https://zen-z.site">zen-z.site</a></sub></td>
+  </tr>
+  <tr>
     <td align="center"><img src="docs/screenshots/01-home.jpg" width="180" alt="Home screen with Cafés, Dinners, Movies and Sports cards, Cafés and Dinners marked free"><br><sub><b>Home</b>: pick what you're up for</sub></td>
     <td align="center"><img src="docs/screenshots/02-sports.jpg" width="180" alt="Sports picker with box cricket, football, 8-ball pool and pickleball and their prices"><br><sub><b>Sports</b>: four games, priced per slot</sub></td>
     <td align="center"><img src="docs/screenshots/03-time-slot.jpg" width="180" alt="Booking step to choose a fixed weekly time slot"><br><sub><b>Time</b>: a fixed weekly slot</sub></td>
@@ -71,7 +74,7 @@ Students show up as cards that you drag between groups. It also handles
 venues, movie listings, bookings, payments that need a second look, safety
 reports, and basic analytics.
 
-**The website** (web). The public home page, pricing, FAQ, and the legal
+**The website** ([zen-z.site](https://zen-z.site)). The public home page, pricing, FAQ, and the legal
 pages Google Play and our payment provider require.
 
 **The backend.** The database, the security rules that decide who can see
