@@ -121,3 +121,27 @@ when a friend's first paid booking goes through. Automatic full refund if no gro
 cancel; no refund on a no-show. Proof: 150+ students in the first 2 days, @zen_z.app 550+
 followers and 140K+ views, live on Google Play, pitched at JNU Shark Tank (Sep 2026).
 Weekly table capacity is **not stated** until confirmed (`lib/site.ts → tablesPerWeek`).
+
+## 7. Results (2026-10-23, local `next build && next start`, Windows laptop)
+
+**Contract tests:** `npm run contract-test` → 27/27 pass (get-app × 5 user agents, payment-redirect × 5,
+10 pages + 404 with the operator block, sitemap/robots/manifest, regex identical to master and to the
+mobile mirror, `lib/supabase` imported only by payment-redirect). The desktop redirect's `Location` is
+`https://zen-z-app.vercel.app/` (trailing slash), exactly what production sends today.
+
+**Lighthouse** (mobile unless noted; simulated throttling, so local numbers vary run to run):
+
+| Page | Performance | Accessibility | Best Practices | SEO |
+| --- | --- | --- | --- | --- |
+| `/` mobile | 84–85 (stable runs); 61 on a run with the laptop under load | 100 | 100 | 100 |
+| `/pricing` mobile | 88–90 | 100 | 100 | 100 |
+| `/terms` mobile | 95–96 | 100 | 100 | 100 |
+| `/` desktop | 97 | 100 | 100 | 100 |
+
+Home mobile CLS 0, TBT 50–70 ms on clean runs; LCP is the hero paragraph (text) at ~4.1 s simulated
+(0.6 s observed). It is still under the 90 target on a local Windows server (TTFB ~460 ms); re-measure
+on the Vercel preview with PageSpeed Insights before merging.
+
+**What moved the numbers:** trimmed self-hosted fonts; GSAP loaded only near its sections;
+`content-visibility: auto` on offscreen sections; desktop-only parallax and rope breeze; static grain on
+phones; composited screen cycle; no blurred filters on the hero's images (they inflated LCP size).
