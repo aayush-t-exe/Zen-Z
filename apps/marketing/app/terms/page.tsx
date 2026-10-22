@@ -1,22 +1,53 @@
 import type { Metadata } from 'next';
-import LegalLayout from '../../components/legal-layout';
+import LegalPage, { Section, toc } from '@/components/legal/legal-page';
 
 export const metadata: Metadata = {
-  title: 'Terms & Conditions — Zen-Z',
+  title: 'Terms & Conditions',
   description: 'Terms and conditions governing use of the Zen-Z app.',
+  alternates: { canonical: '/terms' },
+};
+
+const S = {
+  about: '1. About Zen-Z',
+  eligibility: '2. Eligibility',
+  identity: '3. Real identity and verification',
+  matching: '4. Personality matching',
+  'group-sizes': '5. Group sizes',
+  booking: '6. Booking',
+  'plus-one': '7. Bring a +1',
+  reveal: '8. Group and venue reveal',
+  chat: '9. Group chat',
+  venues: '10. Venue responsibilities',
+  expenses: '11. Personal expenses at the venue',
+  conduct: '12. User conduct',
+  reports: '13. Reports and enforcement',
+  accounts: '14. Account restrictions and deletion',
+  refunds: '15. Booking and refund rules',
+  referrals: '16. Referral program',
+  safety: '17. Safety and emergencies',
+  ip: '18. Intellectual property',
+  content: '19. User content',
+  'third-parties': '20. Third-party services',
+  changes: '21. Changes to these Terms',
+  law: '22. Governing law',
+  contact: '23. Contact',
 };
 
 export default function TermsPage() {
   return (
-    <LegalLayout title="Terms & Conditions" updated="September 1, 2026">
-      <p>
-        These Terms &amp; Conditions govern your use of the Zen-Z mobile
-        application and related services. Zen-Z is operated by Dhruv Goyal,
-        currently as an individual / unregistered project.
-      </p>
-
-      <div className="legal-section">
-        <h2>1. About Zen-Z</h2>
+    <LegalPage
+      title="Terms & Conditions"
+      updated="October 22, 2026"
+      sections={toc(S)}
+      lede={
+        <>
+          These Terms &amp; Conditions govern your use of the Zen-Z mobile
+          application and related services. Zen-Z is operated by Dhruv Goyal,
+          currently as an individual / unregistered project.
+        </>
+      }
+    >
+      <Section id="about" title={S.about}>
         <p>
           Zen-Z is a social activity booking and coordination platform. It
           helps users meet new people by matching participants using
@@ -28,20 +59,18 @@ export default function TermsPage() {
           operate the cafés, restaurants, cinemas, or sports facilities used
           for meetups.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>2. Eligibility</h2>
+      <Section id="eligibility" title={S.eligibility}>
         <p>
           You must be at least 18 years old to use Zen-Z. Zen-Z does not have
           any parental/guardian consent flow and does not knowingly allow
           anyone under 18 to hold an account. You must provide truthful and
           accurate information.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>3. Real identity and verification</h2>
+      <Section id="identity" title={S.identity}>
         <p>
           Users must provide their real/legal name and a genuine profile photo.
           Zen-Z may manually review profile photos to help confirm account
@@ -52,10 +81,9 @@ export default function TermsPage() {
           Zen-Z does not currently conduct criminal-record, police, employment,
           education, or other background checks.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>4. Personality matching</h2>
+      <Section id="matching" title={S.matching}>
         <p>
           Zen-Z uses information from its personality quiz, together with
           relevant account information such as age and gender, to form
@@ -67,10 +95,9 @@ export default function TermsPage() {
           efforts to form groups it considers compatible based on the
           information available to it.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>5. Group sizes</h2>
+      <Section id="group-sizes" title={S['group-sizes']}>
         <ul>
           <li>Café, Dinner, and Movie: 4&ndash;5 people.</li>
           <li>Box Cricket: 10&ndash;14 people.</li>
@@ -90,15 +117,17 @@ export default function TermsPage() {
           If the required minimum group cannot be formed, Zen-Z cancels the
           slot and automatically refunds affected paid users in full.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>6. Booking</h2>
+      <Section id="booking" title={S.booking}>
         <p>
-          A slot is not booked unless payment is successfully completed. A
-          failed or pending payment does not reserve the slot. Each booking
-          requires a separate successful payment, and users may make multiple
-          bookings, including for the same activity/date/time.
+          Café and Dinner bookings are currently free: they are confirmed as
+          soon as you book, without any payment. For paid activities (currently
+          Movie and Sports), a slot is not booked unless payment is
+          successfully completed. A failed or pending payment does not reserve
+          the slot. Each paid booking requires a separate successful payment,
+          and users may make multiple bookings, including for the same
+          activity/date/time.
         </p>
         <p>
           Paid bookings are personal and cannot be transferred to another
@@ -107,15 +136,18 @@ export default function TermsPage() {
           different slot.
         </p>
         <p>
+          A free booking can be cancelled by you from within the app while it
+          has not yet been matched into a group.
+        </p>
+        <p>
           Bookings for a slot close at midnight IST, two days before the slot
           date. Group formation happens around this cutoff, after which Zen-Z
           confirms the relevant venue, table, ticket, court, or other
           arrangement.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>7. Bring a +1</h2>
+      <Section id="plus-one" title={S['plus-one']}>
         <p>
           For some activities, you may add one companion (&ldquo;+1&rdquo;) to
           your own booking instead of them booking a separate slot. A +1 does
@@ -151,10 +183,9 @@ export default function TermsPage() {
           Zen-Z may refuse, restrict, or remove a +1 booking under the same
           enforcement standards as Sections 12 and 13.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>8. Group and venue reveal</h2>
+      <Section id="reveal" title={S.reveal}>
         <p>
           Your group is revealed once matching is finalized for your slot,
           which can happen well before the event. The exact venue name,
@@ -162,14 +193,14 @@ export default function TermsPage() {
           before the scheduled meetup.
         </p>
         <p>
-          Group members can see each other&apos;s name and year of study. Phone
-          number, profile photo, date of birth, gender, and personality-quiz
-          results are not shown to other group members, under any circumstance.
+          Group members can see each other&apos;s first name and year of study.
+          Phone number, profile photo, date of birth, gender, and
+          personality-quiz results are not shown to other group members, under
+          any circumstance.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>9. Group chat</h2>
+      <Section id="chat" title={S.chat}>
         <p>
           Group chat is text-only. Zen-Z does not routinely read or monitor
           normal private group-chat messages. Users can report another
@@ -185,10 +216,9 @@ export default function TermsPage() {
           administrator may delete a group, in which case its chat messages are
           permanently deleted.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>10. Venue responsibilities</h2>
+      <Section id="venues" title={S.venues}>
         <p>
           Zen-Z coordinates bookings but does not operate the venue. Users are
           responsible for complying with venue rules and for their own conduct
@@ -199,10 +229,9 @@ export default function TermsPage() {
           facilities, entry, or similar matters, contact the venue directly.
           You may also contact Zen-Z for coordination or platform support.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>11. Personal expenses at the venue</h2>
+      <Section id="expenses" title={S.expenses}>
         <p>
           For Café and Dinner, each participant is individually responsible for
           their food, drinks, and other expenses at the venue.
@@ -216,10 +245,9 @@ export default function TermsPage() {
           For Movies, Zen-Z arranges the ticket; additional personal expenses
           remain the participant&apos;s responsibility.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>12. User conduct</h2>
+      <Section id="conduct" title={S.conduct}>
         <p>
           Users must respect other participants and venues. Prohibited conduct
           includes harassment, bullying, threats, violence, sexual harassment
@@ -234,10 +262,9 @@ export default function TermsPage() {
           at Zen-Z meetups. If you bring a +1 (Section 7), this conduct
           standard applies to them as well, and you are responsible for it.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>13. Reports and enforcement</h2>
+      <Section id="reports" title={S.reports}>
         <p>
           Users may report another participant at any time, including after an
           event. Zen-Z investigates reports and may warn, restrict, suspend,
@@ -250,10 +277,9 @@ export default function TermsPage() {
           handle the matter. Intentionally false or malicious reports may
           themselves result in account action.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>14. Account restrictions and deletion</h2>
+      <Section id="accounts" title={S.accounts}>
         <p>
           Zen-Z may reject profile information, restrict bookings, suspend an
           account, remove a user from a group, or permanently ban/delete an
@@ -268,32 +294,31 @@ export default function TermsPage() {
           Deleting your account forfeits any unused referral credits and your
           referral code (Section 16).
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>15. Booking and refund rules</h2>
+      <Section id="refunds" title={S.refunds}>
         <p>
           Cancellation and refund terms are set out in the{' '}
           <a href="/refund">Cancellation &amp; Refund Policy</a> and form part
           of these Terms. Dissatisfaction with a matched group is not, by
           itself, a basis for a refund.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>16. Referral program</h2>
+      <Section id="referrals" title={S.referrals}>
         <p>
           Every user can generate one permanent referral code from the Invite
           screen and share it with any number of friends.
         </p>
         <p>
-          When someone enters your code and their first Zen-Z booking is
-          successfully paid, you earn one referral credit worth ₹21. A credit
-          is automatically applied to your next unpaid booking: it fully
-          covers Café, Dinner, Box Cricket, or Football (₹21 fee), and gives a
-          ₹21 discount on pricier activities (Movie, 8-Ball Pool, Pickleball),
-          with any remaining balance paid by you through PayU as normal. Only
-          one credit is applied per booking.
+          When someone enters your code and their first paid Zen-Z booking
+          (currently a Movie or Sports booking) is successfully paid, you earn
+          one referral credit worth ₹21. Free bookings (currently Café and
+          Dinner) do not earn a referral credit, and a credit is never applied
+          to a free booking. A credit is automatically applied to your next
+          unpaid booking that requires payment (currently a Movie or Sports
+          booking) as a ₹21 discount, with any remaining balance paid by you
+          through PayU as normal. Only one credit is applied per booking.
         </p>
         <p>
           Referral credits have no cash value, cannot be exchanged for money,
@@ -310,10 +335,9 @@ export default function TermsPage() {
           for the booking that earned you a credit, a credit you have already
           received and not yet spent is not taken back.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>17. Safety and emergencies</h2>
+      <Section id="safety" title={S.safety}>
         <p>
           Zen-Z cannot supervise users&apos; physical behavior at a venue and
           cannot guarantee the conduct, identity, intentions, or safety of
@@ -321,10 +345,9 @@ export default function TermsPage() {
           contact local emergency services or police first, then contact Zen-Z
           for platform-related support or reporting.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>18. Intellectual property</h2>
+      <Section id="ip" title={S.ip}>
         <p>
           The Zen-Z name, branding, logo, app and website design, software,
           original text, graphics, and other original materials are owned by
@@ -332,10 +355,9 @@ export default function TermsPage() {
           reproduce, modify, sell, distribute, or commercially exploit these
           materials without permission.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>19. User content</h2>
+      <Section id="content" title={S.content}>
         <p>
           Zen-Z may store and process user-submitted information and content to
           operate the service, match users, communicate with you, moderate
@@ -343,10 +365,9 @@ export default function TermsPage() {
           functions. Zen-Z does not sell users&apos; content or use it for
           advertising.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>20. Third-party services</h2>
+      <Section id="third-parties" title={S['third-parties']}>
         <p>
           Zen-Z uses third-party service providers necessary to operate the
           platform, including Supabase for backend/data storage, Brevo for
@@ -354,34 +375,31 @@ export default function TermsPage() {
           and PayU for payment processing. Their services are governed by
           their own terms and privacy policies.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>21. Changes to these Terms</h2>
+      <Section id="changes" title={S.changes}>
         <p>
           Zen-Z may update these Terms when necessary. The &ldquo;Last
           Updated&rdquo; date will change when the Terms are revised. Material
           changes may be communicated through the app.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>22. Governing law</h2>
+      <Section id="law" title={S.law}>
         <p>
           These Terms are governed by the laws of India. Subject to applicable
           law, courts in Jaipur, Rajasthan have jurisdiction over disputes.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>23. Contact</h2>
+      <Section id="contact" title={S.contact}>
         <p>
           For questions about these Terms, contact{' '}
           <a href="mailto:teamzenz003@gmail.com">teamzenz003@gmail.com</a>.
           Support is available 24×7 with a typical response target of within
           24 hours.
         </p>
-      </div>
-    </LegalLayout>
+      </Section>
+    </LegalPage>
   );
 }

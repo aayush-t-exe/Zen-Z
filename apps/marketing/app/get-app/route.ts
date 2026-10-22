@@ -47,18 +47,48 @@ const SAFARI_URL = WEB_APP_URL.replace(/^https:\/\//, 'x-safari-https://');
 const IOS_CANNOT_INSTALL =
   /CriOS|FxiOS|EdgiOS|OPiOS|OPT\/|DuckDuckGo|GSA\/|FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Snapchat|LinkedInApp|MicroMessenger|Twitter/i;
 
-const STEP_NUMBER_STYLE =
-  'flex-shrink:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#000;font-weight:700;font-size:0.85rem;display:flex;align-items:center;justify-content:center;';
-const PRIMARY_BUTTON_STYLE =
-  'display:inline-block;background:#fff;color:#000;font-weight:600;padding:14px 28px;border-radius:10px;text-decoration:none;';
-const SHARE_ICON =
-  '<svg width="16" height="20" viewBox="0 0 16 20" fill="none" style="vertical-align:-4px;margin:0 2px;"><path d="M8 1v12M4 5 8 1l4 4M1 11v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+// The brand look for these pages ("The Table": cream paper, ink, Zen-Z red),
+// as one inline <style> block. Route handlers can't use the site's CSS, and a
+// QR scan should never wait on another request, so nothing here is external
+// except the app icon, which is a plain file in public/.
+const PAGE_CSS = `
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;min-height:100vh;min-height:100dvh;background:#E9E3D5;color:#0A0908;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.5;display:flex;align-items:center;justify-content:center;
+    padding:max(28px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+  .wrap{width:100%;max-width:400px;text-align:center}
+  .icon{display:block;width:72px;height:72px;margin:0 auto 18px;border-radius:18px;
+    box-shadow:0 0 0 3px #fff,0 10px 22px -8px rgba(10,9,8,.45);transform:rotate(-4deg)}
+  h1{margin:0 0 10px;font-size:1.75rem;line-height:1.08;font-weight:800;letter-spacing:-.025em;text-wrap:balance}
+  .lede{margin:0 0 26px;color:#5C564C}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:54px;
+    padding:0 28px;border-radius:999px;background:#E10600;color:#fff;font-weight:700;font-size:1.05rem;
+    text-decoration:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 0 #A80400;
+    -webkit-tap-highlight-color:transparent}
+  .btn:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 0 #A80400}
+  .steps{list-style:none;margin:0;padding:0;text-align:left;display:grid;gap:12px}
+  .steps li{display:flex;gap:14px;align-items:flex-start;background:#F3EEE3;border:2px solid #0A0908;
+    border-radius:20px;padding:14px 16px;box-shadow:0 4px 0 #0A0908}
+  .steps li:nth-child(odd){transform:rotate(-.6deg)}
+  .steps li:nth-child(even){transform:rotate(.6deg)}
+  .n{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:#E10600;color:#fff;
+    font-weight:800;font-size:.95rem;display:flex;align-items:center;justify-content:center;
+    box-shadow:0 0 0 2px #0A0908}
+  .note{margin:24px 0 0;color:#5C564C;font-size:.875rem;line-height:1.55}
+  .note a,.link{color:#A80400;font-weight:600;text-decoration:underline;text-underline-offset:3px}
+  .link{background:none;border:none;padding:0;font:inherit;cursor:pointer}
+  .skip{display:inline-block;margin-top:22px;color:#0A0908;font-size:.9375rem;font-weight:600;
+    text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+  strong{font-weight:700}
+`;
 
-function step(n: number, body: string, marginBottom = 20): string {
-  return `<li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:${marginBottom}px;">
-          <span style="${STEP_NUMBER_STYLE}">${n}</span>
-          <span>${body}</span>
-        </li>`;
+const SHARE_ICON =
+  '<svg width="16" height="20" viewBox="0 0 16 20" fill="none" style="vertical-align:-4px;margin:0 2px;" aria-label="Share"><path d="M8 1v12M4 5 8 1l4 4M1 11v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" stroke="#0A0908" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function step(n: number, body: string): string {
+  return `<li><span class="n">${n}</span><span>${body}</span></li>`;
 }
 
 /**
@@ -68,26 +98,28 @@ function step(n: number, body: string, marginBottom = 20): string {
  * a student who never opens the app at all.
  */
 function copyLinkFallback(): string {
-  return `<p style="color:#6f727a;font-size:0.8rem;line-height:1.5;margin:22px 0 0;">
+  return `<p class="note">
         Or open Safari yourself and go to
-        <button type="button"
-          onclick="navigator.clipboard.writeText('${WEB_APP_URL}').then(function(){this.textContent='zen-z-app.vercel.app (copied)'}.bind(this))"
-          style="background:none;border:none;padding:0;color:#a0a3ab;font:inherit;text-decoration:underline;cursor:pointer;">zen-z-app.vercel.app</button>
+        <button type="button" class="link"
+          onclick="navigator.clipboard.writeText('${WEB_APP_URL}').then(function(){this.textContent='zen-z-app.vercel.app (copied)'}.bind(this))">zen-z-app.vercel.app</button>
       </p>`;
 }
 
 function page(title: string, body: string): string {
   return `<!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#E9E3D5" />
     <title>${title}</title>
+    <style>${PAGE_CSS}</style>
   </head>
-  <body style="font-family:-apple-system,sans-serif;background:#0b0b0d;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center;">
-    <div style="max-width:360px;">
+  <body>
+    <main class="wrap">
+      <img class="icon" src="/icon-192.png" width="72" height="72" alt="The Zen-Z app icon" />
 ${body}
-    </div>
+    </main>
   </body>
 </html>`;
 }
@@ -95,20 +127,20 @@ ${body}
 function safariInstructionsPage(): string {
   return page(
     'Zen-Z',
-    `      <h1 style="font-size:1.4rem;margin-bottom:8px;">Get the full app on your Home Screen</h1>
-      <p style="color:#a0a3ab;margin-bottom:28px;">Zen-Z isn't on the App Store yet, but you can add it to your Home Screen like a real app: full screen, its own icon, no browser bar.</p>
+    `      <h1>Put Zen-Z on your Home Screen</h1>
+      <p class="lede">Zen-Z isn't on the App Store, but you can add it to your Home Screen and it works like an app: full screen, its own icon, no browser bar.</p>
 
-      <ol style="text-align:left;color:#fff;padding:0;margin:0 0 32px;list-style:none;">
+      <ol class="steps">
         ${step(1, 'Tap <strong>Continue to Zen-Z</strong> below to open the app.')}
         ${step(2, `In Safari, tap the <strong>Share</strong> icon ${SHARE_ICON} in the toolbar.`)}
-        ${step(3, 'Scroll down and tap <strong>Add to Home Screen</strong>.', 0)}
+        ${step(3, 'Scroll down and tap <strong>Add to Home Screen</strong>.')}
       </ol>
 
-      <a href="${WEB_APP_URL}" style="${PRIMARY_BUTTON_STYLE}">Continue to Zen-Z →</a>
+      <p style="margin:28px 0 0;"><a class="btn" href="${WEB_APP_URL}">Continue to Zen-Z →</a></p>
 
-      <p style="color:#6f727a;font-size:0.8rem;line-height:1.5;margin:26px 0 0;">
+      <p class="note">
         No <strong>Add to Home Screen</strong> in that menu? Then this isn't Safari, and only Safari can install it.
-        <a href="${SAFARI_URL}" style="color:#a0a3ab;">Open in Safari</a>.
+        <a href="${SAFARI_URL}">Open in Safari</a>.
       </p>`
   );
 }
@@ -122,21 +154,19 @@ function safariInstructionsPage(): string {
 function openInSafariPage(): string {
   return page(
     'Zen-Z',
-    `      <h1 style="font-size:1.4rem;margin-bottom:8px;">Open this in Safari first</h1>
-      <p style="color:#a0a3ab;margin-bottom:28px;">Zen-Z installs to your Home Screen from Safari, and only from Safari. The browser you're in right now can't do it.</p>
+    `      <h1>Open this in Safari first</h1>
+      <p class="lede">Zen-Z installs to your Home Screen from Safari, and only from Safari. The browser you're in right now can't do it.</p>
 
-      <a href="${SAFARI_URL}" style="${PRIMARY_BUTTON_STYLE}">Open in Safari →</a>
+      <p style="margin:0 0 30px;"><a class="btn" href="${SAFARI_URL}">Open in Safari →</a></p>
 
-      <ol style="text-align:left;color:#fff;padding:0;margin:32px 0 0;list-style:none;">
+      <ol class="steps">
         ${step(1, `Once Safari opens, tap the <strong>Share</strong> icon ${SHARE_ICON} in the toolbar.`)}
-        ${step(2, 'Scroll down and tap <strong>Add to Home Screen</strong>.', 0)}
+        ${step(2, 'Scroll down and tap <strong>Add to Home Screen</strong>.')}
       </ol>
 
 ${copyLinkFallback()}
 
-      <p style="margin:26px 0 0;">
-        <a href="${WEB_APP_URL}" style="color:#6f727a;font-size:0.8rem;">Skip for now, just open Zen-Z</a>
-      </p>`
+      <a class="skip" href="${WEB_APP_URL}">Skip for now, just open Zen-Z</a>`
   );
 }
 
