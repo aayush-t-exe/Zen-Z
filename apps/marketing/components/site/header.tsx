@@ -48,7 +48,7 @@ export default function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5">
-            <Link href="/#download" className="btn btn-red !min-h-[2.5rem] !px-3.5 text-[0.875rem] sm:!min-h-[2.6rem] sm:!px-4 sm:text-[0.9375rem]">
+            <Link href="/#download" className="header-get btn btn-red !min-h-[2.5rem] !px-3.5 text-[0.875rem] sm:!min-h-[2.6rem] sm:!px-4 sm:text-[0.9375rem]">
               Get the app
             </Link>
             <button

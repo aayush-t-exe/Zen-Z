@@ -72,7 +72,7 @@ export default function Hero() {
           <div className="absolute left-1/2 top-1/2 w-[48%] -translate-x-1/2 lg:w-[45%] -translate-y-1/2 rotate-[5deg]">
             <Phone shots={shots} sizes="(min-width: 1024px) 260px, 48vw" cycle video>
               {/* QR stuck onto the phone like a sticker: desktop only. */}
-              <div className="absolute -right-[46%] bottom-[3%] hidden w-[66%] rotate-[4deg] rounded-[1.4rem] border-2 border-ink bg-white p-3 pb-2 shadow-[0_6px_0_#0A0908] lg:block">
+              <div data-qr-spot className="absolute -right-[46%] bottom-[3%] hidden w-[66%] rotate-[4deg] rounded-[1.4rem] border-2 border-ink bg-white p-3 pb-2 shadow-[0_6px_0_#0A0908] lg:block">
                 <Qr className="aspect-square w-full" />
                 <p className="hand mt-1 text-center text-[1.35rem] leading-none text-ink">scan with your phone</p>
               </div>

@@ -599,6 +599,59 @@
   opacity: 0;
   pointer-events: none;
 }
+/* Desktop corner: the QR card springs out of the round button. */
+.qr-card {
+  transform-origin: calc(100% - 1.75rem) 100%;
+  transition:
+    transform 0.45s var(--spring),
+    opacity 0.2s var(--out),
+    visibility 0s;
+}
+.qr-corner[data-open='false'] .qr-card {
+  transform: translateY(0.75rem) scale(0.6) rotate(6deg);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.25s var(--out),
+    opacity 0.2s var(--out),
+    visibility 0s 0.25s;
+}
+.qr-corner-btn {
+  transition: transform 0.35s var(--spring);
+}
+.qr-corner[data-open='true'] .qr-corner-btn {
+  transform: rotate(-8deg) scale(1.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-card,
+  .qr-corner[data-open='false'] .qr-card {
+    transform: none;
+  }
+}
+
+/* Phones: one red button at a time. While the bottom bar shows, the header's fades out. */
+.header-get {
+  transition:
+    transform 0.35s var(--spring),
+    box-shadow 0.35s var(--out),
+    opacity 0.25s var(--out),
+    visibility 0s;
+}
+html[data-bar='on'] .header-get {
+  opacity: 0;
+  transform: scale(0.9);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.25s var(--out),
+    opacity 0.25s var(--out),
+    visibility 0s 0.25s;
+}
+/* The bar is 3.5rem tall plus its safe-area gap; the footer's end always clears it. */
+body:has(.sticky-bar) .site-footer > .shell {
+  padding-bottom: calc(4.5rem + max(1rem, env(safe-area-inset-bottom)));
+}
 
 /* Hide scrollbars on horizontal shelves while keeping them scrollable. */
 .no-scrollbar {

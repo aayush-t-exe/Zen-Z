@@ -50,7 +50,7 @@ export default function Closing() {
             <div aria-hidden className="z-glow absolute inset-[-20%] rounded-full" />
             <Image src={zGlossy} alt="" sizes="(min-width: 1024px) 300px, 55vw" className="z-float relative w-[62%] drop-shadow-[0_30px_40px_rgba(225,6,0,0.35)]" />
             {/* Desktop: the QR card. Phones already have the buttons. */}
-            <div className="absolute -bottom-6 right-0 hidden w-44 rotate-[6deg] rounded-[1.4rem] border-2 border-ink bg-white p-3 pb-2 text-ink shadow-[0_6px_0_#000] lg:block">
+            <div data-qr-spot className="absolute -bottom-6 right-0 hidden w-44 rotate-[6deg] rounded-[1.4rem] border-2 border-ink bg-white p-3 pb-2 text-ink shadow-[0_6px_0_#000] lg:block">
               <Qr className="aspect-square w-full" />
               <p className="hand mt-1 text-center text-[1.3rem] leading-none">scan with your phone</p>
             </div>
