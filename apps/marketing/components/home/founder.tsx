@@ -35,7 +35,8 @@ export default function Founder() {
           <p className="hand text-[1.6rem] text-red-deep sm:text-[1.9rem]">who builds your table</p>
           <h2 id="founder-title" className="display mt-2 text-[clamp(2.4rem,7vw,4.6rem)]">
             Hi, I’m Aayush. We read the{' '}
-            <span className="relative inline-block whitespace-nowrap">
+            {/* The margin leaves room for the scribble circle, which reaches past the word. */}
+            <span className="relative ml-[0.14em] inline-block whitespace-nowrap">
               <span className="warm text-red-deep">answers.</span>
               <ScribbleCircle className="absolute -inset-x-3 -inset-y-2 h-[calc(100%+1rem)] w-[calc(100%+1.5rem)] text-red" />
             </span>
