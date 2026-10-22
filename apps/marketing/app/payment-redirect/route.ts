@@ -45,25 +45,50 @@ import { supabase } from '@/lib/supabase';
 
 const MOBILE_DEEP_LINK_SCHEME = 'mobile://';
 
+// The brand look ("The Table": cream paper, ink, Zen-Z red), inline because a
+// route handler can't use the site's stylesheet. No external requests besides
+// the app icon, a plain file in public/.
+const PAGE_CSS = `
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;min-height:100vh;min-height:100dvh;background:#E9E3D5;color:#0A0908;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;line-height:1.5;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:max(28px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(28px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left))}
+  .wrap{width:100%;max-width:380px}
+  .icon{display:block;width:72px;height:72px;margin:0 auto 18px;border-radius:18px;
+    box-shadow:0 0 0 3px #fff,0 10px 22px -8px rgba(10,9,8,.45);transform:rotate(-4deg)}
+  h1{margin:0 0 10px;font-size:2rem;line-height:1.05;font-weight:800;letter-spacing:-.03em;text-wrap:balance}
+  p{margin:0 0 26px;color:#5C564C}
+  .button{display:inline-flex;align-items:center;justify-content:center;min-height:54px;padding:0 28px;
+    border-radius:999px;background:#E10600;color:#fff;font-weight:700;font-size:1.05rem;text-decoration:none;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 4px 0 #A80400;-webkit-tap-highlight-color:transparent}
+  .button:active{transform:translateY(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.25),0 2px 0 #A80400}
+`;
+
 function pageHtml(heading: string, subtext: string, target: string | null): string {
   const button = target
-    ? `<a class="button" href="${target}" style="display:inline-block;background:#fff;color:#000;font-weight:600;padding:14px 28px;border-radius:10px;text-decoration:none;">Return to app →</a>
+    ? `<a class="button" href="${target}">Return to app →</a>
        <script>window.location.href = ${JSON.stringify(target)};</script>`
     : '';
 
   return `<!doctype html>
-<html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#E9E3D5" />
+    <meta name="robots" content="noindex" />
     <title>Zen-Z</title>
+    <style>${PAGE_CSS}</style>
   </head>
-  <body style="font-family:-apple-system,sans-serif;background:#0b0b0d;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;text-align:center;">
-    <div style="max-width:360px;">
-      <h1 style="font-size:1.5rem;margin-bottom:8px;">${heading}</h1>
-      <p style="color:#a0a3ab;margin-bottom:24px;">${subtext}</p>
+  <body>
+    <main class="wrap">
+      <img class="icon" src="/icon-192.png" width="72" height="72" alt="The Zen-Z app icon" />
+      <h1>${heading}</h1>
+      <p>${subtext}</p>
       ${button}
-    </div>
+    </main>
   </body>
 </html>`;
 }
@@ -75,7 +100,7 @@ function htmlResponse(body: string, status = 200): NextResponse {
 async function handlePayuReturn(txnid: string | null, status: string | null): Promise<NextResponse> {
   if (!txnid) {
     return htmlResponse(
-      pageHtml('Invalid redirect', 'This link is missing or malformed.', null),
+      pageHtml('This link is broken.', 'It’s missing the payment details. Head back to the app and check your booking there.', null),
       400
     );
   }
@@ -86,16 +111,16 @@ async function handlePayuReturn(txnid: string | null, status: string | null): Pr
 
   if (error || !slotId) {
     return htmlResponse(
-      pageHtml('Invalid redirect', "We couldn't find this payment. Please return to the app and try again.", null),
+      pageHtml('We couldn’t find that payment.', 'Head back to the app and check your booking there. If you were charged, email teamzenz003@gmail.com and we’ll sort it out.', null),
       404
     );
   }
 
   const target = `${MOBILE_DEEP_LINK_SCHEME}payment-callback?slotId=${encodeURIComponent(slotId)}`;
   const paid = status === 'success';
-  const heading = paid ? 'Your invitation is sealed' : "We didn't receive your payment";
+  const heading = paid ? 'You’re in.' : 'We didn’t get your payment.';
   const subtext = paid
-    ? "Tap below to head back — we'll confirm everything there."
+    ? 'Tap below to head back to the app. We’ll confirm everything there.'
     : 'Tap below to head back and try again.';
 
   return htmlResponse(pageHtml(heading, subtext, target));
