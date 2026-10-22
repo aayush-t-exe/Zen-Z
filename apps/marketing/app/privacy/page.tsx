@@ -1,22 +1,42 @@
 import type { Metadata } from 'next';
-import LegalLayout from '../../components/legal-layout';
+import LegalPage, { Section, toc } from '@/components/legal/legal-page';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy — Zen-Z',
+  title: 'Privacy Policy',
   description: 'How Zen-Z collects, uses, stores, and protects your information.',
+  alternates: { canonical: '/privacy' },
+};
+
+const S = {
+  collect: '1. Information we collect',
+  use: '2. How we use information',
+  visible: '3. Information visible to other group members',
+  chat: '4. Chat privacy',
+  photos: '5. Profile photos',
+  providers: '6. Service providers',
+  website: '7. Website privacy',
+  retention: '8. Data retention',
+  security: '9. Security',
+  age: '10. Children and age',
+  changes: '11. Changes to this Privacy Policy',
+  contact: '12. Contact',
 };
 
 export default function PrivacyPage() {
   return (
-    <LegalLayout title="Privacy Policy" updated="September 1, 2026">
-      <p>
-        This Privacy Policy explains how Zen-Z, operated by Dhruv Goyal,
-        collects, uses, stores, and protects information when you use the
-        Zen-Z mobile application.
-      </p>
-
-      <div className="legal-section">
-        <h2>1. Information we collect</h2>
+    <LegalPage
+      title="Privacy Policy"
+      updated="October 22, 2026"
+      sections={toc(S)}
+      lede={
+        <>
+          This Privacy Policy explains how Zen-Z, operated by Dhruv Goyal,
+          collects, uses, stores, and protects information when you use the
+          Zen-Z mobile application.
+        </>
+      }
+    >
+      <Section id="collect" title={S.collect}>
         <h3>Account and profile information</h3>
         <ul>
           <li>Real/legal name</li>
@@ -69,10 +89,9 @@ export default function PrivacyPage() {
           payment/order identifiers, payment status, and related transaction
           references.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>2. How we use information</h2>
+      <Section id="use" title={S.use}>
         <ul>
           <li>Create and manage user accounts.</li>
           <li>Verify profiles and account information.</li>
@@ -86,22 +105,20 @@ export default function PrivacyPage() {
           <li>Investigate reports and enforce community rules.</li>
           <li>Maintain security and prevent misuse.</li>
         </ul>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>3. Information visible to other group members</h2>
+      <Section id="visible" title={S.visible}>
         <p>
-          Once a group is revealed, members can see another member&apos;s name
-          and year of study only. Phone number, profile photo, date of birth,
-          gender, and personality-quiz responses are never shown to other group
-          members, under any circumstance. If a group member brings a +1, the
-          companion&apos;s first name is visible to the rest of the group, the
-          same as any other member&apos;s name.
+          Once a group is revealed, members can see another member&apos;s first
+          name and year of study only. Phone number, profile photo, date of
+          birth, gender, and personality-quiz responses are never shown to
+          other group members, under any circumstance. If a group member brings
+          a +1, the companion&apos;s first name is visible to the rest of the
+          group, the same as any other member&apos;s name.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>4. Chat privacy</h2>
+      <Section id="chat" title={S.chat}>
         <p>
           Normal group chats are private between group members. Zen-Z does not
           routinely read or monitor them.
@@ -111,10 +128,9 @@ export default function PrivacyPage() {
           specific reported message and relevant report information for
           investigation and enforcement.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>5. Profile photos</h2>
+      <Section id="photos" title={S.photos}>
         <p>
           Profile photos are uploaded through the app and stored using Supabase
           Storage. They are used for profile/identity verification only and are
@@ -126,10 +142,9 @@ export default function PrivacyPage() {
           images, nudity, sexually explicit material, hateful or violent
           imagery, or impersonating content.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>6. Service providers</h2>
+      <Section id="providers" title={S.providers}>
         <p>Zen-Z uses service providers necessary to operate the application:</p>
         <ul>
           <li><strong>Supabase:</strong> backend services, application data, and profile-photo storage.</li>
@@ -142,20 +157,18 @@ export default function PrivacyPage() {
           Data may be shared with service providers when reasonably necessary
           to provide and secure the service.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>7. Website privacy</h2>
+      <Section id="website" title={S.website}>
         <p>
           The Zen-Z website is informational only. It does not provide user
           login, account creation, booking, or payment functionality — those
           happen in the mobile app. The website does not currently use cookies,
           tracking technologies, or analytics services.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>8. Data retention</h2>
+      <Section id="retention" title={S.retention}>
         <p>
           Zen-Z generally retains information while an account is active.
           When a user deletes their account, personal information and the
@@ -166,19 +179,17 @@ export default function PrivacyPage() {
           including transaction and referral records associated with a
           deleted account.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>9. Security</h2>
+      <Section id="security" title={S.security}>
         <p>
           Zen-Z takes reasonable measures intended to protect information
           against unauthorized access, misuse, loss, or alteration. No method
           of storage or transmission can be guaranteed to be completely secure.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>10. Children and age</h2>
+      <Section id="age" title={S.age}>
         <p>
           Zen-Z is intended for users aged 18 and above only. It is not
           directed at children, and we do not knowingly allow anyone under 18
@@ -189,26 +200,24 @@ export default function PrivacyPage() {
           requirement, since Zen-Z has no independent way to verify a
           companion&apos;s age.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>11. Changes to this Privacy Policy</h2>
+      <Section id="changes" title={S.changes}>
         <p>
           We may update this Privacy Policy when necessary. The Last Updated
           date will change when revisions are made. Material changes may be
           communicated through the app where appropriate.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>12. Contact</h2>
+      <Section id="contact" title={S.contact}>
         <p>
           Privacy questions or requests can be sent to{' '}
           <a href="mailto:teamzenz003@gmail.com">teamzenz003@gmail.com</a>.
           Support is available 24×7 with a typical response target of within
           24 hours.
         </p>
-      </div>
-    </LegalLayout>
+      </Section>
+    </LegalPage>
   );
 }

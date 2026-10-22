@@ -1,22 +1,34 @@
 import type { Metadata } from 'next';
-import LegalLayout from '../../components/legal-layout';
+import LegalPage, { Section, toc } from '@/components/legal/legal-page';
 
 export const metadata: Metadata = {
-  title: 'Delete Your Account — Zen-Z',
+  title: 'Delete Your Account',
   description: 'How to delete your Zen-Z account and what happens to your data.',
+  alternates: { canonical: '/delete-account' },
+};
+
+const S = {
+  'in-app': 'Delete from the app',
+  request: 'Request deletion without the app',
+  deleted: 'What gets deleted',
+  contact: 'Contact',
 };
 
 export default function DeleteAccountPage() {
   return (
-    <LegalLayout title="Delete Your Account" updated="September 6, 2026">
-      <p>
-        You can delete your Zen-Z account and profile information at any
-        time, either from inside the app or by requesting it here if you no
-        longer have the app installed.
-      </p>
-
-      <div className="legal-section">
-        <h2>Delete from the app</h2>
+    <LegalPage
+      title="Delete Your Account"
+      updated="September 6, 2026"
+      sections={toc(S)}
+      lede={
+        <>
+          You can delete your Zen-Z account and profile information at any
+          time, either from inside the app or by requesting it here if you no
+          longer have the app installed.
+        </>
+      }
+    >
+      <Section id="in-app" title={S['in-app']}>
         <ol>
           <li>Open the Zen-Z app and sign in.</li>
           <li>Go to the Profile tab.</li>
@@ -29,10 +41,9 @@ export default function DeleteAccountPage() {
           pending or matched, resolve or cancel it first &mdash; the app
           will ask you to do this before it can complete the deletion.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>Request deletion without the app</h2>
+      <Section id="request" title={S.request}>
         <p>
           If you don&apos;t have the app installed or can&apos;t sign in,
           email{' '}
@@ -41,10 +52,9 @@ export default function DeleteAccountPage() {
           my account&rdquo; and your full name. We&apos;ll verify the request
           and delete your account within 7 days.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>What gets deleted</h2>
+      <Section id="deleted" title={S.deleted}>
         <p>
           Your personal information and profile photo are removed. Messages
           you previously sent in a group chat may remain visible to other
@@ -56,17 +66,16 @@ export default function DeleteAccountPage() {
           <a href="/privacy">Privacy Policy</a> for the full data-retention
           details.
         </p>
-      </div>
+      </Section>
 
-      <div className="legal-section">
-        <h2>Contact</h2>
+      <Section id="contact" title={S.contact}>
         <p>
           Questions about account deletion can be sent to{' '}
           <a href="mailto:teamzenz003@gmail.com">teamzenz003@gmail.com</a>.
           Support is available 24&times;7 with a typical response target of
           within 24 hours.
         </p>
-      </div>
-    </LegalLayout>
+      </Section>
+    </LegalPage>
   );
 }
