@@ -3,7 +3,7 @@ import { homeFaqs } from '@/lib/content';
 
 export default function Faq() {
   return (
-    <section id="faq" aria-labelledby="faq-title" className="relative bg-paper py-24 sm:py-32">
+    <section id="faq" aria-labelledby="faq-title" className="cv relative bg-paper py-24 sm:py-32">
       <div className="shell grid gap-12 lg:grid-cols-[0.8fr_1.2fr] lg:gap-20">
         <div>
           <p className="hand text-[1.6rem] text-red-deep sm:text-[1.9rem]">fair questions</p>

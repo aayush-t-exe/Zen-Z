@@ -21,7 +21,7 @@ function Price({ p }: { p: Plan['price'] }) {
 
 export default function Plans() {
   return (
-    <section id="plans" className="relative overflow-x-clip bg-paper-2 py-24 sm:py-32">
+    <section id="plans" className="cv relative overflow-x-clip bg-paper-2 py-24 sm:py-32">
       <div className="shell">
         <div className="grid items-end gap-6 lg:grid-cols-[1.2fr_1fr]">
           <div>

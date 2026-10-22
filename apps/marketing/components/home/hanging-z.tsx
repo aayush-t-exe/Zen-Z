@@ -50,12 +50,17 @@ export default function HangingZ({
     let running = false;
     let visible = true;
     let last = 0;
+    let dragging = false;
+    let lastTouch = 0;
     let cleanup = () => {};
+    // The breeze (an always-running loop) is for desktop. On phones the rope
+    // only simulates while you play with it, then sleeps and a CSS sway takes over.
+    const breezy = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
 
     import('@/lib/rope').then(({ Rope }) => {
       if (cancelled) return;
       const len = parseFloat(getComputedStyle(el).getPropertyValue('--len')) || 160;
-      const rope = new Rope({ length: len, segments: 12 });
+      const rope = new Rope({ length: len, segments: 12, wind: breezy });
       el.dataset.live = 'true';
 
       const draw = () => {
@@ -66,12 +71,18 @@ export default function HangingZ({
       const frame = (t: number) => {
         const dt = last ? (t - last) / 1000 : 1 / 60;
         last = t;
-        rope.update(dt);
+        const speed = rope.update(dt);
         draw();
+        if (!breezy && !dragging && speed < 6 && t - lastTouch > 900) {
+          running = false;
+          el.dataset.sleep = 'true';
+          return;
+        }
         raf = requestAnimationFrame(frame);
       };
       const start = () => {
         if (running || !visible || document.hidden) return;
+        if (!breezy && el.dataset.sleep === 'true') return;
         running = true;
         last = 0;
         raf = requestAnimationFrame(frame);
@@ -82,7 +93,6 @@ export default function HangingZ({
       };
 
       // Pointer drag, relative to the anchor (the element's own origin).
-      let dragging = false;
       let moved = 0;
       let sx = 0;
       let sy = 0;
@@ -102,6 +112,8 @@ export default function HangingZ({
         if (e.button !== 0) return;
         e.preventDefault();
         dragging = true;
+        lastTouch = performance.now();
+        el.dataset.sleep = 'false';
         moved = 0;
         z.setPointerCapture(e.pointerId);
         const p = local(e);
@@ -132,6 +144,7 @@ export default function HangingZ({
       const onUp = (e: PointerEvent) => {
         if (!dragging) return;
         dragging = false;
+        lastTouch = performance.now();
         el.dataset.drag = 'false';
         try {
           z.releasePointerCapture(e.pointerId);
@@ -165,6 +178,7 @@ export default function HangingZ({
       document.addEventListener('visibilitychange', onVis);
 
       draw();
+      if (!breezy) el.dataset.sleep = 'true';
       start();
 
       cleanup = () => {
@@ -203,16 +217,22 @@ export default function HangingZ({
         className="hz-z absolute left-0 top-0 block cursor-grab touch-none select-none rounded-[40%] active:cursor-grabbing"
         style={{ width: 'var(--zw)', marginLeft: 'calc(var(--zw) / -2)', transformOrigin: '50% 0' }}
       >
-        {/* The little ring the cord is tied to. */}
-        <span aria-hidden className="absolute left-1/2 top-[-7px] h-[14px] w-[14px] -translate-x-1/2 rounded-full border-[2.5px] border-ink" />
-        <Image
-          src={zGlossy}
-          alt=""
-          sizes="(min-width: 1024px) 160px, 96px"
-          className="pointer-events-none relative h-auto w-full drop-shadow-[0_18px_22px_rgba(120,10,0,0.35)]"
-          loading="eager"
-          draggable={false}
-        />
+        <span className="hz-sway relative block">
+          {/* The little ring the cord is tied to. */}
+          <span aria-hidden className="absolute left-1/2 top-[-7px] h-[14px] w-[14px] -translate-x-1/2 rounded-full border-[2.5px] border-ink" />
+          {/* The shadow is its own soft ellipse, not a filter on the image: a
+              filter's blur counts toward the image's paint size, which made this
+              decoration the page's LCP element instead of the headline. */}
+          <span aria-hidden className="absolute inset-x-[12%] bottom-[-14%] h-[22%] rounded-[50%] bg-[radial-gradient(closest-side,rgba(120,10,0,0.32),transparent)]" />
+          <Image
+            src={zGlossy}
+            alt=""
+            sizes="(min-width: 1024px) 160px, 96px"
+            className="pointer-events-none relative h-auto w-full"
+            loading="eager"
+            draggable={false}
+          />
+        </span>
       </button>
       <span
         aria-hidden

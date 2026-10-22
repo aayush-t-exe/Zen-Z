@@ -20,6 +20,9 @@ const REPO = join(APP_DIR, '..', '..');
 
 const PLAY = 'https://play.google.com/store/apps/details?id=com.campussocial.app&hl=en';
 const WEB_APP = 'https://zen-z-app.vercel.app';
+// NextResponse.redirect normalises the URL, so the Location header carries a
+// trailing slash. Production (master) sends exactly this today.
+const WEB_APP_LOCATION = 'https://zen-z-app.vercel.app/';
 const NO_STORE = 'no-store, must-revalidate';
 
 const UA = {
@@ -113,7 +116,7 @@ async function testGetApp() {
   r = await get('/get-app', { ua: UA.windows });
   expect(g, 'Windows desktop → 302 web app', [
     [r.status === 302, `status ${r.status}`],
-    [r.headers.get('location') === WEB_APP, `location ${r.headers.get('location')}`],
+    [r.headers.get('location') === WEB_APP_LOCATION, `location ${r.headers.get('location')}`],
     [(r.headers.get('cache-control') || '').includes(NO_STORE), `cache-control ${r.headers.get('cache-control')}`],
   ]);
 }

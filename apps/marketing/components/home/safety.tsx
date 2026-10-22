@@ -24,7 +24,7 @@ const tones: Record<string, string> = {
 export default function Safety() {
   return (
     <section id="safety" aria-labelledby="safety-title" className="on-ink curve-top relative z-10 bg-ink py-24 text-fg sm:py-32">
-      <div className="shell">
+      <div className="cv shell">
         <div className="grid items-end gap-6 lg:grid-cols-[1.3fr_1fr]">
           <div>
             <p className="hand text-[1.6rem] text-red-text sm:text-[1.9rem]">the important bit</p>

@@ -1,11 +1,7 @@
 'use client';
 
-import { useRef } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { useEffect, useRef } from 'react';
+import { loadGsap, useNear } from '@/lib/gsap-lazy';
 
 /**
  * CRED/Opal-style reading reveal: each word goes from dim to cream as the
@@ -23,31 +19,36 @@ export default function WordReveal({
   className?: string;
 }) {
   const scope = useRef<HTMLParagraphElement>(null);
+  const near = useNear(scope);
   const words = text.split(' ');
 
-  useGSAP(
-    () => {
-      const mm = gsap.matchMedia();
-      mm.add('(prefers-reduced-motion: no-preference)', () => {
-        const els = gsap.utils.toArray<HTMLElement>('.wr-word', scope.current);
-        // Dim is #6F6A62 on ink (3.6:1, fine for this large type), never opacity.
-        gsap.set(els, { '--lit': 0 });
-        gsap.to(els, {
-          '--lit': 1,
-          ease: 'none',
-          stagger: 0.12,
-          scrollTrigger: {
-            trigger: scope.current,
-            start: 'top 82%',
-            end: 'bottom 45%',
-            scrub: 0.6,
-          },
+  useEffect(() => {
+    if (!near) return;
+    let cancelled = false;
+    let revert = () => {};
+    loadGsap().then(({ gsap }) => {
+      if (cancelled) return;
+      const ctx = gsap.context(() => {
+        const mm = gsap.matchMedia();
+        mm.add('(prefers-reduced-motion: no-preference)', () => {
+          const els = gsap.utils.toArray<HTMLElement>('.wr-word');
+          // Dim is #6F6A62 on ink (3.6:1, fine for this large type), never opacity.
+          gsap.set(els, { '--lit': 0 });
+          gsap.to(els, {
+            '--lit': 1,
+            ease: 'none',
+            stagger: 0.12,
+            scrollTrigger: { trigger: scope.current, start: 'top 82%', end: 'bottom 45%', scrub: 0.6 },
+          });
         });
-      });
-      return () => mm.revert();
-    },
-    { scope }
-  );
+      }, scope);
+      revert = () => ctx.revert();
+    });
+    return () => {
+      cancelled = true;
+      revert();
+    };
+  }, [near]);
 
   return (
     <p ref={scope} className={className}>

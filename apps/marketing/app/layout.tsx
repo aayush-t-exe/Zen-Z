@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
-import { Archivo, Caveat, Fraunces, Instrument_Sans } from 'next/font/google';
+import { Caveat } from 'next/font/google';
+import localFont from 'next/font/local';
 import SiteHeader from '@/components/site/header';
 import SiteFooter from '@/components/site/footer';
 import SiteBehavior from '@/components/site/site-behavior';
@@ -8,27 +9,38 @@ import './globals.css';
 
 // Archivo for display (the portfolio's face), Fraunces italic and Instrument
 // Sans from the app itself, Caveat for the handwritten margin notes only.
-// Self-hosted by next/font with size-adjusted fallbacks, so nothing shifts.
-const archivo = Archivo({
-  subsets: ['latin'],
-  axes: ['wdth'],
+// The first three are self-hosted, trimmed copies (assets/fonts, OFL): only
+// the weights and widths this site uses, Latin plus ₹ and curly quotes, which
+// takes Archivo from 88 kB to 36 kB. size-adjusted fallbacks keep text still
+// while they load.
+const archivo = localFont({
+  src: '../assets/fonts/archivo.woff2',
+  weight: '600 900',
+  declarations: [{ prop: 'font-stretch', value: '100% 115%' }],
   variable: '--font-archivo',
   display: 'swap',
+  adjustFontFallback: 'Arial',
 });
-const instrument = Instrument_Sans({
-  subsets: ['latin'],
+const instrument = localFont({
+  src: '../assets/fonts/instrument-sans.woff2',
+  weight: '400 700',
   variable: '--font-instrument',
   display: 'swap',
+  adjustFontFallback: 'Arial',
 });
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  style: ['italic'],
-  axes: ['SOFT', 'WONK'],
+// Accent words only (SemiBold Italic, SOFT 100); not worth competing with the first paint for.
+const fraunces = localFont({
+  src: '../assets/fonts/fraunces-italic.woff2',
+  weight: '600',
+  style: 'italic',
   variable: '--font-fraunces',
   display: 'swap',
+  preload: false,
+  adjustFontFallback: 'Times New Roman',
 });
 const caveat = Caveat({
   subsets: ['latin'],
+  weight: '600',
   variable: '--font-caveat',
   display: 'swap',
   preload: false,

@@ -50,8 +50,9 @@ export default function Hero() {
 
         <div className="relative z-10 lg:pt-10">
           <p className="max-w-[30rem] text-[1.125rem] leading-relaxed text-ink/80 sm:text-[1.25rem]">
-            Pick a plan. Answer a few questions. A person on our team builds the table by hand.{' '}
-            <span className="warm text-red-deep">You just show up.</span>
+            Pick a plan. Answer a few questions. A person on our team builds the table by hand.
+            {/* Its own line, so the italic font arriving late can't re-wrap the paragraph. */}
+            <span className="warm block text-red-deep">You just show up.</span>
           </p>
 
           <GetAppCta className="mt-8" />

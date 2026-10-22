@@ -10,7 +10,7 @@ const text =
 export default function Feeling() {
   return (
     <section aria-label="Why Zen-Z exists" className="on-ink curve-top relative z-10 bg-ink py-24 text-fg sm:py-32 lg:py-40">
-      <div className="shell relative">
+      <div className="cv shell relative">
         <p className="hand text-[1.6rem] text-red-text sm:text-[1.9rem]">honestly,</p>
         <WordReveal
           text={text}

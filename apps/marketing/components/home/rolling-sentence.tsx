@@ -54,11 +54,14 @@ function Pill({
       if (onScreen && !document.hidden) roll();
       timer = window.setTimeout(tick, every);
     };
-    timer = window.setTimeout(tick, delay);
+    const begin = () => (timer = window.setTimeout(tick, delay));
+    if (document.readyState === 'complete') begin();
+    else window.addEventListener('load', begin, { once: true });
     const io = new IntersectionObserver(([e]) => (onScreen = e.isIntersecting));
     if (btn.current) io.observe(btn.current);
     return () => {
       window.clearTimeout(timer);
+      window.removeEventListener('load', begin);
       io.disconnect();
     };
   }, [every, delay, roll]);

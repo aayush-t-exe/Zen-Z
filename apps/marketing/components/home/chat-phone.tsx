@@ -1,12 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
+import { useEffect, useRef, useState } from 'react';
 import { exampleChat } from '@/lib/content';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { loadGsap, useNear } from '@/lib/gsap-lazy';
 
 /**
  * Cleo-style chat: bubbles pop in one by one as the section scrolls past.
@@ -18,8 +14,14 @@ export default function ChatPhone({ triggerId }: { triggerId: string }) {
   const [shown, setShown] = useState<number>(n);
   const scope = useRef<HTMLDivElement>(null);
 
-  useGSAP(
-    () => {
+  const near = useNear(scope);
+
+  useEffect(() => {
+    if (!near) return;
+    let cancelled = false;
+    let revert = () => {};
+    loadGsap().then(({ gsap, ScrollTrigger }) => {
+      if (cancelled) return;
       const mm = gsap.matchMedia();
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         setShown(0);
@@ -34,10 +36,13 @@ export default function ChatPhone({ triggerId }: { triggerId: string }) {
           setShown(n);
         };
       });
-      return () => mm.revert();
-    },
-    { scope }
-  );
+      revert = () => mm.revert();
+    });
+    return () => {
+      cancelled = true;
+      revert();
+    };
+  }, [near, n, triggerId]);
 
   return (
     <div ref={scope} className="phone mx-auto w-full max-w-[20rem] rotate-[-3deg]">

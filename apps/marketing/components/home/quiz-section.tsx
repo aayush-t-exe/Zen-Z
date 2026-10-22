@@ -2,7 +2,7 @@ import QuizTeaser from './quiz-teaser';
 
 export default function QuizSection() {
   return (
-    <section aria-labelledby="quiz-title" className="relative bg-paper py-24 sm:py-32">
+    <section aria-labelledby="quiz-title" className="cv relative bg-paper py-24 sm:py-32">
       <div className="shell">
         <div className="max-w-2xl">
           <p className="hand text-[1.6rem] text-red-deep sm:text-[1.9rem]">try one</p>

@@ -65,9 +65,9 @@ export function ScribbleUnderline({ className = '' }: { className?: string }) {
 }
 
 /** Four-point sparkle doodle. */
-export function Sparkle({ className = '' }: { className?: string }) {
+export function Sparkle({ className = '', ...rest }: { className?: string } & React.SVGProps<SVGSVGElement>) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden fill="currentColor">
+    <svg viewBox="0 0 24 24" className={className} aria-hidden fill="currentColor" {...rest}>
       <path d="M12 0c.9 6.4 2.6 9.9 12 12-9.4 2.1-11.1 5.6-12 12-.9-6.4-2.6-9.9-12-12C9.4 9.9 11.1 6.4 12 0Z" />
     </svg>
   );

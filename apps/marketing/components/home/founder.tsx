@@ -11,7 +11,7 @@ import { ScribbleCircle } from '@/components/ui/icons';
  */
 export default function Founder() {
   return (
-    <section aria-labelledby="founder-title" className="relative bg-paper-2 py-24 sm:py-32">
+    <section aria-labelledby="founder-title" className="cv relative bg-paper-2 py-24 sm:py-32">
       <div className="shell grid items-center gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
         {/* A taped polaroid. */}
         <figure data-pop className="relative mx-auto w-full max-w-[22rem] lg:max-w-[26rem]" style={{ ['--pop-r' as string]: '4deg' }}>

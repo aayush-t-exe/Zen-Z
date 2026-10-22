@@ -1,11 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { useGSAP } from '@gsap/react';
-
-gsap.registerPlugin(ScrollTrigger, useGSAP);
+import { loadGsap, useNear } from '@/lib/gsap-lazy';
 
 /**
  * Meetup's hand-drawn connector. Measures every `[data-anchor]` inside and
@@ -18,10 +14,11 @@ export default function DrawLine({ children, className = '' }: { children: React
   const path = useRef<SVGPathElement>(null);
   const [d, setD] = useState('');
   const [box, setBox] = useState({ w: 0, h: 0 });
+  const near = useNear(scope);
 
   useEffect(() => {
     const el = scope.current;
-    if (!el) return;
+    if (!el || !near) return;
     const build = () => {
       const r = el.getBoundingClientRect();
       const pts = Array.from(el.querySelectorAll<HTMLElement>('[data-anchor]')).map((a) => {
@@ -47,12 +44,15 @@ export default function DrawLine({ children, className = '' }: { children: React
     ro.observe(el);
     document.fonts?.ready.then(build);
     return () => ro.disconnect();
-  }, []);
+  }, [near]);
 
-  useGSAP(
-    () => {
-      const p = path.current;
-      if (!p || !d) return;
+  useEffect(() => {
+    const p = path.current;
+    if (!p || !d) return;
+    let cancelled = false;
+    let revert = () => {};
+    loadGsap().then(({ gsap }) => {
+      if (cancelled) return;
       const len = p.getTotalLength();
       const mm = gsap.matchMedia();
       mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -66,10 +66,13 @@ export default function DrawLine({ children, className = '' }: { children: React
           }
         );
       });
-      return () => mm.revert();
-    },
-    { scope, dependencies: [d] }
-  );
+      revert = () => mm.revert();
+    });
+    return () => {
+      cancelled = true;
+      revert();
+    };
+  }, [d]);
 
   return (
     <div ref={scope} className={`relative ${className}`}>

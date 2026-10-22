@@ -56,7 +56,7 @@ export default function PricingPage() {
                     FREE
                   </span>
                 ) : null}
-                <Image src={p.icon} alt="" width={72} height={72} className="sticker h-[72px] w-[72px]" />
+                <Image src={p.icon} alt="" sizes="72px" className="sticker h-auto w-[72px]" />
                 <h3 className="display-tight mt-4 text-[1.4rem]">{p.name}</h3>
                 <p className="mt-1 text-[1.75rem] font-extrabold leading-none tracking-tight">
                   {p.price.kind === 'free' ? (

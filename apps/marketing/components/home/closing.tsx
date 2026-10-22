@@ -29,7 +29,7 @@ function PhotoWall() {
 export default function Closing() {
   return (
     <section id="download" aria-labelledby="download-title" className="on-ink curve-top relative z-10 overflow-x-clip bg-ink pb-24 pt-20 text-fg sm:pb-32 sm:pt-28">
-      <div className="shell relative">
+      <div className="cv shell relative">
         <PhotoWall />
         <div className="grid items-center gap-14 lg:grid-cols-[1.25fr_0.75fr]">
           <div className="relative z-10">

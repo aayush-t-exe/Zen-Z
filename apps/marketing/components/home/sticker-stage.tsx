@@ -4,7 +4,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 
 /**
  * Wraps a scatter of stickers. Every descendant with `data-depth` (0–1):
- * - drifts with scroll (parallax) and leans toward the cursor on desktop;
+ * - on desktop, drifts with scroll (parallax) and leans toward the cursor;
  * - can be dragged (mouse or touch) and stays where it's dropped, with a
  *   springy lift while held. `data-drag="off"` opts a sticker out.
  * Transforms go on each sticker directly; nothing animates under reduced motion.
@@ -15,8 +15,11 @@ export default function StickerStage({ children, className = '' }: { children: R
   useEffect(() => {
     const stage = ref.current;
     if (!stage) return;
+
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const fine = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    // The parallax loop is a desktop treat. Phones get drag only, so nothing
+    // runs per frame unless a finger is on a sticker.
+    const desktop = window.matchMedia('(min-width: 1024px) and (hover: hover) and (pointer: fine)').matches;
 
     type S = { el: HTMLElement; depth: number; rot: number; dx: number; dy: number; held: boolean };
     const items: S[] = Array.from(stage.querySelectorAll<HTMLElement>('[data-depth]')).map((el) => ({
@@ -36,16 +39,17 @@ export default function StickerStage({ children, className = '' }: { children: R
     let raf = 0;
     let visible = true;
 
+    const place = (s: S) => {
+      const px = cx * 18 * s.depth;
+      const py = cy * 14 * s.depth - scrollY * 0.12 * s.depth;
+      const lift = s.held ? ' scale(1.08)' : '';
+      const r = s.held ? s.rot - 4 : s.rot + cx * 2 * s.depth;
+      s.el.style.transform = `translate3d(${(s.dx + px).toFixed(1)}px, ${(s.dy + py).toFixed(1)}px, 0) rotate(${r.toFixed(2)}deg)${lift}`;
+    };
     const apply = () => {
       cx += (mx - cx) * 0.08;
       cy += (my - cy) * 0.08;
-      for (const s of items) {
-        const px = cx * 18 * s.depth;
-        const py = cy * 14 * s.depth - scrollY * 0.12 * s.depth;
-        const lift = s.held ? ' scale(1.08)' : '';
-        const r = s.held ? s.rot - 4 : s.rot + cx * 2 * s.depth;
-        s.el.style.transform = `translate3d(${(s.dx + px).toFixed(1)}px, ${(s.dy + py).toFixed(1)}px, 0) rotate(${r.toFixed(2)}deg)${lift}`;
-      }
+      items.forEach(place);
       raf = visible ? requestAnimationFrame(apply) : 0;
     };
 
@@ -57,9 +61,11 @@ export default function StickerStage({ children, className = '' }: { children: R
       const r = stage.getBoundingClientRect();
       scrollY = -r.top;
     };
-    if (fine) window.addEventListener('pointermove', onPointer, { passive: true });
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    if (desktop) {
+      window.addEventListener('pointermove', onPointer, { passive: true });
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+    }
 
     // Dragging.
     const offs: (() => void)[] = [];
@@ -74,6 +80,7 @@ export default function StickerStage({ children, className = '' }: { children: R
       const down = (e: PointerEvent) => {
         if (e.button !== 0) return;
         s.held = true;
+        if (!desktop) place(s);
         s.el.setPointerCapture(e.pointerId);
         s.el.style.cursor = 'grabbing';
         s.el.style.zIndex = '30';
@@ -86,10 +93,12 @@ export default function StickerStage({ children, className = '' }: { children: R
         if (!s.held) return;
         s.dx = bx + e.clientX - sx;
         s.dy = by + e.clientY - sy;
+        if (!desktop) place(s);
       };
       const up = () => {
         s.held = false;
         s.el.style.cursor = 'grab';
+        if (!desktop) place(s);
       };
       s.el.addEventListener('pointerdown', down);
       s.el.addEventListener('pointermove', move);
@@ -105,10 +114,10 @@ export default function StickerStage({ children, className = '' }: { children: R
 
     const io = new IntersectionObserver(([e]) => {
       visible = e.isIntersecting;
-      if (visible && !raf) raf = requestAnimationFrame(apply);
+      if (desktop && visible && !raf) raf = requestAnimationFrame(apply);
     });
     io.observe(stage);
-    raf = requestAnimationFrame(apply);
+    if (desktop) raf = requestAnimationFrame(apply);
 
     return () => {
       cancelAnimationFrame(raf);

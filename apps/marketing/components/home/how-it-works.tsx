@@ -36,7 +36,7 @@ function QuizDoodle() {
 
 export default function HowItWorks() {
   return (
-    <section id="how" className="relative bg-paper py-24 sm:py-32">
+    <section id="how" className="cv relative bg-paper py-24 sm:py-32">
       <div className="shell">
         <div className="max-w-2xl">
           <p className="hand text-[1.6rem] text-red-deep sm:text-[1.9rem]">here’s the whole thing</p>

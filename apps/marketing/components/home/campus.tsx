@@ -42,7 +42,7 @@ function HawaMahal() {
  */
 export default function Campus() {
   return (
-    <section aria-labelledby="campus-title" className="relative overflow-x-clip bg-paper py-24 sm:py-32">
+    <section aria-labelledby="campus-title" className="cv relative overflow-x-clip bg-paper py-24 sm:py-32">
       <div className="shell grid items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
         <div>
           <p className="hand text-[1.6rem] text-red-deep sm:text-[1.9rem]">where we are</p>

@@ -17,6 +17,8 @@ export type RopeConfig = {
   stiffness?: number;
   /** Max distance the Z can be pulled from the anchor, as a multiple of length. */
   maxReach?: number;
+  /** A slow breeze that keeps it swaying. Off, the rope comes to rest. */
+  wind?: boolean;
 };
 
 const DT = 1 / 120;
@@ -32,6 +34,7 @@ export class Rope {
   private damping: number;
   private stiffness: number;
   private maxReach: number;
+  private wind: boolean;
   private acc = 0;
   private time = 0;
   readonly length: number;
@@ -45,6 +48,7 @@ export class Rope {
     this.damping = cfg.damping ?? 0.992;
     this.stiffness = cfg.stiffness ?? 0.55;
     this.maxReach = cfg.maxReach ?? 2.1;
+    this.wind = cfg.wind ?? true;
     this.x = new Float64Array(this.n);
     this.y = new Float64Array(this.n);
     this.ox = new Float64Array(this.n);
@@ -119,7 +123,7 @@ export class Rope {
   private step() {
     this.time += DT;
     // A slow breeze so the idle Z sways a few degrees instead of hanging dead.
-    const wind = Math.sin(this.time * 1.3) * 90 + Math.sin(this.time * 0.47) * 60;
+    const wind = this.wind ? Math.sin(this.time * 1.3) * 90 + Math.sin(this.time * 0.47) * 60 : 0;
     const g = this.gravity * DT * DT;
     const w = wind * DT * DT;
     for (let i = 1; i < this.n; i++) {
