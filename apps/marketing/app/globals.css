@@ -36,6 +36,7 @@
     -webkit-text-size-adjust: 100%;
     scroll-padding-top: calc(var(--header-h) + 1rem);
     -webkit-tap-highlight-color: transparent;
+    overflow-x: clip;
   }
   @media (prefers-reduced-motion: no-preference) {
     html:not(.lenis) {
@@ -216,6 +217,14 @@
   }
 }
 
+/* The footer's bulge gets its own room, except right after the ink closing section. */
+.site-footer {
+  margin-top: clamp(2.5rem, 7vw, 6rem);
+}
+#main:has(#download) + .site-footer {
+  margin-top: 0;
+}
+
 /* ───────────────────────────── Film grain ───────────────────────────── */
 .grain {
   position: fixed;
@@ -323,6 +332,157 @@
       transform 0.7s var(--spring);
     transition-delay: calc(var(--d, 0) * 70ms);
   }
+}
+
+/* ───────────────────────────── Hanging Z ─────────────────────────────
+   Server render: a still Z on a straight cord of --len. The simulation
+   (components/home/hanging-z.tsx) sets data-live and drives transforms. */
+.hanging-z .hz-z {
+  transform: translate3d(0, var(--len), 0) rotate(-3deg);
+}
+.hanging-z[data-live='true'] .hz-static-cord,
+.hanging-z:not([data-live='true']) .hz-live-cord {
+  display: none;
+}
+.hanging-z .hz-note {
+  top: var(--note-y, calc(var(--len) + var(--zw) * 0.55));
+  left: var(--note-x, calc(var(--zw) * 0.62));
+  transform: rotate(-8deg);
+  transition: opacity 0.3s var(--out);
+}
+.hanging-z[data-drag='true'] .hz-note {
+  opacity: 0;
+}
+
+/* ───────────────────────────── Rolling sentence ───────────────────────────── */
+.hero-sentence {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.1em;
+}
+.hs-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.06em;
+}
+@media (min-width: 1024px) {
+  .hs-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.22em;
+  }
+}
+.hs-word {
+  font-family: var(--font-archivo), Arial, sans-serif;
+  font-weight: 850;
+  font-stretch: 112%;
+  letter-spacing: -0.04em;
+  line-height: 0.92;
+  font-size: var(--hs-word, clamp(3.6rem, 15vw, 7rem));
+}
+.hs-pill {
+  display: inline-flex;
+  align-items: flex-end;
+  font-family: var(--font-fraunces), Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.12;
+  font-size: var(--hs-pill, clamp(1.45rem, 6.5vw, 3.3rem));
+  font-variation-settings: 'SOFT' 100, 'WONK' 1;
+}
+.hs-pill .hs-word {
+  font-size: var(--hs-pill, clamp(1.45rem, 6.5vw, 3.3rem));
+  margin-left: 0.05em;
+}
+.roll-track {
+  transition: width 0.6s var(--spring);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .roll-in {
+    animation: roll-in 0.62s var(--spring) both;
+  }
+  .roll-out {
+    animation: roll-out 0.42s var(--out) both;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roll-out {
+    display: none;
+  }
+}
+@keyframes roll-in {
+  from { transform: translateY(105%); }
+  to { transform: translateY(0); }
+}
+@keyframes roll-out {
+  from { transform: translateY(0); opacity: 1; }
+  to { transform: translateY(-105%); opacity: 0.4; }
+}
+
+/* Word reveal (components/home/word-reveal.tsx). --lit goes 0 → 1 on scroll. */
+.wr-word {
+  color: color-mix(in srgb, var(--wr-to, #efe9dc) calc(var(--lit, 1) * 100%), #6f6a62);
+}
+.wr-hot {
+  --wr-to: #ff3b30;
+}
+
+/* Quiz teaser: balls drop into their column with a bounce. */
+@media (prefers-reduced-motion: no-preference) {
+  .quiz-ball {
+    animation: ball-drop 0.9s var(--out) both;
+    animation-delay: calc(var(--k, 0) * 110ms);
+  }
+  .quiz-done {
+    animation: roll-in 0.6s var(--spring) both;
+  }
+}
+@keyframes ball-drop {
+  0% { transform: translateY(-22rem); }
+  45% { transform: translateY(0); }
+  62% { transform: translateY(-2.2rem); }
+  78% { transform: translateY(0); }
+  88% { transform: translateY(-0.6rem); }
+  100% { transform: translateY(0); }
+}
+
+/* Chat bubbles (components/home/chat-phone.tsx). */
+.chat-b {
+  transition:
+    opacity 0.35s var(--out),
+    transform 0.55s var(--spring);
+}
+.chat-b:not(.is-on) {
+  opacity: 0;
+  transform: translateY(10px) scale(0.86);
+}
+
+/* Closing: the glossy Z, glowing and floating. */
+.z-glow {
+  background: radial-gradient(closest-side, rgb(225 6 0 / 0.55), rgb(225 6 0 / 0.12) 60%, transparent);
+  filter: blur(10px);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .z-glow {
+    animation: breathe 4.5s ease-in-out infinite;
+  }
+  .z-float {
+    animation: float 6s ease-in-out infinite;
+  }
+}
+@keyframes breathe {
+  50% { opacity: 0.65; transform: scale(0.94); }
+}
+@keyframes float {
+  50% { transform: translateY(-14px) rotate(-3deg); }
+}
+
+/* Resting tilt for stickers/cards; pop-in and wobble both start from it. */
+.tilt {
+  transform: rotate(var(--tilt, 0deg));
 }
 
 /* Wobble on hover/tap: a quick spring, then rest. */

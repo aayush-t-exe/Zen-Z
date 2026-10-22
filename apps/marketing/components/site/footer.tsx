@@ -9,7 +9,7 @@ import { Wordmark } from './header';
  */
 export default function SiteFooter() {
   return (
-    <footer className="on-ink curve-top relative z-10 bg-ink text-fg">
+    <footer className="site-footer on-ink curve-top relative z-10 bg-ink text-fg">
       <div className="shell pb-[max(2.5rem,env(safe-area-inset-bottom))] pt-14 sm:pt-16">
         <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div>

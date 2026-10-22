@@ -58,7 +58,7 @@ export default function Phone({
               aria-hidden={i > 0 || undefined}
               sizes={sizes}
               priority={priority && i === 0}
-              loading={priority && i === 0 ? undefined : 'lazy'}
+              loading={priority && i === 0 ? undefined : i === 0 ? 'eager' : 'lazy'}
               className="phone-shot"
               style={{ '--i': i } as CSSProperties}
             />

@@ -27,7 +27,7 @@ export default function SiteHeader() {
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50 pt-[max(0.6rem,env(safe-area-inset-top))]">
       <div className="shell">
-        <div className="pointer-events-auto flex h-14 items-center justify-between gap-3 rounded-full border border-ink/10 bg-paper-3/85 pl-4 pr-2 shadow-[0_6px_24px_-12px_rgb(10_9_8/0.35)] backdrop-blur-md backdrop-saturate-150">
+        <div className="pointer-events-auto flex h-14 items-center justify-between gap-3 rounded-full border border-ink/10 bg-paper-3/85 pl-3.5 pr-1.5 shadow-[0_6px_24px_-12px_rgb(10_9_8/0.35)] backdrop-blur-md backdrop-saturate-150">
           <Link href="/" aria-label="Zen-Z home" className="rounded-full">
             <Wordmark />
           </Link>
@@ -48,13 +48,13 @@ export default function SiteHeader() {
           </nav>
 
           <div className="flex items-center gap-1.5">
-            <Link href="/#download" className="btn btn-red !min-h-[2.6rem] !px-4 text-[0.9375rem]">
+            <Link href="/#download" className="btn btn-red !min-h-[2.5rem] !px-3.5 text-[0.875rem] sm:!min-h-[2.6rem] sm:!px-4 sm:text-[0.9375rem]">
               Get the app
             </Link>
             <button
               type="button"
               popoverTarget="site-menu"
-              className="grid h-[2.6rem] w-[2.6rem] place-items-center rounded-full border border-ink/15 md:hidden"
+              className="grid h-[2.5rem] w-[2.5rem] shrink-0 place-items-center rounded-full border border-ink/15 md:hidden"
               aria-label="Open menu"
             >
               <svg width="18" height="12" viewBox="0 0 18 12" aria-hidden>
