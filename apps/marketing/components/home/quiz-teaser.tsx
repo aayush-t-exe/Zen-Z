@@ -2,6 +2,7 @@
 
 import { useState, type CSSProperties } from 'react';
 import { quizTeaser } from '@/lib/content';
+import { NoteArrow } from '@/components/ui/icons';
 
 const BALL_COLORS = ['#E10600', '#F4C84A', '#0A0908', '#F3EEE3', '#E10600'];
 const BALLS_PER_PICK = 3;
@@ -82,7 +83,7 @@ export default function QuizTeaser() {
               <p className="mt-2 text-[0.9375rem] text-paper-muted">Nothing you tapped here was saved or sent anywhere.</p>
             </div>
           ) : (
-            <p className="hand text-[1.6rem] text-paper-muted">tap an answer, or a few ↖</p>
+            <p className="hand text-[1.6rem] text-paper-muted">tap an answer, or a few <NoteArrow className="rotate-[135deg]" /></p>
           )}
         </div>
       </div>

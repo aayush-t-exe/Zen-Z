@@ -5,10 +5,30 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /**
+ * While a roll is in flight on a phone, the pill holds the wider of the two
+ * words; desktop always targets the new word and lets the transition spring.
+ */
+function trackWidth(widths: number[], i: number, prev: number | null, settled: boolean) {
+  if (settled || prev === null || springWidth()) return widths[i];
+  return Math.max(widths[i], widths[prev]);
+}
+
+let springQuery: MediaQueryList | null = null;
+function springWidth() {
+  springQuery ??= window.matchMedia('(hover: hover) and (pointer: fine)');
+  return springQuery.matches;
+}
+
+/**
  * One slot-machine pill (222's mad-lib hero). The server renders options[0].
- * The word rolls up and out while the next rolls in from below; the pill's
- * width springs to fit. Tapping rolls it on. Auto-rolls every `every` ms,
- * starting after `delay`, only while on screen; never under reduced motion.
+ * The word rolls up and out while the next rolls in from below. Tapping rolls
+ * it on. Auto-rolls every `every` ms, starting after `delay`, only while on
+ * screen; never under reduced motion.
+ *
+ * The width: on desktop it springs to fit (a CSS transition). On phones a
+ * width transition means a layout on every frame, which was most of the
+ * home page's main-thread time, so there the pill jumps to fit both words
+ * for the roll and settles on the new one when the old word has gone.
  */
 function Pill({
   options,
@@ -24,16 +44,24 @@ function Pill({
   const [i, setI] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
   const [widths, setWidths] = useState<number[] | null>(null);
+  const [settled, setSettled] = useState(true);
   const measure = useRef<HTMLSpanElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
   const lastTap = useRef(0);
   const idx = useRef(0);
+  const settleTimer = useRef(0);
 
   const roll = useCallback(() => {
     setPrev(idx.current);
     idx.current = (idx.current + 1) % options.length;
     setI(idx.current);
+    // Matches .roll-out's 0.42s.
+    setSettled(false);
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => setSettled(true), 440);
   }, [options.length]);
+
+  useEffect(() => () => window.clearTimeout(settleTimer.current), []);
 
   // Measure every option once fonts are in, so the width can animate.
   useIsoLayoutEffect(() => {
@@ -85,7 +113,7 @@ function Pill({
     >
       <span
         className="roll-track relative block overflow-hidden"
-        style={widths ? { width: `calc(${widths[i]}px + 0.14em)` } : undefined}
+        style={widths ? { width: `calc(${trackWidth(widths, i, prev, settled)}px + 0.14em)` } : undefined}
       >
         {/* Invisible copy of the current word keeps the line height and the no-JS width. */}
         <span className="invisible block whitespace-nowrap pr-[0.14em]">{options[i]}</span>

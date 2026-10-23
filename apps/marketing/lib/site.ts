@@ -39,7 +39,7 @@ export const proof = {
 };
 
 /**
- * How many tables one person can build in a week. Left null until Aayush
+ * How many tables the team can build in a week. Left null until Aayush
  * confirms the current number ([CONFIRM]); while null the site says it without
  * a figure. Set to e.g. '10 to 20' and the founder note picks it up.
  */

@@ -46,6 +46,19 @@ export function ScribbleArrow({ className = '', d = 'M6 8c10 4 26 6 36 22 4 7 5 
   );
 }
 
+/**
+ * A small hand-drawn arrow that sits inline in a handwritten note. Caveat has
+ * no arrow glyphs, and falling back to a system font for one character made
+ * the hero's first layout noticeably slower. Points down; rotate it as needed.
+ */
+export function NoteArrow({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 22" className={`inline-block h-[0.8em] w-[0.6em] align-[-0.05em] ${className}`} aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 2c-.6 5 .4 11-.3 17M3 13.5c2 2 3.6 3.8 5.2 5.6 1.4-2 2.9-3.7 4.8-5.3" />
+    </svg>
+  );
+}
+
 /** A hand-drawn circle to ring a word. Stretch it over the target. */
 export function ScribbleCircle({ className = '' }: { className?: string }) {
   return (

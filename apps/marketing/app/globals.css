@@ -428,8 +428,12 @@
   font-size: var(--hs-pill, clamp(1.45rem, 6.5vw, 3.3rem));
   margin-left: 0.05em;
 }
-.roll-track {
-  transition: width 0.6s var(--spring);
+/* The width spring is desktop only: on phones it cost a layout every frame
+   (rolling-sentence.tsx snaps the width there instead). */
+@media (hover: hover) and (pointer: fine) {
+  .roll-track {
+    transition: width 0.6s var(--spring);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   .roll-in {
@@ -444,14 +448,15 @@
     display: none;
   }
 }
+/* Same units at both ends, so the compositor can run them off the main thread. */
 @keyframes roll-in {
-  from { transform: translateY(105%); }
-  to { transform: translateY(0); }
+  from { transform: translate3d(0, 105%, 0); }
+  to { transform: translate3d(0, 0%, 0); }
 }
 /* Full opacity the whole way: the pill clips it, and a half-faded word fails contrast mid-roll. */
 @keyframes roll-out {
-  from { transform: translateY(0); }
-  to { transform: translateY(-105%); }
+  from { transform: translate3d(0, 0%, 0); }
+  to { transform: translate3d(0, -105%, 0); }
 }
 
 /* Word reveal (components/home/word-reveal.tsx). --lit goes 0 → 1 on scroll. */
@@ -598,6 +603,59 @@
   transform: translateY(140%) rotate(4deg);
   opacity: 0;
   pointer-events: none;
+}
+/* Desktop corner: the QR card springs out of the round button. */
+.qr-card {
+  transform-origin: calc(100% - 1.75rem) 100%;
+  transition:
+    transform 0.45s var(--spring),
+    opacity 0.2s var(--out),
+    visibility 0s;
+}
+.qr-corner[data-open='false'] .qr-card {
+  transform: translateY(0.75rem) scale(0.6) rotate(6deg);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.25s var(--out),
+    opacity 0.2s var(--out),
+    visibility 0s 0.25s;
+}
+.qr-corner-btn {
+  transition: transform 0.35s var(--spring);
+}
+.qr-corner[data-open='true'] .qr-corner-btn {
+  transform: rotate(-8deg) scale(1.05);
+}
+@media (prefers-reduced-motion: reduce) {
+  .qr-card,
+  .qr-corner[data-open='false'] .qr-card {
+    transform: none;
+  }
+}
+
+/* Phones: one red button at a time. While the bottom bar shows, the header's fades out. */
+.header-get {
+  transition:
+    transform 0.35s var(--spring),
+    box-shadow 0.35s var(--out),
+    opacity 0.25s var(--out),
+    visibility 0s;
+}
+html[data-bar='on'] .header-get {
+  opacity: 0;
+  transform: scale(0.9);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    transform 0.25s var(--out),
+    opacity 0.25s var(--out),
+    visibility 0s 0.25s;
+}
+/* The bar is 3.5rem tall plus its safe-area gap; the footer's end always clears it. */
+body:has(.sticky-bar) .site-footer > .shell {
+  padding-bottom: calc(4.5rem + max(1rem, env(safe-area-inset-bottom)));
 }
 
 /* Hide scrollbars on horizontal shelves while keeping them scrollable. */
