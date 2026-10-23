@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { Caveat } from 'next/font/google';
 import localFont from 'next/font/local';
 import SiteHeader from '@/components/site/header';
 import SiteFooter from '@/components/site/footer';
@@ -9,8 +8,8 @@ import './globals.css';
 
 // Archivo for display (the portfolio's face), Fraunces italic and Instrument
 // Sans from the app itself, Caveat for the handwritten margin notes only.
-// The first three are self-hosted, trimmed copies (assets/fonts, OFL): only
-// the weights and widths this site uses, Latin plus ₹ and curly quotes, which
+// All four are self-hosted, trimmed copies (assets/fonts, OFL): only the
+// weights and widths this site uses, Latin plus ₹ and curly quotes, which
 // takes Archivo from 88 kB to 36 kB. size-adjusted fallbacks keep text still
 // while they load.
 const archivo = localFont({
@@ -38,12 +37,16 @@ const fraunces = localFont({
   preload: false,
   adjustFontFallback: 'Times New Roman',
 });
-const caveat = Caveat({
-  subsets: ['latin'],
+// SemiBold, basic Latin plus curly quotes and dashes, kerning and ligatures
+// only: 18 kB instead of Google's 51 kB. (Dropped: the contextual alternates
+// that vary doubled letters, which were most of the file.)
+const caveat = localFont({
+  src: '../assets/fonts/caveat.woff2',
   weight: '600',
   variable: '--font-caveat',
   display: 'swap',
   preload: false,
+  adjustFontFallback: 'Arial',
 });
 
 export const metadata: Metadata = {

@@ -1,7 +1,8 @@
-import Image, { type StaticImageData } from 'next/image';
+import type { StaticImageData } from 'next/image';
 import type { CSSProperties } from 'react';
 import { quizTeaser, steps } from '@/lib/content';
 import { ScribbleArrow, ScribbleUnderline } from '@/components/ui/icons';
+import NearImage from '@/components/ui/near-image';
 import DrawLine from './draw-line';
 import invitation from '@/assets/art/onboarding-invitation.webp';
 import hands from '@/assets/art/onboarding-hands.webp';
@@ -64,7 +65,7 @@ export default function HowItWorks() {
                   />
                   <div data-pop className={`relative ${flip ? 'lg:order-2' : ''}`} style={{ '--pop-r': flip ? '3deg' : '-3deg' } as CSSProperties}>
                     {pic ? (
-                      <Image
+                      <NearImage
                         src={pic}
                         alt=""
                         sizes="(min-width: 1024px) 400px, 80vw"

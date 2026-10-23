@@ -9,8 +9,10 @@ const points = [
 export default function Chat() {
   return (
     <section id="chat" aria-labelledby="chat-title" className="on-ink curve-top relative z-10 bg-ink py-24 text-fg sm:py-32 lg:min-h-[150vh]">
+      {/* The shell is sticky on desktop, so content-visibility goes on its two
+          halves instead of a wrapper (and the section keeps its curved top). */}
       <div className="shell grid gap-14 lg:sticky lg:top-24 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-20">
-        <div>
+        <div className="cv ![contain-intrinsic-size:auto_640px]">
           <p className="hand text-[1.6rem] text-red-text sm:text-[1.9rem]">before you meet</p>
           <h2 id="chat-title" className="display mt-2 text-[clamp(2.6rem,8vw,5.2rem)]">
             You’ll know who’s <span className="warm text-red-text">bringing the bat.</span>
@@ -27,7 +29,7 @@ export default function Chat() {
             ))}
           </ul>
         </div>
-        <figure>
+        <figure className="cv ![contain-intrinsic-size:auto_760px]">
           <ChatPhone triggerId="chat" />
           <figcaption className="hand mx-auto mt-6 max-w-xs text-center text-[1.35rem] leading-tight text-muted">
             an example, not a real chat: roughly what your group chat looks like 48h before
