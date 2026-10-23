@@ -145,3 +145,45 @@ on the Vercel preview with PageSpeed Insights before merging.
 **What moved the numbers:** trimmed self-hosted fonts; GSAP loaded only near its sections;
 `content-visibility: auto` on offscreen sections; desktop-only parallax and rope breeze; static grain on
 phones; composited screen cycle; no blurred filters on the hero's images (they inflated LCP size).
+
+## 8. Polish round (2026-10-23, branch `marketing-polish`)
+
+**How it was measured.** The brief asked for PageSpeed Insights on the live site, three runs. On the
+day, the keyless PSI API returned `429 Quota exceeded` (the shared daily quota for keyless calls) and
+the pagespeed.web.dev UI failed for every URL, example.com included. So the numbers below are
+Lighthouse 12.8.2 run locally with its default mobile config, which is the same engine, emulated
+device and simulated throttling PSI uses, in headless Chromium on the Windows laptop. The Vercel
+preview sits behind Vercel's login, so it couldn't be measured directly. **Re-run PSI on zen-z.site
+after merging** to confirm.
+
+**Before (live zen-z.site, 3 runs):** 39, 58, 37 → **median 39**. FCP 1.5–3.0 s, LCP 3.8–6.0 s,
+**TBT 1,050–3,880 ms**, CLS 0. The laptop was busy (two Edge processes at ~170% CPU) during these.
+
+**Before vs after, same machine, interleaved** (master built from `origin/master` on :3108, this
+branch on :3107, alternating runs so load hits both equally; 5 pairs):
+
+| | Runs | Median | FCP | LCP | TBT |
+| --- | --- | --- | --- | --- | --- |
+| master | 57, 84, 85, 85, 86 | **85** | 2.0 s | 3.9–4.4 s | 70–1,230 ms |
+| this branch | 81, 87, 90, 89, 89 | **89** | 1.8 s | 3.5–3.7 s (clean runs) | 80–130 ms |
+
+One full run of this branch: **Performance 90, Accessibility 100, Best Practices 100, SEO 100.**
+CLS stays 0. The first pair shows the difference under load: master's TBT went to 1,230 ms while
+this branch stayed at 130 ms.
+
+**What was costing it, and the fixes** (no change to the hanging Z or the stickers):
+
+1. *Main thread after load.* The rolling pills' width transition forced a layout on every frame,
+   which was most of the page's main-thread time. Phones now snap the width (held at the wider word
+   during a roll); desktop keeps the spring. Roll keyframes use matching units so they stay on the
+   compositor.
+2. *ScrollTrigger's endless rAF loop.* GSAP loaded during the hero (the next section is within its
+   600px margin), and ScrollTrigger keeps a requestAnimationFrame loop alive while loaded. GSAP now
+   waits for the first scroll.
+3. *Bytes before the first paint* (Lantern's LCP estimate counts every request that starts before
+   it): how-it-works art loads when near (107 kB), phone screens 2–5 after load (43 kB), Caveat trimmed
+   from 51 kB to 18 kB, AVIF images, palette-PNG icons.
+4. *First layout.* Arrow glyphs in the handwritten notes forced a system-font fallback lookup (now
+   inline SVG), and Chat's halves get `content-visibility` (about a third off the first layout).
+
+What's left is mostly fixed cost: ~124 kB of framework JS and the four fonts the hero uses.
